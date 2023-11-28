@@ -200,7 +200,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         external
     {
         require(msg.sender == projectEnrollments[_projectRegistrar].projectPublicKey, "Caller must be project public key");
-        require(projectEnrollments[_projectRegistrar].creationTimestamp + 7 days > block.timestamp, "Update period has elapsed");
+        require(projectEnrollments[_projectRegistrar].creationTimestamp + 30 days > block.timestamp, "Update period has elapsed");
         require(!projectEnrollments[_projectRegistrar].claimsStarted, "Claims have already started");
 
         projectEnrollments[_projectRegistrar].merkleRoot = _merkleRoot;

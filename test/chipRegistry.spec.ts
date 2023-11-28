@@ -785,7 +785,7 @@ describe("ChipRegistry", () => {
 
         describe("when the update time period has elapsed", async () => {
           beforeEach(async () => {
-            await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.mul(8).toNumber());
+            await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.mul(31).toNumber());
           });
 
           it("should revert", async () => {
