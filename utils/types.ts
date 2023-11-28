@@ -59,3 +59,10 @@ export interface ExpandedChipService {
   serviceTimelock: BigNumber;
   secondaryServices: Service[];
 }
+
+export interface EIP712Domain {
+  name: string;
+  version: string;
+  chainId?: number;
+  verifyingContract?: Address;
+}

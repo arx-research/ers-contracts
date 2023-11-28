@@ -22,7 +22,12 @@ import {
   ChipRegistry
 } from "@utils/contracts";
 import { calculateAuthenticityProjectRegistrarAddress } from "@utils/create2";
-import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash } from "@utils/protocolUtils";
+import {
+  calculateEnrollmentId,
+  calculateLabelHash,
+  calculateSubnodeHash,
+  createProjectOwnershipProof
+} from "@utils/protocolUtils";
 import { ADDRESS_ZERO, NULL_NODE, ZERO } from "@utils/constants";
 
 import DeployHelper from "@utils/deploys";
@@ -264,10 +269,13 @@ describe("ArxProjectEnrollmentManager", () => {
     projectNameHash = calculateLabelHash("ProjectX");
 
     chainId = await blockchain.getChainId();
-    projectPackedProjectRegistarAddress = ethers.utils.solidityPack(["uint256", "address"], [chainId, expectedProjectRegistrarAddress]);
-
+    projectOwnershipProof = await createProjectOwnershipProof(
+      tsmOne,
+      expectedProjectRegistrarAddress,
+      chipRegistry.address,
+      chainId
+    );
     projectOwnerPublicKey = tsmOne.address;
-    projectOwnershipProof = await tsmOne.wallet.signMessage(ethers.utils.arrayify(projectPackedProjectRegistarAddress));
 
     // Transfer ownership of tsmRegistrar to Arx Project Enrollment Manager contract
     await tsmRegistrar.connect(tsmOne.wallet).transferOwnership(arxProjectEnrollmentManager.address);

@@ -31,7 +31,13 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
-import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash, createTokenData } from "@utils/protocolUtils";
+import {
+  calculateEnrollmentId,
+  calculateLabelHash,
+  calculateSubnodeHash,
+  createProjectOwnershipProof,
+  createTokenData
+} from "@utils/protocolUtils";
 import { Blockchain, ManufacturerTree, TSMTree } from "@utils/common";
 
 const expect = getWaffleExpect();
@@ -235,11 +241,7 @@ describe("ChipRegistry", () => {
         subjectTransferPolicy = tsmOne.address;
         subjectMerkleRoot = ethers.utils.formatBytes32String("0x1234");
         subjectProjectClaimDataUri = "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm";
-
-        const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, subjectProjectRegistrar]);
-
-        // signMessage adds EIP-191 prefix and hashes the resulting bytes using keccak256
-        subjectSignature = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+        subjectSignature = await createProjectOwnershipProof(tsmOne, subjectProjectRegistrar, chipRegistry.address, chainId);
         subjectCaller = owner;
       });
 
@@ -328,8 +330,9 @@ describe("ChipRegistry", () => {
       let chipTwoClaim: TSMClaimTreeInfo;
       let tsmMerkleTree: TSMTree;
       let claimTokenUri: string;
+      let projectOwnershipSignature: string;
 
-      before(async () => {
+      beforeEach(async () => {
         claimTokenUri = "https://tokenuri.com";
 
         projectWallet = tsmOne;
@@ -368,6 +371,31 @@ describe("ChipRegistry", () => {
           tokenUri: claimTokenUri,
         };
         tsmMerkleTree = new TSMTree([chipOneClaim, chipTwoClaim]);
+
+        projectOwnershipSignature = await createProjectOwnershipProof(
+          projectWallet,
+          fakeProjectRegistrar.address,
+          chipRegistry.address,
+          chainId
+        );
+
+        const projectNameHash = calculateLabelHash("project");
+        await ersRegistry.connect(owner.wallet).createSubnodeRecord(
+          mockRegistrarErsNode,
+          projectNameHash,
+          fakeProjectRegistrar.address,
+          fakeProjectRegistrar.address
+        );
+        projectNodeHash = calculateSubnodeHash("project.mockTsm.ers");
+
+        await chipRegistry.addProjectEnrollment(
+          fakeProjectRegistrar.address,
+          tsmOne.address,
+          transferPolicy.address,
+          tsmMerkleTree.getHexRoot(),
+          projectOwnershipSignature,
+          "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm"
+        );
       });
 
       describe("#claimChip", async () => {
@@ -381,29 +409,6 @@ describe("ChipRegistry", () => {
         let chipNameHash: string;
 
         beforeEach(async () => {
-          // Enroll project not using TSMRegistrar to test claim directly
-          const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, fakeProjectRegistrar.address]);
-          // signMessage adds EIP-191 prefix and hashes the resulting bytes using keccak256
-          const signature = await projectWallet.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-          const projectNameHash = calculateLabelHash("project");
-
-          await ersRegistry.connect(owner.wallet).createSubnodeRecord(
-            mockRegistrarErsNode,
-            projectNameHash,
-            fakeProjectRegistrar.address,
-            fakeProjectRegistrar.address
-          );
-          projectNodeHash = calculateSubnodeHash("project.mockTsm.ers");
-
-          await chipRegistry.addProjectEnrollment(
-            fakeProjectRegistrar.address,
-            tsmOne.address,
-            transferPolicy.address,
-            tsmMerkleTree.getHexRoot(),
-            signature,
-            "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm"
-          );
-
           chipNameHash = calculateLabelHash("myChip");
           await ersRegistry.connect(fakeProjectRegistrar.wallet).createSubnodeRecord(
             projectNodeHash,
@@ -680,29 +685,6 @@ describe("ChipRegistry", () => {
         let subjectCaller: Account;
 
         beforeEach(async () => {
-          // Enroll project not using TSMRegistrar to test claim directly
-          const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, fakeProjectRegistrar.address]);
-          // signMessage adds EIP-191 prefix and hashes the resulting bytes using keccak256
-          const signature = await projectWallet.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-          const projectNameHash = calculateLabelHash("project");
-
-          await ersRegistry.connect(owner.wallet).createSubnodeRecord(
-            mockRegistrarErsNode,
-            projectNameHash,
-            fakeProjectRegistrar.address,
-            fakeProjectRegistrar.address
-          );
-          projectNodeHash = calculateSubnodeHash("project.mockTsm.ers");
-
-          await chipRegistry.addProjectEnrollment(
-            fakeProjectRegistrar.address,
-            tsmOne.address,
-            transferPolicy.address,
-            tsmMerkleTree.getHexRoot(),
-            signature,
-            "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm"
-          );
-
           subjectProjectRegistrar = fakeProjectRegistrar.address;
           subjectMerkleRoot = ethers.utils.formatBytes32String("0x5678");
           subjectProjectClaimDataUri = "ipfs://ZmZmZmZmZmZmZmZmZmZmZmZmZmZmZm";
@@ -829,9 +811,7 @@ describe("ChipRegistry", () => {
           tsmRegistrar = await deployer.getTSMRegistrar(tsmRegistrarAddress);
 
           // Add Project via TSMRegistrar
-          const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, projectRegistrar.address]);
-          // signMessage adds EIP-191 prefix and hashes the resulting bytes using keccak256
-          const signature = await tsmTwo.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+          const signature = await createProjectOwnershipProof(tsmTwo, projectRegistrar.address, chipRegistry.address, chainId);
           const projectNameHash = calculateLabelHash("ProjectFlex");
           await tsmRegistrar.connect(tsmTwo.wallet).addProject(
             projectNameHash,

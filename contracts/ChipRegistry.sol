@@ -3,6 +3,7 @@
 pragma solidity ^0.8.17;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { IERC721Metadata } from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -30,7 +31,7 @@ import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
  * represented as tokens any physical chip transfers should also be completed on-chain in order to get full functionality
  * for the chip.
  */
-contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
+contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
 
     using SignatureChecker for address;
     using ECDSA for bytes;
@@ -119,6 +120,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         uint256 _maxLockinPeriod
     )
         ClaimedPBT("ERS", "ERS", _maxBlockWindow)
+        EIP712("Ethereum Reality Service", "1")
         Ownable()
     {
         manufacturerRegistry = _manufacturerRegistry;
@@ -160,8 +162,11 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         // with a project enrollment during claim
         require(_projectPublicKey != address(0), "Invalid project public key");
 
-        // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
-        bytes32 messageHash = abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash();
+        // Use EIP-712 to verify that the projectPublicKey signed the _projectRegistrar address
+        bytes32 messageHash = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("Contents(address projectRegistrar)"),
+            address(_projectRegistrar)
+        )));
         require(_projectPublicKey.isValidSignatureNow(messageHash, _ownershipProof), "Invalid signature");
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({

@@ -11,9 +11,9 @@ import {
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
+  AuthenticityProjectRegistrar,
   ERSRegistry,
   ManufacturerRegistry,
-  ProjectRegistrar,
   ServicesRegistry,
   TSMRegistrar,
   TSMRegistrarFactory,
@@ -27,7 +27,7 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
-import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash } from "@utils/protocolUtils";
+import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash, createProjectOwnershipProof } from "@utils/protocolUtils";
 import { ManufacturerTree, TSMTree } from "@utils/common";
 
 import { Blockchain } from "@utils/common";
@@ -44,7 +44,7 @@ describe("AuthenticityProjectRegistrar", () => {
   let authModel: Account;
   let fakeTSMRegistrar: Account;
 
-  let projectRegistrar: ProjectRegistrar;
+  let projectRegistrar: AuthenticityProjectRegistrar;
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
   let tsmRegistrarFactory: TSMRegistrarFactory;
@@ -81,7 +81,6 @@ describe("AuthenticityProjectRegistrar", () => {
   let manufacturerChipModel: string;
 
   // Project Chip Enrollment Data
-  let projectPackedProjectRegistarAddress: string;
   let projectMerkleTree: TSMTree;
   let projectMerkleRoot: string;
   let projectOwnerPublicKey: string;
@@ -245,10 +244,9 @@ describe("AuthenticityProjectRegistrar", () => {
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
-    projectPackedProjectRegistarAddress = ethers.utils.solidityPack(["uint256", "address"], [chainId, projectRegistrar.address]);
     projectMerkleRoot = projectMerkleTree.getHexRoot();
     projectOwnerPublicKey = tsmOne.address;
-    projectOwnershipProof = await tsmOne.wallet.signMessage(ethers.utils.arrayify(projectPackedProjectRegistarAddress));
+    projectOwnershipProof = await createProjectOwnershipProof(tsmOne, projectRegistrar.address, chipRegistry.address, chainId);
     projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
 
     // Call TSM Registrar to add project

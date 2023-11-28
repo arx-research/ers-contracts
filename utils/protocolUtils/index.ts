@@ -17,6 +17,8 @@ import {
 } from "..";
 import { TSMRegistrar__factory } from "../../typechain/factories/contracts";
 
+export * from "./signatures";
+
 export const createTokenData = (ersNode: string, enrollmentId: string): string => {
   return ethers.utils.solidityPack(["bytes32", "bytes32"], [ersNode, enrollmentId]);
 };

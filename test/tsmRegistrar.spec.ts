@@ -20,7 +20,7 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
-import { calculateLabelHash, calculateSubnodeHash } from "../utils/protocolUtils";
+import { calculateLabelHash, calculateSubnodeHash, createProjectOwnershipProof } from "../utils/protocolUtils";
 import { Blockchain } from "../utils/common";
 
 const expect = getWaffleExpect();
@@ -187,11 +187,12 @@ describe("TSMRegistrar", () => {
       subjectMerkleRoot = ethers.utils.formatBytes32String("MerkleRoot");
       subjectProjectPublicKey = tsmOne.address;
       subjectTransferPolicy = ADDRESS_ZERO;
-
-      const chainId = await blockchain.getChainId();
-      const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, subjectProjectRegistrar]);
-      // signMessage adds EIP-191 prefix and hashes the resulting bytes using keccak256
-      subjectOwnershipProof = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+      subjectOwnershipProof = await createProjectOwnershipProof(
+        tsmOne,
+        subjectProjectRegistrar,
+        chipRegistry.address,
+        await blockchain.getChainId()
+      );
       subjectProjectClaimDataUri = "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm";
       subjectCaller = tsmOne;
     });
