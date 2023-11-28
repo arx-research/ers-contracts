@@ -218,7 +218,7 @@ describe("ArxProjectEnrollmentManager", () => {
         appendId: true,
       },
       {
-        recordType: ethers.utils.formatBytes32String("contentApp"),
+        recordType: ethers.utils.formatBytes32String("redirectUrl"),
         content: ethers.utils.hexlify(Buffer.from("flex.gucci.com")),
         appendId: false,
       },

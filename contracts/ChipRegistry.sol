@@ -88,7 +88,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
     
     /* ============ Constants ============ */
     bytes32 public constant URI_RECORDTYPE = bytes32("tokenUri");
-    bytes32 public constant CONTENT_APP_RECORDTYPE = bytes32("contentApp");
+    bytes32 public constant REDIRECT_URL_RECORDTYPE = bytes32("redirectUrl");
     
     /* ============ State Variables ============ */
     IManufacturerRegistry public immutable manufacturerRegistry;
@@ -511,7 +511,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
 
         IServicesRegistry.Record[] memory bootloaderResponse = new IServicesRegistry.Record[](1);
         bootloaderResponse[0] = IServicesRegistry.Record({
-            recordType: CONTENT_APP_RECORDTYPE,
+            recordType: REDIRECT_URL_RECORDTYPE,
             content: bytes(manufacturerRegistry.getEnrollmentBootloaderApp(manufacturerValidation.enrollmentId))
         });
 

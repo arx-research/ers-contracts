@@ -343,7 +343,7 @@ describe("ChipRegistry", () => {
             appendId: true,
           },
           {
-            recordType: ethers.utils.formatBytes32String("contentApp"),
+            recordType: ethers.utils.formatBytes32String("redirectUrl"),
             content: ethers.utils.hexlify(Buffer.from("flex.gucci.com")),
             appendId: false,
           },
@@ -890,7 +890,7 @@ describe("ChipRegistry", () => {
             return chipRegistry.connect(subjectCaller.wallet).resolveChipId(subjectChipId);
           }
 
-          it("should return the correct primary service contentApp", async () => {
+          it("should return the correct primary service redirectUrl", async () => {
             const content: ServiceRecord[] = await subject();
 
             const bytesChipId = ethers.utils.hexlify(Buffer.from(subjectChipId.toLowerCase())).slice(2);
@@ -1047,7 +1047,7 @@ describe("ChipRegistry", () => {
             it("should return the chips bootloader app", async () => {
               const content: ServiceRecord[] = await subject();
 
-              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("contentApp"));
+              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("redirectUrl"));
               expect(content[0].content).to.eq(ethers.utils.hexlify(Buffer.from("https://bootloader.app")));
             });
           });
@@ -1066,7 +1066,7 @@ describe("ChipRegistry", () => {
             it("should return the chips bootloader app", async () => {
               const content: ServiceRecord[] = await subject();
 
-              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("contentApp"));
+              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("redirectUrl"));
               expect(content[0].content).to.eq(ethers.utils.hexlify(Buffer.from("https://bootloader.app")));
             });
           });
@@ -1083,7 +1083,7 @@ describe("ChipRegistry", () => {
             it("should return the chips bootloader app", async () => {
               const content: ServiceRecord[] = await subject();
 
-              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("contentApp"));
+              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("redirectUrl"));
               expect(content[0].content).to.eq(ethers.utils.hexlify(Buffer.from("https://bootloader.app")));
             });
 
@@ -1121,7 +1121,7 @@ describe("ChipRegistry", () => {
             it("should return the chips bootloader app", async () => {
               const content: ServiceRecord[] = await subject();
 
-              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("contentApp"));
+              expect(content[0].recordType).to.eq(ethers.utils.formatBytes32String("redirectUrl"));
               expect(content[0].content).to.eq(ethers.utils.hexlify(Buffer.from("https://bootloader.app")));
             });
 
@@ -1154,7 +1154,7 @@ describe("ChipRegistry", () => {
               subjectExtraData = ethers.utils.zeroPad(chipOne.address, 32);
             });
 
-            it("should return the chip's primaryService contentApp", async () => {
+            it("should return the chip's primaryService redirectUrl", async () => {
               const content: ServiceRecord[] = await subject();
 
               const bytesChipId = ethers.utils.hexlify(Buffer.from(chipOne.address.toLowerCase())).slice(2);
