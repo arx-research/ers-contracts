@@ -1,6 +1,7 @@
 export {
   AccountMock,
   ArxProjectEnrollmentManager,
+  AuthenticityProjectRegistrar,
   ChipRegistry,
   ChipRegistryMock,
   ChipValidationsMock,
@@ -9,7 +10,6 @@ export {
   ERSRegistry,
   InterfaceIdGetterMock,
   ManufacturerRegistry,
-  ProjectRegistrar,
   ProjectRegistrarMock,
   SECP256k1Model,
   ServicesRegistry,

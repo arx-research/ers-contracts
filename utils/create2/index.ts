@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 
 import {
-  ProjectRegistrar__factory
-} from "../../typechain/factories/contracts/project-registrars/ProjectRegistrar__factory";
+  AuthenticityProjectRegistrar__factory
+} from "../../typechain/factories/contracts/project-registrars/AuthenticityProjectRegistrar__factory";
 
 export const encoder = (types: string[], values: string[]) => {
   const abiCoder = ethers.utils.defaultAbiCoder;
@@ -15,13 +15,13 @@ export const create2Address = (factoryAddress: string, saltHex: string, initCode
   return create2Addr;
 };
 
-export const calculateProjectRegistrarAddress = (
+export const calculateAuthenticityProjectRegistrarAddress = (
   factoryAddress: string,
   saltHex: string,
   constructorArgs: any[]
 ): string => {
   // Create expected Project Registrar address to sign
-  const initCode = ProjectRegistrar__factory.bytecode + encoder(
+  const initCode = AuthenticityProjectRegistrar__factory.bytecode + encoder(
     [
       "address",
       "address",

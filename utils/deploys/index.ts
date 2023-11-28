@@ -14,7 +14,7 @@ import {
   TSMRegistry__factory
 } from "../../typechain/factories/contracts";
 
-import { ProjectRegistrar__factory } from "../../typechain/factories/contracts/project-registrars";
+import { AuthenticityProjectRegistrar__factory } from "../../typechain/factories/contracts/project-registrars";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
 import {
   ChipRegistry,
@@ -25,7 +25,7 @@ import {
   TSMRegistrar,
   TSMRegistrarFactory,
   TSMRegistry,
-  ProjectRegistrar,
+  AuthenticityProjectRegistrar,
   ArxProjectEnrollmentManager
 } from "../contracts";
 
@@ -137,14 +137,14 @@ export default class DeployHelper {
     return servicesRegistry;
   }
 
-  public async deployProjectRegistrar(
+  public async deployAuthenticityProjectRegistrar(
     projectManager: Address,
     chipRegistry: Address,
     ersRegistry: Address,
     tsmRegistrar: Address,
     maxBlockWindow: BigNumber = BigNumber.from(5)
-  ): Promise<ProjectRegistrar> {
-    const projectRegistrar = await new ProjectRegistrar__factory(this._deployerSigner).deploy(
+  ): Promise<AuthenticityProjectRegistrar> {
+    const projectRegistrar = await new AuthenticityProjectRegistrar__factory(this._deployerSigner).deploy(
       projectManager,
       chipRegistry,
       ersRegistry,
@@ -155,8 +155,8 @@ export default class DeployHelper {
     return projectRegistrar;
   }
 
-  public async getProjectRegistrar(registrarAddress: Address): Promise<ProjectRegistrar> {
-    return new ProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
+  public async getAuthenticityProjectRegistrar(registrarAddress: Address): Promise<AuthenticityProjectRegistrar> {
+    return new AuthenticityProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
   }
 
   public async deployArxProjectEnrollmentManager(

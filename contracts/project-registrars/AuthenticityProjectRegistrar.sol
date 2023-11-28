@@ -11,14 +11,15 @@ import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { ITSMRegistrar } from "../interfaces/ITSMRegistrar.sol";
 
 /**
- * @title ProjectRegistrar
+ * @title AuthenticityProjectRegistrar
  * @author Arx Research
  * 
  * @notice Entry point for users claiming chips. Responsible for setting the ers name for each chip in its enrollment as [chip].project.tsm.ers.
- * The TSM Registrar sets the root node of the ProjectRegistrar when addProject is called on the TSMRegistrar
- * The owner of the contract can set the claim app URL
+ * The TSM Registrar sets the root node of the ProjectRegistrar when addProject is called on the TSMRegistrar. This regostrar should be used by
+ * projects that care about tracking the full chain of custody of their chips via ERSRegistry. If project only wants to use the protocol for chip
+ * URL redirects other ProjectRegistrars may be a better fit.
  */
-contract ProjectRegistrar is Ownable, IProjectRegistrar {
+contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
     using ChipValidations for address;
 
     /* ============ Events ============ */

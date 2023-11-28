@@ -12,16 +12,16 @@ import {
 import { Account } from "@utils/test/types";
 import {
   ArxProjectEnrollmentManager,
+  AuthenticityProjectRegistrar,
   ERSRegistry,
   ManufacturerRegistry,
-  ProjectRegistrar,
   ServicesRegistry,
   TSMRegistrar,
   TSMRegistrarFactory,
   TSMRegistry,
   ChipRegistry
 } from "@utils/contracts";
-import { calculateProjectRegistrarAddress } from "@utils/create2";
+import { calculateAuthenticityProjectRegistrarAddress } from "@utils/create2";
 import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash } from "@utils/protocolUtils";
 import { ADDRESS_ZERO, NULL_NODE, ZERO } from "@utils/constants";
 
@@ -44,7 +44,7 @@ describe("ArxProjectEnrollmentManager", () => {
   let projectManager: Account;
   let authModel: Account;
 
-  let projectRegistrar: ProjectRegistrar;
+  let projectRegistrar: AuthenticityProjectRegistrar;
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
   let tsmRegistrarFactory: TSMRegistrarFactory;
@@ -248,7 +248,7 @@ describe("ArxProjectEnrollmentManager", () => {
     projectMerkleRoot = projectMerkleTree.getHexRoot();
 
     // Create expected Project Registrar address to sign
-    expectedProjectRegistrarAddress = calculateProjectRegistrarAddress(
+    expectedProjectRegistrarAddress = calculateAuthenticityProjectRegistrarAddress(
       arxProjectEnrollmentManager.address,
       projectMerkleRoot,
       [
@@ -352,7 +352,7 @@ describe("ArxProjectEnrollmentManager", () => {
     it("should set the state correctly on ProjectRegistrar", async () => {
       await subject();
 
-      projectRegistrar = await deployer.getProjectRegistrar(expectedProjectRegistrarAddress);
+      projectRegistrar = await deployer.getAuthenticityProjectRegistrar(expectedProjectRegistrarAddress);
 
       const actualOwner = await projectRegistrar.owner();
       const actualChipRegistry = await projectRegistrar.chipRegistry();

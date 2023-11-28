@@ -34,7 +34,7 @@ import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe("ProjectRegistrar", () => {
+describe("AuthenticityProjectRegistrar", () => {
   let owner: Account;
   let tsmOne: Account;
   let manufacturerOne: Account;
@@ -197,7 +197,7 @@ describe("ProjectRegistrar", () => {
     tsmRegistrar = await deployer.getTSMRegistrar(expectedRegistrarAddress);
 
     // 14. Deploy project registrar
-    projectRegistrar = await deployer.deployProjectRegistrar(
+    projectRegistrar = await deployer.deployAuthenticityProjectRegistrar(
       projectManager.address,
       chipRegistry.address,
       ersRegistry.address,
@@ -412,7 +412,7 @@ describe("ProjectRegistrar", () => {
     beforeEach(async () => {
       // Deploy new project registrar with the fake TSM Registrar as the set TSM Registrar
       // This is done so we can call setRootNode externally
-      projectRegistrar = await deployer.deployProjectRegistrar(
+      projectRegistrar = await deployer.deployAuthenticityProjectRegistrar(
         projectManager.address,
         chipRegistry.address,
         ersRegistry.address,

@@ -13,7 +13,7 @@ import { IManufacturerRegistry } from "./interfaces/IManufacturerRegistry.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
 import { ITSMRegistrar } from "./interfaces/ITSMRegistrar.sol";
-import { ProjectRegistrar } from "./project-registrars/ProjectRegistrar.sol";
+import { AuthenticityProjectRegistrar } from "./project-registrars/AuthenticityProjectRegistrar.sol";
 
 /**
  * @title ArxProjectEnrollmentManager
@@ -217,8 +217,8 @@ contract ArxProjectEnrollmentManager is Ownable {
     )
         internal
     {
-        // Deploy new ProjectRegistrar with Create2
-        ProjectRegistrar newProjectRegistrar = new ProjectRegistrar{salt: _merkleRoot}(
+        // Deploy new AuthenticityProjectRegistrar with Create2
+        AuthenticityProjectRegistrar newProjectRegistrar = new AuthenticityProjectRegistrar{salt: _merkleRoot}(
             _projectManager, 
             chipRegistry, 
             ers, 
