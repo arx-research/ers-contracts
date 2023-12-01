@@ -89,24 +89,12 @@ contract ArxProjectEnrollmentManager is Ownable {
         bytes32 _nameHash,
         bytes32 _merkleRoot,
         address _projectPublicKey,
-        address _provingChip,
-        IChipRegistry.TSMMerkleInfo memory _tsmMerkleInfo,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
-        bytes memory _chipOwnershipProof,
         bytes memory _projectOwnershipProof
     )
         public 
     {
         require(_isNotZeroAddress(_projectManager), "Invalid project manager address");
         require(_isNotZeroAddress(_projectPublicKey), "Invalid project public key address");
-
-        _validateOwnershipAndTreeInclusion(
-            _provingChip,
-            _chipOwnershipProof,
-            _merkleRoot,
-            _tsmMerkleInfo,
-            _manufacturerValidation
-        );
 
         _deployProjectRegistrarAndAddProject(
             _projectManager,
@@ -147,56 +135,6 @@ contract ArxProjectEnrollmentManager is Ownable {
      */
     function _isNotZeroAddress(address _address) internal pure returns(bool){
         return _address != address(0);
-    }
-
-    /**
-     * @dev Validates that the chip used as proof of ownership is in possesion of the msg.sender, is included in the project merkle root, AND
-     * is a chip that's been enrolled in the ManufacturerRegistry.
-     *
-     * @param _provingChip                  The chip used as proof of ownership
-     * @param _chipOwnershipProof           The signature of the chip owner over the hash of the chainId and msg.sender
-     * @param _merkleRoot                   The merkle root of the project
-     * @param _tsmMerkleInfo                The TSM Merkle Info of the chip
-     * @param _manufacturerValidation       Manufacturer Validation info for the chip
-     */
-    function _validateOwnershipAndTreeInclusion(
-        address _provingChip,
-        bytes memory _chipOwnershipProof,
-        bytes32 _merkleRoot,
-        IChipRegistry.TSMMerkleInfo memory _tsmMerkleInfo,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
-    )
-        internal
-        view
-    {
-        // Validate chip ownership
-        bytes32 msgHash = abi.encodePacked(block.chainid, msg.sender).toEthSignedMessageHash();
-        require(_provingChip.isValidSignatureNow(msgHash, _chipOwnershipProof), "Invalid chip ownership proof");
-
-        // Validate chip is included in merkle tree
-        bytes32 node = keccak256(
-            bytes.concat(keccak256(
-                abi.encode(
-                    _tsmMerkleInfo.tsmIndex,
-                    _provingChip,
-                    _manufacturerValidation.enrollmentId,
-                    _tsmMerkleInfo.lockinPeriod,
-                    _tsmMerkleInfo.serviceId,
-                    _tsmMerkleInfo.tokenUri
-                )
-            ))
-        );
-
-        require(MerkleProof.verify(_tsmMerkleInfo.tsmProof, _merkleRoot, node), "Invalid chip tree inclusion proof");
-
-        // Validate that the chip is part of a valid manufacturer enrollment
-        bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
-            _manufacturerValidation.enrollmentId,
-            _manufacturerValidation.mIndex,
-            _provingChip,
-            _manufacturerValidation.manufacturerProof
-        );
-        require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
     }
 
     /**

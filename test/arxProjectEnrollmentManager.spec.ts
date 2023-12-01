@@ -4,8 +4,6 @@ import { ethers } from "hardhat";
 import { BigNumber, ContractTransaction } from "ethers";
 import {
   Address,
-  TSMMerkleProofInfo,
-  ManufacturerValidationInfo,
   ServiceRecord,
   TSMClaimTreeInfo
 } from "@utils/types";
@@ -306,10 +304,6 @@ describe("ArxProjectEnrollmentManager", () => {
     let subjectNameHash: string;
     let subjectMerkleRoot: string;
     let subjectProjectPublicKey: string;
-    let subjectProvingChipId: Address;
-    let subjectTSMMerkleInfo: TSMMerkleProofInfo;
-    let subjectManufacturerValidation: ManufacturerValidationInfo;
-    let subjectChipOwnershipProof: string;
     let subjectProjectOwnershipProof: string;
     let subjectCaller: Account;
 
@@ -318,22 +312,6 @@ describe("ArxProjectEnrollmentManager", () => {
       subjectProjectClaimDataUri = tsmClaimDataUri;
       subjectNameHash = projectNameHash;
       subjectMerkleRoot = projectMerkleRoot;
-      subjectProvingChipId = chipOne.address;
-      subjectTSMMerkleInfo = {
-        tsmIndex: ZERO,
-        serviceId: chipOneClaim.primaryServiceId,
-        lockinPeriod: chipOneClaim.lockinPeriod,
-        tokenUri: chipOneClaim.tokenUri,
-        tsmProof: projectMerkleTree.getProof(0),
-      } as TSMMerkleProofInfo;
-      subjectManufacturerValidation = {
-        enrollmentId: tsmChipsEnrollmentId,
-        mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
-      } as ManufacturerValidationInfo;
-
-      const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, tsmOne.address]);
-      subjectChipOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
 
       subjectProjectPublicKey = projectOwnerPublicKey;
       subjectProjectOwnershipProof = projectOwnershipProof;
@@ -347,10 +325,6 @@ describe("ArxProjectEnrollmentManager", () => {
         subjectNameHash,
         subjectMerkleRoot,
         subjectProjectPublicKey,
-        subjectProvingChipId,
-        subjectTSMMerkleInfo,
-        subjectManufacturerValidation,
-        subjectChipOwnershipProof,
         subjectProjectOwnershipProof
       );
     }
@@ -391,43 +365,6 @@ describe("ArxProjectEnrollmentManager", () => {
         expectedProjectRegistrarAddress,
         tsmOne.address
       );
-    });
-
-    describe("when the chip ownership proof is invalid", async () => {
-      beforeEach(async () => {
-        const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, tsmOne.address]);
-        subjectChipOwnershipProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid chip ownership proof");
-      });
-    });
-
-    describe("when the chip is not included in the TSM Merkle Tree", async () => {
-      beforeEach(async () => {
-        const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, tsmOne.address]);
-        subjectChipOwnershipProof = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
-        subjectProvingChipId = tsmOne.address;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid chip tree inclusion proof");
-      });
-    });
-
-    describe("when the manufacturer enrollment is not included in the manufacturer Merkle Tree", async () => {
-      beforeEach(async () => {
-        subjectManufacturerValidation = {
-          enrollmentId: tsmChipsEnrollmentId,
-          mIndex: ZERO,
-          manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(1),
-        } as ManufacturerValidationInfo;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Chip not enrolled with ManufacturerRegistry");
-      });
     });
 
     describe("when the projectManager param is the zero address", async () => {
