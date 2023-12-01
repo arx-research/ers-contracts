@@ -124,7 +124,7 @@ describe("ChipRegistry", () => {
 
     await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
       manufacturerId,
-      manufacturerMerkleTree.getHexRoot(),
+      manufacturerMerkleTree.getRoot(),
       manufacturerOne.address,
       manufacturerOne.address,      // Placeholder
       "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm",
@@ -332,10 +332,8 @@ describe("ChipRegistry", () => {
       let claimTokenUri: string;
       let projectOwnershipSignature: string;
 
-      beforeEach(async () => {
+      before(async () => {
         claimTokenUri = "https://tokenuri.com";
-
-        projectWallet = tsmOne;
 
         // Create Service project uses
         serviceId = ethers.utils.formatBytes32String("Gucci-Flex");
@@ -370,8 +368,12 @@ describe("ChipRegistry", () => {
           primaryServiceId: serviceId,
           tokenUri: claimTokenUri,
         };
+      });
+
+      beforeEach(async () => {
         tsmMerkleTree = new TSMTree([chipOneClaim, chipTwoClaim]);
 
+        projectWallet = tsmOne;
         projectOwnershipSignature = await createProjectOwnershipProof(
           projectWallet,
           fakeProjectRegistrar.address,
@@ -392,7 +394,7 @@ describe("ChipRegistry", () => {
           fakeProjectRegistrar.address,
           tsmOne.address,
           transferPolicy.address,
-          tsmMerkleTree.getHexRoot(),
+          tsmMerkleTree.getRoot(),
           projectOwnershipSignature,
           "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm"
         );
@@ -424,7 +426,7 @@ describe("ChipRegistry", () => {
               serviceId,
               lockinPeriod: chipOneClaim.lockinPeriod,
               tokenUri: claimTokenUri,
-              tsmProof: tsmMerkleTree.getProof(ZERO, chipOneClaim),
+              tsmProof: tsmMerkleTree.getProof(0),
             } as TSMMerkleProofInfo,
             owner: owner.address,
             ersNode: calculateSubnodeHash("myChip.project.mockTsm.ers"),
@@ -433,7 +435,7 @@ describe("ChipRegistry", () => {
           subjectManufacturerValidation = {
             enrollmentId: chipsEnrollmentId,
             mIndex: ZERO,
-            manufacturerProof: manufacturerMerkleTree.getProof(ZERO, chipOne.address),
+            manufacturerProof: manufacturerMerkleTree.getProof(0),
           };
 
           const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
@@ -561,7 +563,7 @@ describe("ChipRegistry", () => {
                 serviceId,
                 lockinPeriod: chipTwoClaim.lockinPeriod,
                 tokenUri: claimTokenUri,
-                tsmProof: tsmMerkleTree.getProof(ONE, chipTwoClaim),
+                tsmProof: tsmMerkleTree.getProof(1),
               } as TSMMerkleProofInfo,
               owner: owner.address,
               ersNode: calculateSubnodeHash("myChip2.project.mockTsm.ers"),
@@ -570,7 +572,7 @@ describe("ChipRegistry", () => {
             subjectManufacturerValidation = {
               enrollmentId: chipsEnrollmentId,
               mIndex: ONE,
-              manufacturerProof: manufacturerMerkleTree.getProof(ONE, chipTwo.address),
+              manufacturerProof: manufacturerMerkleTree.getProof(1),
             };
 
             const packedTSMCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
@@ -733,7 +735,7 @@ describe("ChipRegistry", () => {
                 serviceId,
                 lockinPeriod: chipOneClaim.lockinPeriod,
                 tokenUri: claimTokenUri,
-                tsmProof: tsmMerkleTree.getProof(ZERO, chipOneClaim),
+                tsmProof: tsmMerkleTree.getProof(0),
               } as TSMMerkleProofInfo,
               owner: owner.address,
               ersNode: calculateSubnodeHash("myChip.project.mockTsm.ers"),
@@ -742,7 +744,7 @@ describe("ChipRegistry", () => {
             const manufacturerValidation = {
               enrollmentId: chipsEnrollmentId,
               mIndex: ZERO,
-              manufacturerProof: manufacturerMerkleTree.getProof(ZERO, chipOne.address),
+              manufacturerProof: manufacturerMerkleTree.getProof(0),
             };
 
             const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
@@ -816,7 +818,7 @@ describe("ChipRegistry", () => {
           await tsmRegistrar.connect(tsmTwo.wallet).addProject(
             projectNameHash,
             projectRegistrar.address,
-            tsmMerkleTree.getHexRoot(),
+            tsmMerkleTree.getRoot(),
             tsmTwo.address,
             transferPolicy.address,
             signature,
@@ -832,13 +834,13 @@ describe("ChipRegistry", () => {
             serviceId,
             lockinPeriod: chipOneClaim.lockinPeriod,
             tokenUri: claimTokenUri,
-            tsmProof: tsmMerkleTree.getProof(ZERO, chipOneClaim),
+            tsmProof: tsmMerkleTree.getProof(0),
           };
 
           const manufacturerValidation = {
             enrollmentId: chipsEnrollmentId,
             mIndex: ZERO,
-            manufacturerProof: manufacturerMerkleTree.getProof(ZERO, chipOne.address),
+            manufacturerProof: manufacturerMerkleTree.getProof(0),
           };
 
           const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
@@ -913,10 +915,10 @@ describe("ChipRegistry", () => {
 
             timelock = chipTwoClaim.lockinPeriod;
 
-            const mIndex = ONE;
+            const mIndex = 1;
             manufacturerValidation = abiCoder.encode(
               ["tuple(bytes32, uint256, bytes32[])"],
-              [[chipsEnrollmentId, mIndex, manufacturerMerkleTree.getProof(mIndex, chipTwo.address)]]
+              [[chipsEnrollmentId, mIndex, manufacturerMerkleTree.getProof(mIndex)]]
             );
           });
 
@@ -926,7 +928,7 @@ describe("ChipRegistry", () => {
               [
                 chipsEnrollmentId,
                 projectRegistrar.address,
-                [ONE, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(ONE, chipTwoClaim)],
+                [ONE, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(1)],
                 tsmCertificate,
                 custodyProof,
               ]
@@ -960,7 +962,7 @@ describe("ChipRegistry", () => {
                 [
                   ZERO,
                   projectRegistrar.address,
-                  [ZERO, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(ONE, chipTwoClaim)],
+                  [ZERO, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(1)],
                   tsmCertificate,
                   custodyProof,
                 ]
@@ -990,7 +992,7 @@ describe("ChipRegistry", () => {
                 [
                   ZERO,
                   projectRegistrar.address,
-                  [ZERO, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(ONE, chipTwoClaim)],
+                  [ZERO, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(1)],
                   tsmCertificate,
                   custodyProof,
                 ]
@@ -1069,18 +1071,18 @@ describe("ChipRegistry", () => {
 
             describe("but the manufacturer proof is invalid", async () => {
               before(async () => {
-                const mIndex = ZERO;
+                const mIndex = 0;
                 manufacturerValidation = abiCoder.encode(
                   ["tuple(bytes32, uint256, bytes32[])"],
-                  [[chipsEnrollmentId, mIndex, manufacturerMerkleTree.getProof(mIndex, chipOne.address)]]
+                  [[chipsEnrollmentId, mIndex, manufacturerMerkleTree.getProof(mIndex)]]
                 );
               });
 
               after(async () => {
-                const mIndex = ONE;
+                const mIndex = 1;
                 manufacturerValidation = abiCoder.encode(
                   ["tuple(bytes32, uint256, bytes32[])"],
-                  [[chipsEnrollmentId, mIndex, manufacturerMerkleTree.getProof(mIndex, chipTwo.address)]]
+                  [[chipsEnrollmentId, mIndex, manufacturerMerkleTree.getProof(mIndex)]]
                 );
               });
 
@@ -1151,7 +1153,7 @@ describe("ChipRegistry", () => {
           let subjectSignatureFromChip: string;
           let subjectUseSafeTransfer: boolean;
           let subjectCaller: Account;
-    
+
           beforeEach(async () => {
             const anchorBlock = await blockchain._provider.getBlock("latest");
             subjectBlockNumberUsedInSig = BigNumber.from(anchorBlock.number);
@@ -1160,7 +1162,7 @@ describe("ChipRegistry", () => {
               ["address", "bytes32"],
               [subjectCaller.address, anchorBlock.hash]
             );
-    
+
             subjectSignatureFromChip = await chip.wallet.signMessage(ethers.utils.arrayify(msgContents));
             subjectUseSafeTransfer = false;
           });
@@ -1185,23 +1187,23 @@ describe("ChipRegistry", () => {
           let subjectUseSafeTransfer: boolean;
           let subjectPayload: Uint8Array;
           let subjectCaller: Account;
-    
+
           beforeEach(async () => {
             const anchorBlock = await blockchain._provider.getBlock("latest");
             subjectBlockNumberUsedInSig = BigNumber.from(anchorBlock.number);
-    
+
             subjectChipId = chip.address;
             subjectCaller = newOwner;
             subjectPayload = ethers.utils.zeroPad(subjectBlockNumberUsedInSig.toHexString(), 32);
-    
+
             const msgContents = ethers.utils.solidityPack(
               ["address", "bytes32", "bytes"],
               [subjectCaller.address, anchorBlock.hash, subjectPayload]
             );
-    
+
             subjectSignatureFromChip = await chip.wallet.signMessage(ethers.utils.arrayify(msgContents));
           });
-    
+
           async function subject(): Promise<any> {
             return await chipRegistry.connect(subjectCaller.wallet).transferToken(
               subjectChipId,
@@ -1211,31 +1213,31 @@ describe("ChipRegistry", () => {
               subjectPayload
             );
           }
-    
+
           it("should transfer the token to the correct address", async () => {
             await subject();
-    
+
             // Need to use this hacky way to access since the ownerOf function is overloaded
             const actualOwner = (await chipRegistry.functions["ownerOf(address)"](chip.address))[0];
             expect(actualOwner).to.eq(newOwner.address);
           });
-    
+
           it("should update the owner's balance", async () => {
             const initialOwnerBalance = await chipRegistry.balanceOf(owner.address);
             const initialNewOwnerBalance = await chipRegistry.balanceOf(newOwner.address);
-    
+
             await subject();
-    
+
             const postOwnerBalance = await chipRegistry.balanceOf(owner.address);
             const postNewOwnerBalance = await chipRegistry.balanceOf(newOwner.address);
             expect(postOwnerBalance).to.eq(initialOwnerBalance.sub(ONE));
             expect(postNewOwnerBalance).to.eq(initialNewOwnerBalance.add(ONE));
           });
-    
-    
+
+
           it("should call the transfer policy correctly", async () => {
             await subject();
-    
+
             const callInfo = await transferPolicy.callInfo();
             expect(callInfo.chipId).to.eq(subjectChipId);
             expect(callInfo.sender).to.eq(subjectCaller.address);
@@ -1243,7 +1245,7 @@ describe("ChipRegistry", () => {
             expect(callInfo.payload).to.eq(ethers.utils.hexZeroPad(subjectBlockNumberUsedInSig.toHexString(), 32));
             expect(callInfo.signature).to.eq(subjectSignatureFromChip);
           });
-    
+
           it("should emit a Transfer event", async () => {
             const chipTokenId = await chipRegistry.tokenIdFor(chip.address);
             await expect(subject()).to.emit(chipRegistry, "Transfer").withArgs(owner.address, newOwner.address, chipTokenId);

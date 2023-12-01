@@ -503,7 +503,6 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
                 );
 
                 bool validProof = _isValidTSMMerkleProof(chipId, tsmMerkleInfo, enrollmentId, projectEnrollments[projectRegistrar].merkleRoot);
-
                 if (validProof && validCertificates) {
                     return servicesRegistry.getServiceContent(chipId, tsmMerkleInfo.serviceId);
                 }
@@ -649,14 +648,16 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
         returns (bool)
     {
         bytes32 node = keccak256(
-            abi.encodePacked(
-                _merkleProofInfo.tsmIndex,
-                _chipId,
-                _enrollmentId,
-                _merkleProofInfo.lockinPeriod,
-                _merkleProofInfo.serviceId,
-                _merkleProofInfo.tokenUri
-            )
+            bytes.concat(keccak256(
+                abi.encode(
+                    _merkleProofInfo.tsmIndex,
+                    _chipId,
+                    _enrollmentId,
+                    _merkleProofInfo.lockinPeriod,
+                    _merkleProofInfo.serviceId,
+                    _merkleProofInfo.tokenUri
+                )
+            ))
         );
 
         return MerkleProof.verify(_merkleProofInfo.tsmProof, _merkleRoot, node);

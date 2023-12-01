@@ -126,7 +126,7 @@ describe("AuthenticityProjectRegistrar", () => {
     // 3. Enroll chips to Manufacturer Registry under example manufacturer
     // Example Manufacturer Chip Enrollment Data
     manufacturerEnrollmentMerkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getHexRoot();
+    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getRoot();
     manufacturerCertSigner = manufacturerOne.address;
     manufacturerChipAuthModel = authModel.address;
     manufacturerValidationUri = "ipfs://bafy";
@@ -244,7 +244,7 @@ describe("AuthenticityProjectRegistrar", () => {
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
-    projectMerkleRoot = projectMerkleTree.getHexRoot();
+    projectMerkleRoot = projectMerkleTree.getRoot();
     projectOwnerPublicKey = tsmOne.address;
     projectOwnershipProof = await createProjectOwnershipProof(tsmOne, projectRegistrar.address, chipRegistry.address, chainId);
     projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
@@ -301,13 +301,13 @@ describe("AuthenticityProjectRegistrar", () => {
         serviceId,
         lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
         tokenUri: tsmClaimTokenURI,
-        tsmProof: projectMerkleTree.getProof(ZERO, chipOneClaim),
+        tsmProof: projectMerkleTree.getProof(0),
       } as TSMMerkleProofInfo,
 
       subjectManufacturerValidation = {
         enrollmentId: tsmChipsEnrollmentId,
         mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(ZERO, chipOne.address),
+        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
       };
 
       subjectCommitBlock = await blockchain.getLatestBlockNumber();

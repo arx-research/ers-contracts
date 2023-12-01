@@ -64,6 +64,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.2",
+    "@openzeppelin/merkle-tree": "^1.0.5",
     "@typechain/ethers-v5": "^10.2.0",
     "@typechain/hardhat": "^6.1.5",
     "dotenv": "^16.0.3",

@@ -175,14 +175,16 @@ contract ArxProjectEnrollmentManager is Ownable {
 
         // Validate chip is included in merkle tree
         bytes32 node = keccak256(
-            abi.encodePacked(
-                _tsmMerkleInfo.tsmIndex,
-                _provingChip,
-                _manufacturerValidation.enrollmentId,
-                _tsmMerkleInfo.lockinPeriod,
-                _tsmMerkleInfo.serviceId,
-                _tsmMerkleInfo.tokenUri
-            )
+            bytes.concat(keccak256(
+                abi.encode(
+                    _tsmMerkleInfo.tsmIndex,
+                    _provingChip,
+                    _manufacturerValidation.enrollmentId,
+                    _tsmMerkleInfo.lockinPeriod,
+                    _tsmMerkleInfo.serviceId,
+                    _tsmMerkleInfo.tokenUri
+                )
+            ))
         );
 
         require(MerkleProof.verify(_tsmMerkleInfo.tsmProof, _merkleRoot, node), "Invalid chip tree inclusion proof");

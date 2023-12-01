@@ -87,7 +87,6 @@ describe("ArxProjectEnrollmentManager", () => {
   let manufacturerChipModel: string;
 
   // Project Chip Enrollment Data
-  let projectPackedProjectRegistarAddress: string;
   let projectMerkleTree: TSMTree;
   let projectMerkleRoot: string;
   let projectOwnerPublicKey: string;
@@ -129,7 +128,7 @@ describe("ArxProjectEnrollmentManager", () => {
     // 3. Enroll chips to Manufacturer Registry under example manufacturer
     // Example Manufacturer Chip Enrollment Data
     manufacturerEnrollmentMerkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getHexRoot();
+    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getRoot();
     manufacturerCertSigner = manufacturerOne.address;
     manufacturerChipAuthModel = authModel.address;
     manufacturerValidationUri = "ipfs://bafy";
@@ -250,7 +249,7 @@ describe("ArxProjectEnrollmentManager", () => {
       tokenUri: tsmClaimTokenURI,
     };
     projectMerkleTree = new TSMTree([chipOneClaim, chipTwoClaim]);
-    projectMerkleRoot = projectMerkleTree.getHexRoot();
+    projectMerkleRoot = projectMerkleTree.getRoot();
 
     // Create expected Project Registrar address to sign
     expectedProjectRegistrarAddress = calculateAuthenticityProjectRegistrarAddress(
@@ -320,18 +319,17 @@ describe("ArxProjectEnrollmentManager", () => {
       subjectNameHash = projectNameHash;
       subjectMerkleRoot = projectMerkleRoot;
       subjectProvingChipId = chipOne.address;
-
       subjectTSMMerkleInfo = {
         tsmIndex: ZERO,
         serviceId: chipOneClaim.primaryServiceId,
         lockinPeriod: chipOneClaim.lockinPeriod,
         tokenUri: chipOneClaim.tokenUri,
-        tsmProof: projectMerkleTree.getProof(0, chipOneClaim),
+        tsmProof: projectMerkleTree.getProof(0),
       } as TSMMerkleProofInfo;
       subjectManufacturerValidation = {
         enrollmentId: tsmChipsEnrollmentId,
         mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0, chipOne.address),
+        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
       } as ManufacturerValidationInfo;
 
       const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, tsmOne.address]);
@@ -423,7 +421,7 @@ describe("ArxProjectEnrollmentManager", () => {
         subjectManufacturerValidation = {
           enrollmentId: tsmChipsEnrollmentId,
           mIndex: ZERO,
-          manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(1, chipTwo.address),
+          manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(1),
         } as ManufacturerValidationInfo;
       });
 
