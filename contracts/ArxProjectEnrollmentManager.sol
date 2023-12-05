@@ -12,15 +12,15 @@ import { IERS } from "./interfaces/IERS.sol";
 import { IManufacturerRegistry } from "./interfaces/IManufacturerRegistry.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
-import { ITSMRegistrar } from "./interfaces/ITSMRegistrar.sol";
+import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
 import { AuthenticityProjectRegistrar } from "./project-registrars/AuthenticityProjectRegistrar.sol";
 
 /**
  * @title ArxProjectEnrollmentManager
  * @author Arx
  * 
- * @notice Smart contract that handles deployment of new Project Registrar contracts for new TSM projects.
- * This should be set as the owner of the TSM Registrar contract before adding any new projects.
+ * @notice Smart contract that handles deployment of new Project Registrar contracts for new Developer projects.
+ * This should be set as the owner of the Developer Registrar contract before adding any new projects.
  */
 contract ArxProjectEnrollmentManager is Ownable {
     
@@ -34,7 +34,7 @@ contract ArxProjectEnrollmentManager is Ownable {
 
     /* ============ State Variables ============ */
     IChipRegistry public immutable chipRegistry;
-    ITSMRegistrar public immutable tsmRegistrar;
+    IDeveloperRegistrar public immutable developerRegistrar;
     IERS public immutable ers;
     IManufacturerRegistry public immutable manufacturerRegistry;
     ITransferPolicy public transferPolicy;
@@ -43,7 +43,7 @@ contract ArxProjectEnrollmentManager is Ownable {
     /* ============ Constructor ============ */
     /**
      * @param _chipRegistry             The Chip Registry contract of the ERS system
-     * @param _tsmRegistrar             The TSM Registrar contract of the ERS system
+     * @param _developerRegistrar       The Developer Registrar contract of the ERS system
      * @param _ers                      The ERS Registry contract of the ERS system
      * @param _manufacturerRegistry     The Manufacturer Registry contract of the ERS system
      * @param _transferPolicy           The transfer policy contract for the project being deployed
@@ -52,7 +52,7 @@ contract ArxProjectEnrollmentManager is Ownable {
      */
     constructor(
         IChipRegistry _chipRegistry, 
-        ITSMRegistrar _tsmRegistrar, 
+        IDeveloperRegistrar _developerRegistrar, 
         IERS _ers,
         IManufacturerRegistry _manufacturerRegistry,
         ITransferPolicy _transferPolicy,
@@ -62,7 +62,7 @@ contract ArxProjectEnrollmentManager is Ownable {
     {
         transferPolicy = _transferPolicy;
         chipRegistry = _chipRegistry;
-        tsmRegistrar = _tsmRegistrar;
+        developerRegistrar = _developerRegistrar;
         manufacturerRegistry = _manufacturerRegistry;
         ers = _ers;
         maxBlockWindow = _maxBlockWindow;
@@ -71,16 +71,16 @@ contract ArxProjectEnrollmentManager is Ownable {
     /* ============ External Functions ============ */
 
     /**
-      * @notice Adds a new TSM's project to the ERS system by deploying the ProjectRegistrar contract via CREATE2 and
-      * registering it to the TSM Registrar. We use CREATE2 because we need the projectManager to provide proof of
+      * @notice Adds a new Developer's project to the ERS system by deploying the ProjectRegistrar contract via CREATE2 and
+      * registering it to the Developer Registrar. We use CREATE2 because we need the projectManager to provide proof of
       * ownership by signing a hash of the projectRegistrar address with the projectPublicKey. This is not possible
       * unless we know the address ahead of time, hence we use CREATE2 which allows us to know the address.
       * 
       * @param _projectManager          The address that will be set as the owner of the project registrar contract
       * @param _projectClaimDataUri     URI pointing to location of off-chain data required to claim chips
       * @param _nameHash                Keccak256 hash of the human-readable name for the chip being claimed
-      * @param _merkleRoot              Merkle root of the TSM Merkle Tree made up of the chips enrolled to this project
-      * @param _projectPublicKey        Public key used in the generation of the TSM certificates
+      * @param _merkleRoot              Merkle root of the Developer Merkle Tree made up of the chips enrolled to this project
+      * @param _projectPublicKey        Public key used in the generation of the Developer certificates
       * @param _projectOwnershipProof   Signed hash of the _projectRegistrar address by the _projectPublicKey
       */
     function addProject(
@@ -138,12 +138,12 @@ contract ArxProjectEnrollmentManager is Ownable {
     }
 
     /**
-     * @dev Deploys a new ProjectRegistrar contract via CREATE2 and registers it to the TSM Registrar
+     * @dev Deploys a new ProjectRegistrar contract via CREATE2 and registers it to the Developer Registrar
      * 
      * @param _projectManager          The address that will be set as the owner of the project registrar contract
-     * @param _merkleRoot              Merkle root of the TSM Merkle Tree made up of the chips enrolled to this project
+     * @param _merkleRoot              Merkle root of the Developer Merkle Tree made up of the chips enrolled to this project
      * @param _nameHash                Keccak256 hash of the human-readable name for the chip being claimed
-     * @param _projectPublicKey        Public key used in the generation of the TSM certificates
+     * @param _projectPublicKey        Public key used in the generation of the Developer certificates
      * @param _projectOwnershipProof   Signed hash of the _projectRegistrar address by the _projectPublicKey
      * @param _projectClaimDataUri     URI pointing to location of off-chain data required to claim chips
      */
@@ -162,12 +162,12 @@ contract ArxProjectEnrollmentManager is Ownable {
             _projectManager, 
             chipRegistry, 
             ers, 
-            tsmRegistrar, 
+            developerRegistrar, 
             maxBlockWindow
         );
 
-        // Register new Project Registrar to TSM Registrar
-        tsmRegistrar.addProject(
+        // Register new Project Registrar to Developer Registrar
+        developerRegistrar.addProject(
             _nameHash, 
             newProjectRegistrar, 
             _merkleRoot, 

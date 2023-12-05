@@ -8,8 +8,8 @@ import {
   ChipClaimInfo,
   ManufacturerValidationInfo,
   ServiceRecord,
-  TSMClaimTreeInfo,
-  TSMMerkleProofInfo
+  DeveloperClaimTreeInfo,
+  DeveloperMerkleProofInfo
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
@@ -19,9 +19,9 @@ import {
   ProjectRegistrarMock,
   ServicesRegistry,
   TransferPolicyMock,
-  TSMRegistrar,
-  TSMRegistrarFactory,
-  TSMRegistryMock
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistryMock
 } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE, ONE, ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
@@ -38,14 +38,14 @@ import {
   createProjectOwnershipProof,
   createTokenData
 } from "@utils/protocolUtils";
-import { Blockchain, ManufacturerTree, TSMTree } from "@utils/common";
+import { Blockchain, ManufacturerTree, DeveloperTree } from "@utils/common";
 
 const expect = getWaffleExpect();
 
 describe("ChipRegistry", () => {
   let owner: Account;
-  let tsmOne: Account;
-  let tsmTwo: Account;
+  let developerOne: Account;
+  let developerTwo: Account;
   let manufacturerOne: Account;
   let chipOne: Account;
   let chipTwo: Account;
@@ -53,8 +53,8 @@ describe("ChipRegistry", () => {
 
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
-  let tsmRegistrarFactory: TSMRegistrarFactory;
-  let tsmRegistry: TSMRegistryMock;
+  let developerRegistrarFactory: DeveloperRegistrarFactory;
+  let developerRegistry: DeveloperRegistryMock;
   let servicesRegistry: ServicesRegistry;
   let chipRegistry: ChipRegistry;
   let transferPolicy: TransferPolicyMock;
@@ -75,8 +75,8 @@ describe("ChipRegistry", () => {
   before(async () => {
     [
       owner,
-      tsmOne,
-      tsmTwo,
+      developerOne,
+      developerTwo,
       manufacturerOne,
       chipOne,
       chipTwo,
@@ -98,22 +98,22 @@ describe("ChipRegistry", () => {
       maxBlockWindow
     );
 
-    tsmRegistry = await deployer.mocks.deployTSMRegistryMock(owner.address);
-    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, tsmRegistry.address);
+    developerRegistry = await deployer.mocks.deployDeveloperRegistryMock(owner.address);
+    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address);
 
-    await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), tsmRegistry.address, tsmRegistry.address);
+    await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
     await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
 
-    tsmRegistrarFactory = await deployer.deployTSMRegistrarFactory(
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      tsmRegistry.address
+      developerRegistry.address
     );
 
-    await tsmRegistry.initialize(ersRegistry.address, [tsmRegistrarFactory.address]);
+    await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address]);
 
     transferPolicy = await deployer.mocks.deployTransferPolicyMock();
 
@@ -152,13 +152,13 @@ describe("ChipRegistry", () => {
   describe("#initialize", async () => {
     let subjectERSRegistry: Address;
     let subjectServicesRegistry: Address;
-    let subjectTSMRegistry: Address;
+    let subjectDeveloperRegistry: Address;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       subjectERSRegistry = ersRegistry.address;
       subjectServicesRegistry = servicesRegistry.address;
-      subjectTSMRegistry = tsmRegistry.address;
+      subjectDeveloperRegistry = developerRegistry.address;
       subjectCaller = owner;
     });
 
@@ -166,7 +166,7 @@ describe("ChipRegistry", () => {
       return chipRegistry.connect(subjectCaller.wallet).initialize(
         subjectERSRegistry,
         subjectServicesRegistry,
-        subjectTSMRegistry
+        subjectDeveloperRegistry
       );
     }
 
@@ -175,12 +175,12 @@ describe("ChipRegistry", () => {
 
       const actualErsRegistry = await chipRegistry.ers();
       const actualServicesRegistry = await chipRegistry.servicesRegistry();
-      const actualTSMRegistry = await chipRegistry.tsmRegistry();
+      const actualDeveloperRegistry = await chipRegistry.developerRegistry();
       const isInitialized = await chipRegistry.initialized();
 
       expect(actualErsRegistry).to.eq(ersRegistry.address);
       expect(actualServicesRegistry).to.eq(servicesRegistry.address);
-      expect(actualTSMRegistry).to.eq(tsmRegistry.address);
+      expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
       expect(isInitialized).to.be.true;
     });
 
@@ -188,7 +188,7 @@ describe("ChipRegistry", () => {
       await expect(subject()).to.emit(chipRegistry, "RegistryInitialized").withArgs(
         subjectERSRegistry,
         subjectServicesRegistry,
-        subjectTSMRegistry
+        subjectDeveloperRegistry
       );
     });
 
@@ -204,7 +204,7 @@ describe("ChipRegistry", () => {
 
     describe("when the caller is not the owner", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmOne;
+        subjectCaller = developerOne;
       });
 
       it("should revert", async () => {
@@ -213,17 +213,17 @@ describe("ChipRegistry", () => {
     });
   });
 
-  context("when a TSM has deployed their Registrar", async () => {
+  context("when a Developer has deployed their Registrar", async () => {
     let mockRegistrarErsNode: string;
 
     beforeEach(async () => {
-      await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, tsmRegistry.address);
+      await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
 
-      const mockNameHash = calculateLabelHash("mockTsm");
-      await tsmRegistry.addAllowedTSM(tsmOne.address, mockNameHash);
+      const mockNameHash = calculateLabelHash("mockDeveloper");
+      await developerRegistry.addAllowedDeveloper(developerOne.address, mockNameHash);
 
-      mockRegistrarErsNode = calculateSubnodeHash("mockTsm.ers");
-      await tsmRegistry.addMockRegistrar(owner.address, mockNameHash);
+      mockRegistrarErsNode = calculateSubnodeHash("mockDeveloper.ers");
+      await developerRegistry.addMockRegistrar(owner.address, mockNameHash);
     });
 
     describe("#addProjectEnrollment", async () => {
@@ -231,17 +231,17 @@ describe("ChipRegistry", () => {
       let subjectProjectPublicKey: Address;
       let subjectTransferPolicy: Address;
       let subjectMerkleRoot: string;
-      let subjectSignature: string;
+      let subjectProjectOwnershipProof: string;
       let subjectProjectClaimDataUri: string;
       let subjectCaller: Account;
 
       beforeEach(async () => {
         subjectProjectRegistrar = fakeProjectRegistrar.address;
-        subjectProjectPublicKey = tsmOne.address;
-        subjectTransferPolicy = tsmOne.address;
+        subjectProjectPublicKey = developerOne.address;
+        subjectTransferPolicy = developerOne.address;
         subjectMerkleRoot = ethers.utils.formatBytes32String("0x1234");
         subjectProjectClaimDataUri = "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm";
-        subjectSignature = await createProjectOwnershipProof(tsmOne, subjectProjectRegistrar, chipRegistry.address, chainId);
+        subjectProjectOwnershipProof = await createProjectOwnershipProof(developerOne, subjectProjectRegistrar, chipRegistry.address, chainId);
         subjectCaller = owner;
       });
 
@@ -251,7 +251,7 @@ describe("ChipRegistry", () => {
           subjectProjectPublicKey,
           subjectTransferPolicy,
           subjectMerkleRoot,
-          subjectSignature,
+          subjectProjectOwnershipProof,
           subjectProjectClaimDataUri
         );
       }
@@ -280,13 +280,13 @@ describe("ChipRegistry", () => {
         );
       });
 
-      describe("when the caller is not a TSM Registrar", async () => {
+      describe("when the caller is not a Developer Registrar", async () => {
         beforeEach(async () => {
-          subjectCaller = tsmOne;
+          subjectCaller = developerOne;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Must be TSM Registrar");
+          await expect(subject()).to.be.revertedWith("Must be Developer Registrar");
         });
       });
 
@@ -313,7 +313,7 @@ describe("ChipRegistry", () => {
       describe("when the passed signature is not signed by the project public key", async () => {
         beforeEach(async () => {
           const packedMsg = ethers.utils.solidityPack(["address"], [subjectProjectRegistrar]);
-          subjectSignature = await manufacturerOne.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+          subjectProjectOwnershipProof = await manufacturerOne.wallet.signMessage(ethers.utils.arrayify(packedMsg));
         });
 
         it("should revert", async () => {
@@ -326,9 +326,9 @@ describe("ChipRegistry", () => {
       let projectWallet: Account;
       let projectNodeHash: string;
 
-      let chipOneClaim: TSMClaimTreeInfo;
-      let chipTwoClaim: TSMClaimTreeInfo;
-      let tsmMerkleTree: TSMTree;
+      let chipOneClaim: DeveloperClaimTreeInfo;
+      let chipTwoClaim: DeveloperClaimTreeInfo;
+      let developerMerkleTree: DeveloperTree;
       let claimTokenUri: string;
       let projectOwnershipSignature: string;
 
@@ -352,7 +352,7 @@ describe("ChipRegistry", () => {
 
         await servicesRegistry.createService(serviceId, serviceRecords);
 
-        // create tsm merkle tree and enroll chips
+        // create developer merkle tree and enroll chips
         chipOneClaim = {
           chipId: chipOne.address,
           enrollmentId: chipsEnrollmentId,
@@ -371,9 +371,9 @@ describe("ChipRegistry", () => {
       });
 
       beforeEach(async () => {
-        tsmMerkleTree = new TSMTree([chipOneClaim, chipTwoClaim]);
+        developerMerkleTree = new DeveloperTree([chipOneClaim, chipTwoClaim]);
 
-        projectWallet = tsmOne;
+        projectWallet = developerOne;
         projectOwnershipSignature = await createProjectOwnershipProof(
           projectWallet,
           fakeProjectRegistrar.address,
@@ -388,13 +388,13 @@ describe("ChipRegistry", () => {
           fakeProjectRegistrar.address,
           fakeProjectRegistrar.address
         );
-        projectNodeHash = calculateSubnodeHash("project.mockTsm.ers");
+        projectNodeHash = calculateSubnodeHash("project.mockDeveloper.ers");
 
         await chipRegistry.addProjectEnrollment(
           fakeProjectRegistrar.address,
-          tsmOne.address,
+          developerOne.address,
           transferPolicy.address,
-          tsmMerkleTree.getRoot(),
+          developerMerkleTree.getRoot(),
           projectOwnershipSignature,
           "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm"
         );
@@ -404,8 +404,8 @@ describe("ChipRegistry", () => {
         let subjectChipId: Address;
         let subjectChipClaim: ChipClaimInfo;
         let subjectManufacturerValidation: ManufacturerValidationInfo;
-        let subjectTSMCertificate: string;
-        let subjectSignedCertificate: string;
+        let subjectDeveloperInclusionProof: string;
+        let subjectDeveloperCustodyProof: string;
         let subjectCaller: Account;
 
         let chipNameHash: string;
@@ -421,15 +421,15 @@ describe("ChipRegistry", () => {
 
           subjectChipId = chipOne.address;
           subjectChipClaim = {
-            tsmMerkleInfo: {
-              tsmIndex: ZERO,
+            developerMerkleInfo: {
+              developerIndex: ZERO,
               serviceId,
               lockinPeriod: chipOneClaim.lockinPeriod,
               tokenUri: claimTokenUri,
-              tsmProof: tsmMerkleTree.getProof(0),
-            } as TSMMerkleProofInfo,
+              developerProof: developerMerkleTree.getProof(0),
+            } as DeveloperMerkleProofInfo,
             owner: owner.address,
-            ersNode: calculateSubnodeHash("myChip.project.mockTsm.ers"),
+            ersNode: calculateSubnodeHash("myChip.project.mockDeveloper.ers"),
           };
 
           subjectManufacturerValidation = {
@@ -438,11 +438,11 @@ describe("ChipRegistry", () => {
             manufacturerProof: manufacturerMerkleTree.getProof(0),
           };
 
-          const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-          subjectTSMCertificate = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+          const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
+          subjectDeveloperInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
 
-          const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmOne.address]);
-          subjectSignedCertificate = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+          const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
+          subjectDeveloperCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
 
           subjectCaller = fakeProjectRegistrar;
         });
@@ -452,8 +452,8 @@ describe("ChipRegistry", () => {
             subjectChipId,
             subjectChipClaim,
             subjectManufacturerValidation,
-            subjectTSMCertificate,
-            subjectSignedCertificate
+            subjectDeveloperInclusionProof,
+            subjectDeveloperCustodyProof
           );
         }
 
@@ -466,7 +466,7 @@ describe("ChipRegistry", () => {
           expect(actualChipInfo.tokenData).to.eq(expectedTokenData);
           expect(actualChipInfo.tokenId).to.eq(ONE);
           expect(actualChipInfo.transferPolicy).to.eq(transferPolicy.address);
-          expect(actualChipInfo.tokenUri).to.eq(subjectChipClaim.tsmMerkleInfo.tokenUri);
+          expect(actualChipInfo.tokenUri).to.eq(subjectChipClaim.developerMerkleInfo.tokenUri);
         });
 
         it("should set the chip owner and update owner balances", async () => {
@@ -509,8 +509,8 @@ describe("ChipRegistry", () => {
 
           const chipServices = await servicesRegistry.chipServices(subjectChipId);
 
-          expect(chipServices.primaryService).to.eq(subjectChipClaim.tsmMerkleInfo.serviceId);
-          expect(chipServices.serviceTimelock).to.eq(subjectChipClaim.tsmMerkleInfo.lockinPeriod);
+          expect(chipServices.primaryService).to.eq(subjectChipClaim.developerMerkleInfo.serviceId);
+          expect(chipServices.serviceTimelock).to.eq(subjectChipClaim.developerMerkleInfo.lockinPeriod);
         });
 
         it("should emit a ChipClaimed event", async () => {
@@ -518,10 +518,10 @@ describe("ChipRegistry", () => {
             subjectChipId,
             ONE,
             subjectChipClaim.owner,
-            subjectChipClaim.tsmMerkleInfo.serviceId,
+            subjectChipClaim.developerMerkleInfo.serviceId,
             subjectChipClaim.ersNode,
             subjectManufacturerValidation.enrollmentId,
-            subjectChipClaim.tsmMerkleInfo.tokenUri
+            subjectChipClaim.developerMerkleInfo.tokenUri
           );
         });
 
@@ -558,15 +558,15 @@ describe("ChipRegistry", () => {
 
             subjectChipId = chipTwo.address;
             subjectChipClaim = {
-              tsmMerkleInfo: {
-                tsmIndex: ONE,
+              developerMerkleInfo: {
+                developerIndex: ONE,
                 serviceId,
                 lockinPeriod: chipTwoClaim.lockinPeriod,
                 tokenUri: claimTokenUri,
-                tsmProof: tsmMerkleTree.getProof(1),
-              } as TSMMerkleProofInfo,
+                developerProof: developerMerkleTree.getProof(1),
+              } as DeveloperMerkleProofInfo,
               owner: owner.address,
-              ersNode: calculateSubnodeHash("myChip2.project.mockTsm.ers"),
+              ersNode: calculateSubnodeHash("myChip2.project.mockDeveloper.ers"),
             };
 
             subjectManufacturerValidation = {
@@ -575,11 +575,11 @@ describe("ChipRegistry", () => {
               manufacturerProof: manufacturerMerkleTree.getProof(1),
             };
 
-            const packedTSMCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-            subjectTSMCertificate = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
+            subjectDeveloperInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
 
-            const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmOne.address]);
-            subjectSignedCertificate = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
+            subjectDeveloperCustodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
 
             subjectCaller = fakeProjectRegistrar;
           });
@@ -593,7 +593,7 @@ describe("ChipRegistry", () => {
             expect(actualChipInfo.tokenData).to.eq(expectedTokenData);
             expect(actualChipInfo.tokenId).to.eq(BigNumber.from(2));
             expect(actualChipInfo.transferPolicy).to.eq(transferPolicy.address);
-            expect(actualChipInfo.tokenUri).to.eq(subjectChipClaim.tsmMerkleInfo.tokenUri);
+            expect(actualChipInfo.tokenUri).to.eq(subjectChipClaim.developerMerkleInfo.tokenUri);
           });
         });
 
@@ -619,7 +619,7 @@ describe("ChipRegistry", () => {
 
         describe("when the project has not been enrolled", async () => {
           beforeEach(async () => {
-            subjectCaller = tsmOne;
+            subjectCaller = developerOne;
           });
 
           it("should revert", async () => {
@@ -629,7 +629,7 @@ describe("ChipRegistry", () => {
 
         describe("when the ERSRegistry state is set incorrectly", async () => {
           beforeEach(async () => {
-            subjectChipClaim.ersNode = calculateSubnodeHash("wrongChip.project.mockTsm.ers");
+            subjectChipClaim.ersNode = calculateSubnodeHash("wrongChip.project.mockDeveloper.ers");
           });
 
           it("should revert", async () => {
@@ -637,21 +637,21 @@ describe("ChipRegistry", () => {
           });
         });
 
-        describe("when the tsm certificate signature is invalid", async () => {
+        describe("when the developer certificate signature is invalid", async () => {
           beforeEach(async () => {
-            const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-            subjectTSMCertificate = await owner.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
+            subjectDeveloperInclusionProof = await owner.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Invalid TSM certificate");
+            await expect(subject()).to.be.revertedWith("Invalid Developer certificate");
           });
         });
 
         describe("when the custody proof signature is invalid", async () => {
           beforeEach(async () => {
-            const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmOne.address]);
-            subjectSignedCertificate = await owner.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
+            subjectDeveloperCustodyProof = await owner.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
           });
 
           it("should revert", async () => {
@@ -659,13 +659,13 @@ describe("ChipRegistry", () => {
           });
         });
 
-        describe("when the TSM merkle proof is invalid", async () => {
+        describe("when the Developer merkle proof is invalid", async () => {
           beforeEach(async () => {
-            subjectChipClaim.tsmMerkleInfo.tsmIndex = ONE;
+            subjectChipClaim.developerMerkleInfo.developerIndex = ONE;
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Invalid TSM merkle proof");
+            await expect(subject()).to.be.revertedWith("Invalid Developer merkle proof");
           });
         });
 
@@ -690,7 +690,7 @@ describe("ChipRegistry", () => {
           subjectProjectRegistrar = fakeProjectRegistrar.address;
           subjectMerkleRoot = ethers.utils.formatBytes32String("0x5678");
           subjectProjectClaimDataUri = "ipfs://ZmZmZmZmZmZmZmZmZmZmZmZmZmZmZm";
-          subjectCaller = tsmOne;
+          subjectCaller = developerOne;
         });
 
         async function subject(): Promise<any> {
@@ -730,15 +730,15 @@ describe("ChipRegistry", () => {
 
             const chipId = chipOne.address;
             const chipClaim = {
-              tsmMerkleInfo: {
-                tsmIndex: ZERO,
+              developerMerkleInfo: {
+                developerIndex: ZERO,
                 serviceId,
                 lockinPeriod: chipOneClaim.lockinPeriod,
                 tokenUri: claimTokenUri,
-                tsmProof: tsmMerkleTree.getProof(0),
-              } as TSMMerkleProofInfo,
+                developerProof: developerMerkleTree.getProof(0),
+              } as DeveloperMerkleProofInfo,
               owner: owner.address,
-              ersNode: calculateSubnodeHash("myChip.project.mockTsm.ers"),
+              ersNode: calculateSubnodeHash("myChip.project.mockDeveloper.ers"),
             };
 
             const manufacturerValidation = {
@@ -747,18 +747,18 @@ describe("ChipRegistry", () => {
               manufacturerProof: manufacturerMerkleTree.getProof(0),
             };
 
-            const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-            const tsmCertificate = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
+            const developerInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
 
-            const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmOne.address]);
-            const custodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
+            const developerCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
 
             await chipRegistry.connect(fakeProjectRegistrar.wallet).claimChip(
               chipId,
               chipClaim,
               manufacturerValidation,
-              tsmCertificate,
-              custodyProof
+              developerInclusionProof,
+              developerCustodyProof
             );
           });
 
@@ -789,7 +789,7 @@ describe("ChipRegistry", () => {
       });
 
       context("when a chip has been claimed", async () => {
-        let tsmRegistrar: TSMRegistrar;
+        let developerRegistrar: DeveloperRegistrar;
 
         let projectRegistrar: ProjectRegistrarMock;
         let chipNameHash: string;
@@ -803,23 +803,23 @@ describe("ChipRegistry", () => {
             ersRegistry.address
           );
 
-          // Create new TSMRegistrar
-          const nameHash = calculateLabelHash("tsmTwo");
-          await tsmRegistry.addAllowedTSM(tsmTwo.address, nameHash);
-          await tsmRegistry.connect(tsmTwo.wallet).createNewTSMRegistrar(tsmRegistrarFactory.address);
-          const registrarErsNode = calculateSubnodeHash("tsmTwo.ers");
+          // Create new DeveloperRegistrar
+          const nameHash = calculateLabelHash("developerTwo");
+          await developerRegistry.addAllowedDeveloper(developerTwo.address, nameHash);
+          await developerRegistry.connect(developerTwo.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
+          const registrarErsNode = calculateSubnodeHash("developerTwo.ers");
 
-          const tsmRegistrarAddress = await ersRegistry.getResolver(registrarErsNode);
-          tsmRegistrar = await deployer.getTSMRegistrar(tsmRegistrarAddress);
+          const developerRegistrarAddress = await ersRegistry.getResolver(registrarErsNode);
+          developerRegistrar = await deployer.getDeveloperRegistrar(developerRegistrarAddress);
 
-          // Add Project via TSMRegistrar
-          const signature = await createProjectOwnershipProof(tsmTwo, projectRegistrar.address, chipRegistry.address, chainId);
+          // Add Project via DeveloperRegistrar
+          const signature = await createProjectOwnershipProof(developerTwo, projectRegistrar.address, chipRegistry.address, chainId);
           const projectNameHash = calculateLabelHash("ProjectFlex");
-          await tsmRegistrar.connect(tsmTwo.wallet).addProject(
+          await developerRegistrar.connect(developerTwo.wallet).addProject(
             projectNameHash,
             projectRegistrar.address,
-            tsmMerkleTree.getRoot(),
-            tsmTwo.address,
+            developerMerkleTree.getRoot(),
+            developerTwo.address,
             transferPolicy.address,
             signature,
             "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQm"
@@ -827,14 +827,14 @@ describe("ChipRegistry", () => {
 
           chipNameHash = calculateLabelHash("myChip");
           chip = chipOne;
-          chipNode = calculateSubnodeHash("myChip.ProjectFlex.tsmTwo.ers");
+          chipNode = calculateSubnodeHash("myChip.ProjectFlex.developerTwo.ers");
 
-          const chipClaim: TSMMerkleProofInfo = {
-            tsmIndex: ZERO,
+          const chipClaim: DeveloperMerkleProofInfo = {
+            developerIndex: ZERO,
             serviceId,
             lockinPeriod: chipOneClaim.lockinPeriod,
             tokenUri: claimTokenUri,
-            tsmProof: tsmMerkleTree.getProof(0),
+            developerProof: developerMerkleTree.getProof(0),
           };
 
           const manufacturerValidation = {
@@ -843,18 +843,18 @@ describe("ChipRegistry", () => {
             manufacturerProof: manufacturerMerkleTree.getProof(0),
           };
 
-          const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-          const tsmCertificate = await tsmTwo.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+          const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
+          const developerInclusionProof = await developerTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
 
-          const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmTwo.address]);
-          const signedCertificate = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+          const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
+          const signedCertificate = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
 
           await projectRegistrar.connect(chip.wallet).claimChip(
             chipNameHash,
             owner.address,
             chipClaim,
             manufacturerValidation,
-            tsmCertificate,
+            developerInclusionProof,
             signedCertificate
           );
         });
@@ -897,21 +897,21 @@ describe("ChipRegistry", () => {
           let subjectResponse: string;
           let subjectExtraData: Uint8Array;
 
-          let tsmCertificate: string;
-          let custodyProof: string;
+          let developerInclusionProof: string;
+          let developerCustodyProof: string;
           let manufacturerValidation: string;
-          let tsmMerkleInfoAndEnrollmentId: string;
+          let developerMerkleInfoAndEnrollmentId: string;
 
           let timelock: BigNumber;
 
           const abiCoder = new ethers.utils.AbiCoder();
 
           before(async () => {
-            const packedTSMCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-            tsmCertificate = await tsmTwo.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
+            developerInclusionProof = await developerTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
 
-            const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmTwo.address]);
-            custodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
+            developerCustodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
 
             timelock = chipTwoClaim.lockinPeriod;
 
@@ -923,20 +923,20 @@ describe("ChipRegistry", () => {
           });
 
           beforeEach(async () => {
-            tsmMerkleInfoAndEnrollmentId = abiCoder.encode(
+            developerMerkleInfoAndEnrollmentId = abiCoder.encode(
               ["bytes32", "address", "tuple(uint256,bytes32,uint256,string,bytes32[])", "bytes", "bytes"],
               [
                 chipsEnrollmentId,
                 projectRegistrar.address,
-                [ONE, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(1)],
-                tsmCertificate,
-                custodyProof,
+                [ONE, serviceId, timelock, claimTokenUri, developerMerkleTree.getProof(1)],
+                developerInclusionProof,
+                developerCustodyProof,
               ]
             );
 
             subjectResponse = abiCoder.encode(
               ["uint256", "bytes[]"],
-              [ONE, [tsmMerkleInfoAndEnrollmentId, manufacturerValidation]]
+              [ONE, [developerMerkleInfoAndEnrollmentId, manufacturerValidation]]
             );
             subjectExtraData = ethers.utils.zeroPad(chipTwo.address, 32);
           });
@@ -957,20 +957,20 @@ describe("ChipRegistry", () => {
 
           describe("but an invalid proof is provided before a valid one", async () => {
             beforeEach(async () => {
-              const badTsmMerkleInfoAndEnrollmentId = abiCoder.encode(
+              const badDeveloperMerkleInfoAndEnrollmentId = abiCoder.encode(
                 ["uint256", "address", "tuple(uint256,bytes32,uint256,string,bytes32[])", "bytes", "bytes"],
                 [
                   ZERO,
                   projectRegistrar.address,
-                  [ZERO, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(1)],
-                  tsmCertificate,
-                  custodyProof,
+                  [ZERO, serviceId, timelock, claimTokenUri, developerMerkleTree.getProof(1)],
+                  developerInclusionProof,
+                  developerCustodyProof,
                 ]
               );
 
               subjectResponse = abiCoder.encode(
                 ["uint256", "bytes[]"],
-                [BigNumber.from(2), [badTsmMerkleInfoAndEnrollmentId, tsmMerkleInfoAndEnrollmentId, manufacturerValidation]]
+                [BigNumber.from(2), [badDeveloperMerkleInfoAndEnrollmentId, developerMerkleInfoAndEnrollmentId, manufacturerValidation]]
               );
             });
 
@@ -987,20 +987,20 @@ describe("ChipRegistry", () => {
 
           describe("but an invalid proof is provided after a valid one", async () => {
             beforeEach(async () => {
-              const badTsmMerkleInfoAndEnrollmentId = abiCoder.encode(
+              const badDeveloperMerkleInfoAndEnrollmentId = abiCoder.encode(
                 ["uint256", "address", "tuple(uint256,bytes32,uint256,string,bytes32[])", "bytes", "bytes"],
                 [
                   ZERO,
                   projectRegistrar.address,
-                  [ZERO, serviceId, timelock, claimTokenUri, tsmMerkleTree.getProof(1)],
-                  tsmCertificate,
-                  custodyProof,
+                  [ZERO, serviceId, timelock, claimTokenUri, developerMerkleTree.getProof(1)],
+                  developerInclusionProof,
+                  developerCustodyProof,
                 ]
               );
 
               subjectResponse = abiCoder.encode(
                 ["uint256", "bytes[]"],
-                [BigNumber.from(2), [tsmMerkleInfoAndEnrollmentId, badTsmMerkleInfoAndEnrollmentId, manufacturerValidation]]
+                [BigNumber.from(2), [developerMerkleInfoAndEnrollmentId, badDeveloperMerkleInfoAndEnrollmentId, manufacturerValidation]]
               );
             });
 
@@ -1015,15 +1015,15 @@ describe("ChipRegistry", () => {
             });
           });
 
-          describe("but the tsmCertificate is invalid (and manufacturer proof is valid)", async () => {
+          describe("but the developerInclusionProof is invalid (and manufacturer proof is valid)", async () => {
             before(async () => {
-              const packedTSMCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-              tsmCertificate = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+              const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
+              developerInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
             });
 
             after(async () => {
-              const packedTSMCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-              tsmCertificate = await tsmTwo.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
+              const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
+              developerInclusionProof = await developerTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
             });
 
             it("should return the chips bootloader app", async () => {
@@ -1036,13 +1036,13 @@ describe("ChipRegistry", () => {
 
           describe("but the custody proof is invalid (and manufacturer proof is valid)", async () => {
             before(async () => {
-              const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmTwo.address]);
-              custodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+              const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
+              developerCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
             });
 
             after(async () => {
-              const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmTwo.address]);
-              custodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+              const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
+              developerCustodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
             });
 
             it("should return the chips bootloader app", async () => {
@@ -1092,7 +1092,7 @@ describe("ChipRegistry", () => {
             });
           });
 
-          describe("when the chip has not been enrolled by a TSM", async () => {
+          describe("when the chip has not been enrolled by a Developer", async () => {
             beforeEach(async () => {
               subjectResponse = abiCoder.encode(
                 ["uint256", "bytes[]"],
@@ -1107,7 +1107,7 @@ describe("ChipRegistry", () => {
               expect(content[0].content).to.eq(ethers.utils.hexlify(Buffer.from("https://bootloader.app")));
             });
 
-            describe("but the specified amount of tsmEntries doesn't match the length of entries array", async () => {
+            describe("but the specified amount of developerEntries doesn't match the length of entries array", async () => {
               beforeEach(async () => {
                 subjectResponse = abiCoder.encode(
                   ["uint256", "bytes[]"],
@@ -1469,7 +1469,7 @@ describe("ChipRegistry", () => {
 
     describe("when the caller is not the owner", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmOne;
+        subjectCaller = developerOne;
       });
 
       it("should revert", async () => {
@@ -1517,7 +1517,7 @@ describe("ChipRegistry", () => {
 
     describe("when the caller is not the owner", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmOne;
+        subjectCaller = developerOne;
       });
 
       it("should revert", async () => {
@@ -1565,7 +1565,7 @@ describe("ChipRegistry", () => {
 
     describe("when the caller is not the owner", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmOne;
+        subjectCaller = developerOne;
       });
 
       it("should revert", async () => {

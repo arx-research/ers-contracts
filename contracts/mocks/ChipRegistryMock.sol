@@ -12,8 +12,8 @@ contract ChipRegistryMock is ChipRegistry {
     address public chipId;
     IChipRegistry.ChipClaim public chipClaim;
     IChipRegistry.ManufacturerValidation public  manufacturerValidation;
-    bytes public tsmCertificate;
-    bytes public signedCert;
+    bytes public developerInclusionProof;
+    bytes public developerCustodyProof;
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
@@ -28,14 +28,14 @@ contract ChipRegistryMock is ChipRegistry {
         address _chipId,
         IChipRegistry.ChipClaim calldata _chipClaim,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
-        bytes calldata _tsmCertificate,
-        bytes calldata _signedCert
+        bytes calldata _developerInclusionProof,
+        bytes calldata _developerCustodyProof
     ) external override {
         chipId = _chipId;
         chipClaim = _chipClaim;
         manufacturerValidation = _manufacturerValidation;
-        tsmCertificate = _tsmCertificate;
-        signedCert = _signedCert;
+        developerInclusionProof = _developerInclusionProof;
+        developerCustodyProof = _developerCustodyProof;
     }
 
     function mockClaimChip(address _chipId, address _owner) external {

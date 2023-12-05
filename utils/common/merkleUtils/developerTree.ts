@@ -1,10 +1,10 @@
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { BigNumber } from 'ethers';
-import { Address, TSMClaimTreeInfo } from "@utils/types";
+import { Address, DeveloperClaimTreeInfo } from "@utils/types";
 
-export class TSMTree {
+export class DeveloperTree {
   private readonly tree: StandardMerkleTree<[number, string, string, BigNumber, string, string]>;
-  constructor(enrollmentData: TSMClaimTreeInfo[]) {
+  constructor(enrollmentData: DeveloperClaimTreeInfo[]) {
     this.tree = StandardMerkleTree.of(
       enrollmentData.map((info, index) => [
         index,
@@ -20,7 +20,7 @@ export class TSMTree {
 
   public verifyProof(
     index: number,
-    chipInfo: TSMClaimTreeInfo,
+    chipInfo: DeveloperClaimTreeInfo,
     proof: string[]
   ): boolean {
     return StandardMerkleTree.verify(

@@ -14,8 +14,8 @@ export {
   SECP256k1Model,
   ServicesRegistry,
   TransferPolicyMock,
-  TSMRegistrar,
-  TSMRegistrarFactory,
-  TSMRegistry,
-  TSMRegistryMock
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistry,
+  DeveloperRegistryMock
 } from "../../typechain";

@@ -2,7 +2,7 @@ import "module-alias/register";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { ERSRegistry, TSMRegistrarFactory, TSMRegistry } from "@utils/contracts";
+import { ERSRegistry, DeveloperRegistrarFactory, DeveloperRegistry } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
 
@@ -16,39 +16,39 @@ import { ethers } from "hardhat";
 
 const expect = getWaffleExpect();
 
-describe("TSMRegistry", () => {
+describe("DeveloperRegistry", () => {
   let owner: Account;
-  let tsmOne: Account;
-  let tsmTwo: Account;
+  let developerOne: Account;
+  let developerTwo: Account;
   let ersRegistry: ERSRegistry;
-  let tsmRegistry: TSMRegistry;
+  let developerRegistry: DeveloperRegistry;
   let chipRegistry: Account;
-  let tsmRegistrarFactory: TSMRegistrarFactory;
+  let developerRegistrarFactory: DeveloperRegistrarFactory;
   let deployer: DeployHelper;
 
   beforeEach(async () => {
     [
       owner,
-      tsmOne,
-      tsmTwo,
+      developerOne,
+      developerTwo,
       chipRegistry,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
 
-    tsmRegistry = await deployer.deployTSMRegistry(owner.address);
+    developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
 
-    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, tsmRegistry.address);
-    await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), tsmRegistry.address, tsmRegistry.address);
+    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
+    await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
-    tsmRegistrarFactory = await deployer.deployTSMRegistrarFactory(chipRegistry.address, ersRegistry.address, tsmRegistry.address);
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(chipRegistry.address, ersRegistry.address, developerRegistry.address);
   });
 
   addSnapshotBeforeRestoreAfterEach();
 
   describe("#constructor", async () => {
     it("should have the deployer set as the owner", async () => {
-      const actualOwner = await tsmRegistry.owner();
+      const actualOwner = await developerRegistry.owner();
       expect(actualOwner).to.eq(owner.address);
     });
   });
@@ -60,20 +60,20 @@ describe("TSMRegistry", () => {
 
     beforeEach(async () => {
       subjectERSRegistry = ersRegistry.address;
-      subjectFactories = [tsmRegistrarFactory.address];
+      subjectFactories = [developerRegistrarFactory.address];
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return tsmRegistry.connect(subjectCaller.wallet).initialize(subjectERSRegistry, subjectFactories);
+      return developerRegistry.connect(subjectCaller.wallet).initialize(subjectERSRegistry, subjectFactories);
     }
 
     it("should set factories, and set contract to initialized", async () => {
       await subject();
 
-      const actualErsRegistry = await tsmRegistry.ersRegistry();
-      const isFactory = await tsmRegistry.registrarFactories(subjectFactories[0]);
-      const isInitialized = await tsmRegistry.initialized();
+      const actualErsRegistry = await developerRegistry.ersRegistry();
+      const isFactory = await developerRegistry.registrarFactories(subjectFactories[0]);
+      const isInitialized = await developerRegistry.initialized();
 
       expect(actualErsRegistry).to.eq(subjectERSRegistry);
       expect(isFactory).to.be.true;
@@ -81,11 +81,11 @@ describe("TSMRegistry", () => {
     });
 
     it("should emit the correct RegistrarFactoryAdded event", async () => {
-      await expect(subject()).to.emit(tsmRegistry, "RegistrarFactoryAdded").withArgs(subjectFactories[0]);
+      await expect(subject()).to.emit(developerRegistry, "RegistrarFactoryAdded").withArgs(subjectFactories[0]);
     });
 
     it("should emit the correct RegistryInitialized event", async () => {
-      await expect(subject()).to.emit(tsmRegistry, "RegistryInitialized").withArgs(subjectERSRegistry);
+      await expect(subject()).to.emit(developerRegistry, "RegistryInitialized").withArgs(subjectERSRegistry);
     });
 
     describe("when the contract is already initialized", async () => {
@@ -100,7 +100,7 @@ describe("TSMRegistry", () => {
 
     describe("when the caller is not the owner", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmOne;
+        subjectCaller = developerOne;
       });
 
       it("should revert", async () => {
@@ -111,52 +111,52 @@ describe("TSMRegistry", () => {
 
   context("when the contract is initialized", async () => {
     beforeEach(async () => {
-      await tsmRegistry.initialize(ersRegistry.address, []);
+      await developerRegistry.initialize(ersRegistry.address, []);
     });
 
-    describe("#addAllowedTSM", async () => {
-      let subjectTSMOwner: Address;
+    describe("#addAllowedDeveloper", async () => {
+      let subjectDeveloperOwner: Address;
       let subjectNameHash: string;
       let subjectCaller: Account;
 
       beforeEach(async () => {
-        subjectTSMOwner = tsmOne.address;
+        subjectDeveloperOwner = developerOne.address;
         subjectNameHash = calculateLabelHash("gucci");
         subjectCaller = owner;
       });
 
       async function subject(): Promise<any> {
-        return tsmRegistry.connect(subjectCaller.wallet).addAllowedTSM(subjectTSMOwner, subjectNameHash);
+        return developerRegistry.connect(subjectCaller.wallet).addAllowedDeveloper(subjectDeveloperOwner, subjectNameHash);
       }
 
-      it("should add the TSM to the allowed TSMs", async () => {
+      it("should add the Developer to the allowed Developers", async () => {
         await subject();
 
-        const nameHash = await tsmRegistry.pendingTSMs(subjectTSMOwner);
+        const nameHash = await developerRegistry.pendingDevelopers(subjectDeveloperOwner);
         expect(nameHash).to.eq(subjectNameHash);
       });
 
-      it("should emit the correct event TSMAllowed", async () => {
-        await expect(subject()).to.emit(tsmRegistry, "TSMAllowed").withArgs(subjectTSMOwner, subjectNameHash);
+      it("should emit the correct event DeveloperAllowed", async () => {
+        await expect(subject()).to.emit(developerRegistry, "DeveloperAllowed").withArgs(subjectDeveloperOwner, subjectNameHash);
       });
 
-      describe("when the TSM is already allowed", async () => {
+      describe("when the Developer is already allowed", async () => {
         beforeEach(async () => {
           await subject();
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("TSM already allowed");
+          await expect(subject()).to.be.revertedWith("Developer already allowed");
         });
       });
 
       describe("when the passed owner is the zero address", async () => {
         beforeEach(async () => {
-          subjectTSMOwner = ADDRESS_ZERO;
+          subjectDeveloperOwner = ADDRESS_ZERO;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Invalid TSM owner address");
+          await expect(subject()).to.be.revertedWith("Invalid Developer owner address");
         });
       });
 
@@ -173,8 +173,8 @@ describe("TSMRegistry", () => {
       describe("when the passed _nameHash is already in use", async () => {
         beforeEach(async () => {
           await subject();
-          await tsmRegistry.addRegistrarFactory(tsmRegistrarFactory.address);
-          await tsmRegistry.connect(tsmOne.wallet).createNewTSMRegistrar(tsmRegistrarFactory.address);
+          await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
+          await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
         });
 
         it("should revert", async () => {
@@ -184,7 +184,7 @@ describe("TSMRegistry", () => {
 
       describe("when the caller is not the owner", async () => {
         beforeEach(async () => {
-          subjectCaller = tsmOne;
+          subjectCaller = developerOne;
         });
 
         it("should revert", async () => {
@@ -198,23 +198,23 @@ describe("TSMRegistry", () => {
       let subjectCaller: Account;
 
       beforeEach(async () => {
-        subjectFactory = tsmRegistrarFactory.address;
+        subjectFactory = developerRegistrarFactory.address;
         subjectCaller = owner;
       });
 
       async function subject(): Promise<any> {
-        return tsmRegistry.connect(subjectCaller.wallet).addRegistrarFactory(subjectFactory);
+        return developerRegistry.connect(subjectCaller.wallet).addRegistrarFactory(subjectFactory);
       }
 
       it("should add the factory to the allowed factories", async () => {
         await subject();
 
-        const isAllowed = await tsmRegistry.registrarFactories(subjectFactory);
+        const isAllowed = await developerRegistry.registrarFactories(subjectFactory);
         expect(isAllowed).to.be.true;
       });
 
       it("should emit the correct event RegistrarFactoryAdded", async () => {
-        await expect(subject()).to.emit(tsmRegistry, "RegistrarFactoryAdded").withArgs(subjectFactory);
+        await expect(subject()).to.emit(developerRegistry, "RegistrarFactoryAdded").withArgs(subjectFactory);
       });
 
       describe("when the factory is already added", async () => {
@@ -239,7 +239,7 @@ describe("TSMRegistry", () => {
 
       describe("when the caller is not the owner", async () => {
         beforeEach(async () => {
-          subjectCaller = tsmOne;
+          subjectCaller = developerOne;
         });
 
         it("should revert", async () => {
@@ -248,55 +248,55 @@ describe("TSMRegistry", () => {
       });
     });
 
-    context("when factory has been added to TSMRegistry and TSM has been added post deployment", async () => {
-      let tsmNameHash: string;
+    context("when factory has been added to DeveloperRegistry and Developer has been added post deployment", async () => {
+      let developerNameHash: string;
       beforeEach(async () => {
-        tsmNameHash = calculateLabelHash("gucci");
+        developerNameHash = calculateLabelHash("gucci");
 
-        await tsmRegistry.addRegistrarFactory(tsmRegistrarFactory.address);
-        await tsmRegistry.addAllowedTSM(tsmOne.address, tsmNameHash);
+        await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
+        await developerRegistry.addAllowedDeveloper(developerOne.address, developerNameHash);
       });
 
-      describe("#createNewTSMRegistrar", async () => {
+      describe("#createNewDeveloperRegistrar", async () => {
         let subjectFactory: Address;
         let subjectCaller: Account;
 
         beforeEach(async () => {
-          subjectFactory = tsmRegistrarFactory.address;
-          subjectCaller = tsmOne;
+          subjectFactory = developerRegistrarFactory.address;
+          subjectCaller = developerOne;
         });
 
         async function subject(): Promise<any> {
-          return tsmRegistry.connect(subjectCaller.wallet).createNewTSMRegistrar(subjectFactory);
+          return developerRegistry.connect(subjectCaller.wallet).createNewDeveloperRegistrar(subjectFactory);
         }
 
         async function subjectCall(): Promise<any> {
-          return tsmRegistry.connect(subjectCaller.wallet).callStatic.createNewTSMRegistrar(subjectFactory);
+          return developerRegistry.connect(subjectCaller.wallet).callStatic.createNewDeveloperRegistrar(subjectFactory);
         }
 
-        it("should create a new TSM registrar and add to mapping and array", async () => {
+        it("should create a new Developer registrar and add to mapping and array", async () => {
           const expectedRegistrar = await subjectCall();
 
           await subject();
 
-          const isRegistrar = await tsmRegistry.isTSMRegistrar(expectedRegistrar);
-          const registrarArray = await tsmRegistry.getTSMRegistrars();
+          const isRegistrar = await developerRegistry.isDeveloperRegistrar(expectedRegistrar);
+          const registrarArray = await developerRegistry.getDeveloperRegistrars();
 
           expect(isRegistrar).to.be.true;
           expect(registrarArray).to.contain(expectedRegistrar);
         });
 
-        it("should set the correct owner and rootNode in the new TSMRegistrar", async () => {
+        it("should set the correct owner and rootNode in the new DeveloperRegistrar", async () => {
           const expectedRegistrar = await subjectCall();
           const expectedNameHash = calculateSubnodeHash("gucci.ers");
 
           await subject();
 
-          const deployedRegistrar = await deployer.getTSMRegistrar(expectedRegistrar);
+          const deployedRegistrar = await deployer.getDeveloperRegistrar(expectedRegistrar);
           const actualOwner = await deployedRegistrar.owner();
           const actualRootNode = await deployedRegistrar.rootNode();
 
-          expect(actualOwner).to.eq(tsmOne.address);
+          expect(actualOwner).to.eq(developerOne.address);
           expect(actualRootNode).to.eq(expectedNameHash);
         });
 
@@ -313,71 +313,71 @@ describe("TSMRegistry", () => {
           expect(actualResolver).to.eq(expectedRegistrar);
         });
 
-        it("should clear the pendingTSMs mapping", async () => {
+        it("should clear the pendingDevelopers mapping", async () => {
           await subject();
 
-          const nameHash = await tsmRegistry.pendingTSMs(subjectCaller.address);
+          const nameHash = await developerRegistry.pendingDevelopers(subjectCaller.address);
           expect(nameHash).to.eq(NULL_NODE);
         });
 
-        it("should emit the correct event TSMRegistrarAdded", async () => {
+        it("should emit the correct event DeveloperRegistrarAdded", async () => {
           const expectedRegistrar = await subjectCall();
           const expectedNameHash = calculateSubnodeHash("gucci.ers");
 
-          await expect(subject()).to.emit(tsmRegistry, "TSMRegistrarAdded").withArgs(
+          await expect(subject()).to.emit(developerRegistry, "DeveloperRegistrarAdded").withArgs(
             expectedRegistrar,
-            tsmOne.address,
+            developerOne.address,
             expectedNameHash
           );
         });
 
-        describe("when the caller is not allowed to create a TSM registrar", async () => {
+        describe("when the caller is not allowed to create a Developer registrar", async () => {
           beforeEach(async () => {
-            subjectCaller = tsmTwo;
+            subjectCaller = developerTwo;
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Caller must be approved TSM address");
+            await expect(subject()).to.be.revertedWith("Caller must be approved Developer address");
           });
         });
 
         describe("when the factory is not allowed", async () => {
           beforeEach(async () => {
-            subjectFactory = tsmTwo.address;
+            subjectFactory = developerTwo.address;
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Factory must be approved TSMRegistrarFactory");
+            await expect(subject()).to.be.revertedWith("Factory must be approved DeveloperRegistrarFactory");
           });
         });
       });
 
-      describe("#revokeTSMRegistrar", async () => {
-        let subjectTSMRegistrar: Address;
+      describe("#revokeDeveloperRegistrar", async () => {
+        let subjectDeveloperRegistrar: Address;
         let subjectNameHash: string;
         let subjectCaller: Account;
 
         beforeEach(async () => {
-          await tsmRegistry.connect(tsmOne.wallet).createNewTSMRegistrar(tsmRegistrarFactory.address);
-          const registrars = await tsmRegistry.getTSMRegistrars();
+          await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
+          const registrars = await developerRegistry.getDeveloperRegistrars();
 
-          subjectTSMRegistrar = registrars[registrars.length - 1];
-          subjectNameHash = tsmNameHash;
+          subjectDeveloperRegistrar = registrars[registrars.length - 1];
+          subjectNameHash = developerNameHash;
           subjectCaller = owner;
         });
 
         async function subject(): Promise<any> {
-          return tsmRegistry.connect(subjectCaller.wallet).revokeTSMRegistrar(subjectTSMRegistrar, subjectNameHash);
+          return developerRegistry.connect(subjectCaller.wallet).revokeDeveloperRegistrar(subjectDeveloperRegistrar, subjectNameHash);
         }
 
-        it("should remove the TSM from isTSMRegistrar and tsmRegistrars array", async () => {
+        it("should remove the Developer from isDeveloperRegistrar and developerRegistrars array", async () => {
           await subject();
 
-          const isTSMRegistrar = await tsmRegistry.isTSMRegistrar(subjectTSMRegistrar);
-          const tsmRegistrars = await tsmRegistry.getTSMRegistrars();
+          const isDeveloperRegistrar = await developerRegistry.isDeveloperRegistrar(subjectDeveloperRegistrar);
+          const developerRegistrars = await developerRegistry.getDeveloperRegistrars();
 
-          expect(isTSMRegistrar).to.be.false;
-          expect(tsmRegistrars).to.not.include(subjectTSMRegistrar);
+          expect(isDeveloperRegistrar).to.be.false;
+          expect(developerRegistrars).to.not.include(subjectDeveloperRegistrar);
         });
 
         it("should set the correct owner and resolver addresses in the ERSRegistry", async () => {
@@ -385,8 +385,8 @@ describe("TSMRegistry", () => {
           const preOwner = await ersRegistry.getOwner(expectedSubnodeHash);
           const preResolver = await ersRegistry.getResolver(expectedSubnodeHash);
 
-          expect(preOwner).to.eq(subjectTSMRegistrar);
-          expect(preResolver).to.eq(subjectTSMRegistrar);
+          expect(preOwner).to.eq(subjectDeveloperRegistrar);
+          expect(preResolver).to.eq(subjectDeveloperRegistrar);
 
           await subject();
 
@@ -397,17 +397,17 @@ describe("TSMRegistry", () => {
           expect(postResolver).to.eq(ADDRESS_ZERO);
         });
 
-        it("should emit the correct TSMRegistrarRevoked event", async () => {
+        it("should emit the correct DeveloperRegistrarRevoked event", async () => {
           const expectedSubnodeHash = calculateSubnodeHash("gucci.ers");
 
-          await expect(subject()).to.emit(tsmRegistry, "TSMRegistrarRevoked").withArgs(
-            subjectTSMRegistrar,
+          await expect(subject()).to.emit(developerRegistry, "DeveloperRegistrarRevoked").withArgs(
+            subjectDeveloperRegistrar,
             expectedSubnodeHash,
             subjectNameHash
           );
         });
 
-        describe("when passed nameHash isn't the nameHash of the revoked TSMRegistrar", async () => {
+        describe("when passed nameHash isn't the nameHash of the revoked DeveloperRegistrar", async () => {
           beforeEach(async () => {
             subjectNameHash = calculateLabelHash("NotGucci");
           });
@@ -417,19 +417,19 @@ describe("TSMRegistry", () => {
           });
         });
 
-        describe("when passed address is not a TSMRegistrar", async () => {
+        describe("when passed address is not a DeveloperRegistrar", async () => {
           beforeEach(async () => {
-            subjectTSMRegistrar = owner.address;
+            subjectDeveloperRegistrar = owner.address;
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Not a TSMRegistrar");
+            await expect(subject()).to.be.revertedWith("Not a DeveloperRegistrar");
           });
         });
 
         describe("when the caller is not the owner", async () => {
           beforeEach(async () => {
-            subjectCaller = tsmOne;
+            subjectCaller = developerOne;
           });
 
           it("should revert", async () => {
@@ -438,43 +438,43 @@ describe("TSMRegistry", () => {
         });
       });
 
-      describe("#removeAllowedTSM", async () => {
-        let subjectTSMOwner: Address;
+      describe("#removeAllowedDeveloper", async () => {
+        let subjectDeveloperOwner: Address;
         let subjectCaller: Account;
 
         beforeEach(async () => {
-          subjectTSMOwner = tsmOne.address;
+          subjectDeveloperOwner = developerOne.address;
           subjectCaller = owner;
         });
 
         async function subject(): Promise<any> {
-          return tsmRegistry.connect(subjectCaller.wallet).removeAllowedTSM(subjectTSMOwner);
+          return developerRegistry.connect(subjectCaller.wallet).removeAllowedDeveloper(subjectDeveloperOwner);
         }
 
-        it("should remove the TSM from the allowed TSMs", async () => {
+        it("should remove the Developer from the allowed Developers", async () => {
           await subject();
 
-          const nameHash = await tsmRegistry.pendingTSMs(subjectTSMOwner);
+          const nameHash = await developerRegistry.pendingDevelopers(subjectDeveloperOwner);
           expect(nameHash).to.eq(NULL_NODE);
         });
 
-        it("should emit the correct event TSMDisallowed", async () => {
-          await expect(subject()).to.emit(tsmRegistry, "TSMDisallowed").withArgs(subjectTSMOwner);
+        it("should emit the correct event DeveloperDisallowed", async () => {
+          await expect(subject()).to.emit(developerRegistry, "DeveloperDisallowed").withArgs(subjectDeveloperOwner);
         });
 
-        describe("when the TSM is not allowed", async () => {
+        describe("when the Developer is not allowed", async () => {
           beforeEach(async () => {
             await subject();
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("TSM not allowed");
+            await expect(subject()).to.be.revertedWith("Developer not allowed");
           });
         });
 
         describe("when the caller is not the owner", async () => {
           beforeEach(async () => {
-            subjectCaller = tsmOne;
+            subjectCaller = developerOne;
           });
 
           it("should revert", async () => {
@@ -488,23 +488,23 @@ describe("TSMRegistry", () => {
         let subjectCaller: Account;
 
         beforeEach(async () => {
-          subjectFactory = tsmRegistrarFactory.address;
+          subjectFactory = developerRegistrarFactory.address;
           subjectCaller = owner;
         });
 
         async function subject(): Promise<any> {
-          return tsmRegistry.connect(subjectCaller.wallet).removeRegistrarFactory(subjectFactory);
+          return developerRegistry.connect(subjectCaller.wallet).removeRegistrarFactory(subjectFactory);
         }
 
         it("should add the factory to the allowed factories", async () => {
           await subject();
 
-          const isAllowed = await tsmRegistry.registrarFactories(subjectFactory);
+          const isAllowed = await developerRegistry.registrarFactories(subjectFactory);
           expect(isAllowed).to.be.false;
         });
 
         it("should emit the correct event RegistrarFactoryRemoved", async () => {
-          await expect(subject()).to.emit(tsmRegistry, "RegistrarFactoryRemoved").withArgs(subjectFactory);
+          await expect(subject()).to.emit(developerRegistry, "RegistrarFactoryRemoved").withArgs(subjectFactory);
         });
 
         describe("when the factory is not added", async () => {
@@ -519,7 +519,7 @@ describe("TSMRegistry", () => {
 
         describe("when the caller is not the owner", async () => {
           beforeEach(async () => {
-            subjectCaller = tsmOne;
+            subjectCaller = developerOne;
           });
 
           it("should revert", async () => {

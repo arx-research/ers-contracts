@@ -5,7 +5,7 @@ pragma solidity ^0.8.17;
 import { IProjectRegistrar } from "./IProjectRegistrar.sol";
 import { ITransferPolicy } from "./ITransferPolicy.sol";
 
-interface ITSMRegistrar {
+interface IDeveloperRegistrar {
     function initialize(bytes32 _rootNode) external;
     function rootNode() external view returns (bytes32);
     function addProject(

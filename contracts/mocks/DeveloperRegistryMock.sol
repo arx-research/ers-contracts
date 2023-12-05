@@ -2,19 +2,19 @@
 
 pragma solidity ^0.8.17;
 
-import { TSMRegistry } from "../TSMRegistry.sol";
+import { DeveloperRegistry } from "../DeveloperRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
 
-contract TSMRegistryMock is TSMRegistry {
+contract DeveloperRegistryMock is DeveloperRegistry {
 
     constructor(address _governance) 
-        TSMRegistry(_governance)
+        DeveloperRegistry(_governance)
     {}
 
     function addMockRegistrar(address _newRegistrar, bytes32 _nameHash) external {
         ersRegistry.createSubnodeRecord(ROOT_NODE, _nameHash, _newRegistrar, _newRegistrar);
         
-        isTSMRegistrar[_newRegistrar] = true;
-        tsmRegistrars.push(_newRegistrar);
+        isDeveloperRegistrar[_newRegistrar] = true;
+        developerRegistrars.push(_newRegistrar);
     }
 }

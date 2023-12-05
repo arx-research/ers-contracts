@@ -17,14 +17,14 @@ import { IPBT } from "./token/IPBT.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
-import { ITSMRegistry } from "./interfaces/ITSMRegistry.sol";
+import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
 
 /**
  * @title ChipRegistry
  * @author Arx
  *
- * @notice Entrypoint for resolving chips added to Arx Protocol. TSMs can enroll new projects into this registry by specifying a
+ * @notice Entrypoint for resolving chips added to Arx Protocol. Developers can enroll new projects into this registry by specifying a
  * ProjectRegistrar to manage chip claims. Chip claims are forwarded from ProjectRegistrars at which point a ERC-721
  * compliant "token" of the chip is minted to the claimant and other metadata associated with the chip is set. Any project
  * looking to integrate ERS chips should get resolution information about chips from this address. Because chips are
@@ -43,7 +43,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     /* ============ Events ============ */
 
     event ProjectEnrollmentAdded(                   // Emitted during addProjectEnrollment
-        address indexed tsmRegistrar,
+        address indexed developerRegistrar,
         address indexed projectRegistrar,
         address indexed transferPolicy,
         address projectPublicKey,
@@ -73,7 +73,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     event RegistryInitialized(                              // Emitted during initialize
         address ers,
         address servicesRegistry,
-        address tsmRegistry
+        address developerRegistry
     );
 
     /* ============ Structs ============ */
@@ -95,7 +95,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     IManufacturerRegistry public immutable manufacturerRegistry;
     IERS public ers;
     IServicesRegistry public servicesRegistry;
-    ITSMRegistry public tsmRegistry;
+    IDeveloperRegistry public developerRegistry;
     bool public initialized;
 
     mapping(IProjectRegistrar=>ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
@@ -131,19 +131,19 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     /* ============ External Functions ============ */
 
     /**
-     * @dev ONLY TSM REGISTRAR: Enroll new project in ChipRegistry. This function is only callable by TSMRegistrars. In order to use
+     * @dev ONLY Developer REGISTRAR: Enroll new project in ChipRegistry. This function is only callable by DeveloperRegistrars. In order to use
      * this function the project must first sign a message of the _projectRegistrar address with the _projectPublicKey's matching
      * private key. This key MUST be the same key used to sign all the chip certificates for the project. This creates a link between
-     * chip certificates (which may be posted online) and the deployer of the registrar hence making sure that no malicious TSM is able
-     * to steal another TSM's chips for their own enrollment (unless the private key happens to be leaked). This function will
+     * chip certificates (which may be posted online) and the deployer of the registrar hence making sure that no malicious Developer is able
+     * to steal another Developer's chips for their own enrollment (unless the private key happens to be leaked). This function will
      * revert if the project is already enrolled. See documentation for more instructions on how to create a project merkle root.
      *
      * @param _projectRegistrar          Address of the ProjectRegistrar contract
      * @param _projectPublicKey          Public key of the project (used to sign chip certificates and create _signature)
      * @param _transferPolicy            Address of the transfer policy contract governing chip transfers
      * @param _merkleRoot                Merkle root of the project's chip claims
-     * @param _ownershipProof            Signature of the _projectRegistrar address signed by the _projectPublicKey. Proves ownership over the
-     *                                   key that signed the chip custodyProofs and tsmCertificates   
+     * @param _projectOwnershipProof     Signature of the _projectRegistrar address signed by the _projectPublicKey. Proves ownership over the
+     *                                   key that signed the chip custodyProofs and developerInclusionProofs   
      * @param _projectClaimDataUri       URI pointing to location of off-chain data required to claim chips
      */
     function addProjectEnrollment(
@@ -151,12 +151,12 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
         address _projectPublicKey,
         ITransferPolicy _transferPolicy,
         bytes32 _merkleRoot,
-        bytes calldata _ownershipProof,
+        bytes calldata _projectOwnershipProof,
         string calldata _projectClaimDataUri
     )
         external
     {
-        require(tsmRegistry.isTSMRegistrar(msg.sender), "Must be TSM Registrar");
+        require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
         require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
         // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
         // with a project enrollment during claim
@@ -167,7 +167,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
             keccak256("Contents(address projectRegistrar)"),
             address(_projectRegistrar)
         )));
-        require(_projectPublicKey.isValidSignatureNow(messageHash, _ownershipProof), "Invalid signature");
+        require(_projectPublicKey.isValidSignatureNow(messageHash, _projectOwnershipProof), "Invalid signature");
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({
             merkleRoot: _merkleRoot,
@@ -226,15 +226,15 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
      * @param _chipId                       Chip ID (address)
      * @param _chipClaim                    Struct containing information for validating merkle proof, chip owner, and chip's ERS node
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
-     * @param _tsmCertificate               Signature of the chipId signed by the project's public key
-     * @param _custodyProof                 Signature of the projectPublicKey signed by the chip's private key
+     * @param _developerInclusionProof      Signature of the chipId signed by the project's public key
+     * @param _developerCustodyProof        Signature of the projectPublicKey signed by the chip's private key
      */
     function claimChip(
         address _chipId,
         ChipClaim calldata _chipClaim,
         ManufacturerValidation memory _manufacturerValidation,
-        bytes memory _tsmCertificate,
-        bytes memory _custodyProof
+        bytes memory _developerInclusionProof,
+        bytes memory _developerCustodyProof
     )
         external virtual
     {
@@ -247,33 +247,33 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
         // Validate that chip state has been set correctly in ERS
         require(ers.isValidChipState(_chipClaim.ersNode, _chipId, _chipClaim.owner), "Inconsistent state in ERS");
 
-        _validateCertificates(_chipId, projectInfo.projectPublicKey, _tsmCertificate, _custodyProof);
+        _validateCertificates(_chipId, projectInfo.projectPublicKey, _developerInclusionProof, _developerCustodyProof);
 
         // Validate merkle proofs verifying enrollment in project and project using manufacturer chips
-        _validateTSMMerkleProof(
+        _validateDeveloperMerkleProof(
             _chipId,
-            _chipClaim.tsmMerkleInfo,
+            _chipClaim.developerMerkleInfo,
             _manufacturerValidation.enrollmentId,
             projectInfo.merkleRoot
         );
         _validateManufacturerMerkleProof(_chipId, _manufacturerValidation);
 
-        // Lockin Period is min of the lockinPeriod specified by the TSM and the max time period specified by governance
-        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > _chipClaim.tsmMerkleInfo.lockinPeriod ?
-            _chipClaim.tsmMerkleInfo.lockinPeriod :
+        // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
+        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > _chipClaim.developerMerkleInfo.lockinPeriod ?
+            _chipClaim.developerMerkleInfo.lockinPeriod :
             projectInfo.creationTimestamp + maxLockinPeriod;
         
         // Set primaryService on ServicesRegistry
         servicesRegistry.setInitialService(
             _chipId,
-            _chipClaim.tsmMerkleInfo.serviceId,
+            _chipClaim.developerMerkleInfo.serviceId,
             lockinPeriod
         );
 
         ChipInfo memory chipInfo = ChipInfo({
             tokenId: 0,     // temporary value, will be set in _mint
             transferPolicy: projectInfo.transferPolicy,
-            tokenUri: _chipClaim.tsmMerkleInfo.tokenUri,
+            tokenUri: _chipClaim.developerMerkleInfo.tokenUri,
             tokenData: _encodeTokenData(_chipClaim.ersNode, _manufacturerValidation.enrollmentId)
         });
         // Mint a PBT this function fills out the ownership mapping, maps tokenId to chipId, fills out
@@ -288,10 +288,10 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
             _chipId,
             tokenId,
             _chipClaim.owner,
-            _chipClaim.tsmMerkleInfo.serviceId,
+            _chipClaim.developerMerkleInfo.serviceId,
             _chipClaim.ersNode,
             _manufacturerValidation.enrollmentId,
-            _chipClaim.tsmMerkleInfo.tokenUri
+            _chipClaim.developerMerkleInfo.tokenUri
         );
     }
 
@@ -371,16 +371,16 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
      *
      * @param _ers                       Address of the ERS contract
      * @param _servicesRegistry          Address of the ServicesRegistry contract
-     * @param _tsmRegistry               Address of the TSMRegistry contract
+     * @param _developerRegistry               Address of the DeveloperRegistry contract
      */
-    function initialize(IERS _ers, IServicesRegistry _servicesRegistry, ITSMRegistry _tsmRegistry) external onlyOwner {
+    function initialize(IERS _ers, IServicesRegistry _servicesRegistry, IDeveloperRegistry _developerRegistry) external onlyOwner {
         require(!initialized, "Contract already initialized");
         ers = _ers;
         servicesRegistry = _servicesRegistry;
-        tsmRegistry = _tsmRegistry;
+        developerRegistry = _developerRegistry;
 
         initialized = true;
-        emit RegistryInitialized(address(_ers), address(_servicesRegistry), address(_tsmRegistry));
+        emit RegistryInitialized(address(_ers), address(_servicesRegistry), address(_developerRegistry));
     }
 
     /**
@@ -451,9 +451,9 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
      * @notice Callback function for resolving unclaimed chip following EIP-3668 conventions. If the chip has been enrolled in
      * a project and has valid certificates then return the claim app for that project. Otherwise, get the bootloader app associated
      *  with the chip from the ManufacturerRegistry and return that. The _response parameter is structured in the following way:
-     * | tsmEntries (uint256) | data (bytes) | where data is structured as follows:
-     * | [tsmEntry[0],..., tsmEntry[n], manufacturerValidation] | where tsmEntry is structured as follows:
-     * | enrollmentId (bytes32) | projectRegistrar (address) | TSMMerkleInfo | tsmCertificate | custodyProof
+     * | developerEntries (uint256) | data (bytes) | where data is structured as follows:
+     * | [developerEntry[0],..., developerEntry[n], manufacturerValidation] | where developerEntry is structured as follows:
+     * | enrollmentId (bytes32) | projectRegistrar (address) | DeveloperMerkleInfo | developerInclusionProof | custodyProof
      *
      * @param _response         The response from the offchain lookup
      * @param _extraData        Extra data required to resolve the unclaimed chip
@@ -474,41 +474,46 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
         }
 
         (
-            uint8 tsmEntries,
+            uint8 developerEntries,
             bytes[] memory entries
         ) = abi.decode(_response, (uint8, bytes[]));
         uint8 entryLength = uint8(entries.length);
 
         // Check that the response at least has a manufacturerValidation entry
-        require(entryLength == tsmEntries + 1, "Invalid response length");
+        require(entryLength == developerEntries + 1, "Invalid response length");
 
-        // Cycle through TSM entries and check if any are valid, return first valid entry. If there is no valid TSM entry then
+        // Cycle through Developer entries and check if any are valid, return first valid entry. If there is no valid Developer entry then
         // check the manufacturerValidation entry and return bootloader app. Most likely reason for a malicious invalid entry
-        // is not being able to create valid custodyProof.
-        if (tsmEntries > 0) {
+        // is not being able to create valid developerCustodyProof.
+        if (developerEntries > 0) {
             for (uint8 i = 0; i < entryLength - 1; ++i) {
                 (
                     bytes32 enrollmentId,
                     IProjectRegistrar projectRegistrar,
-                    TSMMerkleInfo memory tsmMerkleInfo,
-                    bytes memory tsmCertificate,
-                    bytes memory custodyProof
-                ) = abi.decode(entries[i], (bytes32, IProjectRegistrar, TSMMerkleInfo, bytes, bytes));
+                    DeveloperMerkleInfo memory developerMerkleInfo,
+                    bytes memory developerInclusionProof,
+                    bytes memory developerCustodyProof
+                ) = abi.decode(entries[i], (bytes32, IProjectRegistrar, DeveloperMerkleInfo, bytes, bytes));
 
                 (bool validCertificates, ) = _areValidCertificates(
                     chipId,
                     projectEnrollments[projectRegistrar].projectPublicKey,
-                    tsmCertificate,
-                    custodyProof
+                    developerInclusionProof,
+                    developerCustodyProof
                 );
 
-                bool validProof = _isValidTSMMerkleProof(chipId, tsmMerkleInfo, enrollmentId, projectEnrollments[projectRegistrar].merkleRoot);
+                bool validProof = _isValidDeveloperMerkleProof(
+                    chipId,
+                    developerMerkleInfo,
+                    enrollmentId,
+                    projectEnrollments[projectRegistrar].merkleRoot
+                );
                 if (validProof && validCertificates) {
-                    return servicesRegistry.getServiceContent(chipId, tsmMerkleInfo.serviceId);
+                    return servicesRegistry.getServiceContent(chipId, developerMerkleInfo.serviceId);
                 }
             }
         }
-        // If no valid TSM entries then we know the chip is not enrolled in a project and we can return the bootloader app
+        // If no valid Developer entries then we know the chip is not enrolled in a project and we can return the bootloader app
         ManufacturerValidation memory manufacturerValidation = abi.decode(entries[entryLength - 1], (ManufacturerValidation));
 
         _validateManufacturerMerkleProof(chipId, manufacturerValidation);
@@ -561,15 +566,15 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     }
 
     /**
-     * Check that certificates passed as part of claim are valid. TSM cert is valid if the project public key signed
+     * Check that certificates passed as part of claim are valid. Developer cert is valid if the project public key signed
      * the address of the chip. We then check the validity of the signed certificate which is the project public key
      * signed by the chip.
      */
     function _validateCertificates(
         address _chipId,
         address _projectPublicKey,
-        bytes memory _tsmCertificate,
-        bytes memory _custodyProof
+        bytes memory _developerInclusionProof,
+        bytes memory _developerCustodyProof
     )
         internal
         view
@@ -577,15 +582,15 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
         (bool validCertificates, string memory errorMessage) = _areValidCertificates(
             _chipId,
             _projectPublicKey,
-            _tsmCertificate,
-            _custodyProof
+            _developerInclusionProof,
+            _developerCustodyProof
         );
 
         require(validCertificates, errorMessage);
     }
 
     /**
-     * Check that certificates passed as part of claim are valid. TSM cert is valid if the project public key signed
+     * Check that certificates passed as part of claim are valid. Developer cert is valid if the project public key signed
      * the address of the chip. We then check the validity of the signed certificate which is the project public key
      * signed by the chip. If one of the certificates is invalid we return false and bubble up the error message.
      *
@@ -595,20 +600,20 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     function _areValidCertificates(
         address _chipId,
         address _projectPublicKey,
-        bytes memory _tsmCertificate,
-        bytes memory _custodyProof
+        bytes memory _developerInclusionProof,
+        bytes memory _developerCustodyProof
     )
         internal
         view
         returns (bool, string memory)
     {
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
-        bytes32 tsmCertificateHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+        bytes32 developerInclusionProofHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
         bytes32 signedCertHash = abi.encodePacked(_projectPublicKey).toEthSignedMessageHash();
 
-        if (!_projectPublicKey.isValidSignatureNow(tsmCertificateHash, _tsmCertificate)) {
-            return (false, "Invalid TSM certificate");
-        } else if (!_chipId.isValidSignatureNow(signedCertHash, _custodyProof)) {
+        if (!_projectPublicKey.isValidSignatureNow(developerInclusionProofHash, _developerInclusionProof)) {
+            return (false, "Invalid Developer certificate");
+        } else if (!_chipId.isValidSignatureNow(signedCertHash, _developerCustodyProof)) {
             return (false, "Invalid custody proof");
         } else {
             return (true, "");
@@ -635,11 +640,11 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
     }
 
     /**
-     * Indicate inclusion in TSM's merkle tree
+     * Indicate inclusion in Developer's merkle tree
      */
-    function _isValidTSMMerkleProof(
+    function _isValidDeveloperMerkleProof(
         address _chipId,
-        TSMMerkleInfo memory _merkleProofInfo,
+        DeveloperMerkleInfo memory _merkleProofInfo,
         bytes32 _enrollmentId,
         bytes32 _merkleRoot
     )
@@ -650,7 +655,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
         bytes32 node = keccak256(
             bytes.concat(keccak256(
                 abi.encode(
-                    _merkleProofInfo.tsmIndex,
+                    _merkleProofInfo.developerIndex,
                     _chipId,
                     _enrollmentId,
                     _merkleProofInfo.lockinPeriod,
@@ -660,22 +665,22 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, EIP712, Ownable {
             ))
         );
 
-        return MerkleProof.verify(_merkleProofInfo.tsmProof, _merkleRoot, node);
+        return MerkleProof.verify(_merkleProofInfo.developerProof, _merkleRoot, node);
     }
 
     /**
-     * Validate inclusion in TSM's merkle tree
+     * Validate inclusion in Developer's merkle tree
      */
-    function _validateTSMMerkleProof(
+    function _validateDeveloperMerkleProof(
         address _chipId,
-        TSMMerkleInfo memory _merkleProofInfo,
+        DeveloperMerkleInfo memory _merkleProofInfo,
         bytes32 _enrollmentId,
         bytes32 _merkleRoot
     )
         internal
         pure
     {
-        require(_isValidTSMMerkleProof(_chipId, _merkleProofInfo, _enrollmentId, _merkleRoot), "Invalid TSM merkle proof");
+        require(_isValidDeveloperMerkleProof(_chipId, _merkleProofInfo, _enrollmentId, _merkleRoot), "Invalid Developer merkle proof");
     }
 
     /**

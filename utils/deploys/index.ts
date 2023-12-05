@@ -9,9 +9,9 @@ import {
   ERSRegistry__factory,
   ManufacturerRegistry__factory,
   ServicesRegistry__factory,
-  TSMRegistrar__factory,
-  TSMRegistrarFactory__factory,
-  TSMRegistry__factory
+  DeveloperRegistrar__factory,
+  DeveloperRegistrarFactory__factory,
+  DeveloperRegistry__factory
 } from "../../typechain/factories/contracts";
 
 import { AuthenticityProjectRegistrar__factory } from "../../typechain/factories/contracts/project-registrars";
@@ -22,9 +22,9 @@ import {
   ManufacturerRegistry,
   SECP256k1Model,
   ServicesRegistry,
-  TSMRegistrar,
-  TSMRegistrarFactory,
-  TSMRegistry,
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistry,
   AuthenticityProjectRegistrar,
   ArxProjectEnrollmentManager
 } from "../contracts";
@@ -51,65 +51,65 @@ export default class DeployHelper {
     return mRegistry;
   }
 
-  public async deployERSRegistry(chipRegistry: Address, tsmRegistry: Address): Promise<ERSRegistry> {
+  public async deployERSRegistry(chipRegistry: Address, developerRegistry: Address): Promise<ERSRegistry> {
     const ersRegistry = await new ERSRegistry__factory(this._deployerSigner).deploy(
       chipRegistry,
-      tsmRegistry
+      developerRegistry
     );
     return ersRegistry;
   }
 
-  public async deployTSMRegistrarFactory(
+  public async deployDeveloperRegistrarFactory(
     chipRegistry: Address,
     ersRegistry: Address,
-    tsmRegistry: Address
-  ): Promise<TSMRegistrarFactory> {
-    const tsmRegistrarFactory = await new TSMRegistrarFactory__factory(this._deployerSigner).deploy(
+    developerRegistry: Address
+  ): Promise<DeveloperRegistrarFactory> {
+    const developerRegistrarFactory = await new DeveloperRegistrarFactory__factory(this._deployerSigner).deploy(
       chipRegistry,
       ersRegistry,
-      tsmRegistry
+      developerRegistry
     );
-    return tsmRegistrarFactory;
+    return developerRegistrarFactory;
   }
 
-  public async deployTSMRegistry(owner: Address): Promise<TSMRegistry> {
-    const tsmRegistry = await new TSMRegistry__factory(this._deployerSigner).deploy(
+  public async deployDeveloperRegistry(owner: Address): Promise<DeveloperRegistry> {
+    const developerRegistry = await new DeveloperRegistry__factory(this._deployerSigner).deploy(
       owner
     );
-    return tsmRegistry;
+    return developerRegistry;
   }
 
-  public async deployTSMRegistrar(
+  public async deployDeveloperRegistrar(
     owner: Address,
     chipRegistry: Address,
     ersRegistry: Address,
-    tsmRegistry: Address
-  ): Promise<TSMRegistrar> {
-    const tsmRegistrar = await new TSMRegistrar__factory(this._deployerSigner).deploy(
+    developerRegistry: Address
+  ): Promise<DeveloperRegistrar> {
+    const developerRegistrar = await new DeveloperRegistrar__factory(this._deployerSigner).deploy(
       owner,
       chipRegistry,
       ersRegistry,
-      tsmRegistry
+      developerRegistry
     );
-    return tsmRegistrar;
+    return developerRegistrar;
   }
 
-  public async getTSMRegistrar(registrarAddress: Address): Promise<TSMRegistrar> {
-    return new TSMRegistrar__factory(this._deployerSigner).attach(registrarAddress);
+  public async getDeveloperRegistrar(registrarAddress: Address): Promise<DeveloperRegistrar> {
+    return new DeveloperRegistrar__factory(this._deployerSigner).attach(registrarAddress);
   }
 
-  public async deployTSMRegistrarFromFactory(
-    tsmRegistry: TSMRegistry,
+  public async deployDeveloperRegistrarFromFactory(
+    developerRegistry: DeveloperRegistry,
     deployer: Account,
     factory: Address
-  ): Promise<TSMRegistrar> {
-    const expectedAddress = await tsmRegistry.connect(deployer.wallet).callStatic.createNewTSMRegistrar(
+  ): Promise<DeveloperRegistrar> {
+    const expectedAddress = await developerRegistry.connect(deployer.wallet).callStatic.createNewDeveloperRegistrar(
       factory
     );
 
-    await tsmRegistry.connect(deployer.wallet).createNewTSMRegistrar(factory);
+    await developerRegistry.connect(deployer.wallet).createNewDeveloperRegistrar(factory);
 
-    return await this.getTSMRegistrar(expectedAddress);
+    return await this.getDeveloperRegistrar(expectedAddress);
   }
 
 
@@ -141,14 +141,14 @@ export default class DeployHelper {
     projectManager: Address,
     chipRegistry: Address,
     ersRegistry: Address,
-    tsmRegistrar: Address,
+    developerRegistrar: Address,
     maxBlockWindow: BigNumber = BigNumber.from(5)
   ): Promise<AuthenticityProjectRegistrar> {
     const projectRegistrar = await new AuthenticityProjectRegistrar__factory(this._deployerSigner).deploy(
       projectManager,
       chipRegistry,
       ersRegistry,
-      tsmRegistrar,
+      developerRegistrar,
       maxBlockWindow
     );
 
@@ -161,7 +161,7 @@ export default class DeployHelper {
 
   public async deployArxProjectEnrollmentManager(
     chipRegistry: Address,
-    tsmRegistrar: Address,
+    developerRegistrar: Address,
     ers: Address,
     manufacturerRegistry: Address,
     transferPolicy: Address,
@@ -169,7 +169,7 @@ export default class DeployHelper {
   ): Promise<ArxProjectEnrollmentManager>{
     const arxProjectEnrollmentManager = await new ArxProjectEnrollmentManager__factory(this._deployerSigner).deploy(
       chipRegistry,
-      tsmRegistrar,
+      developerRegistrar,
       ers,
       manufacturerRegistry,
       transferPolicy,

@@ -8,16 +8,16 @@ import { ChipValidations } from "../lib/ChipValidations.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
 import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
-import { ITSMRegistrar } from "../interfaces/ITSMRegistrar.sol";
+import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
 
 /**
  * @title AuthenticityProjectRegistrar
  * @author Arx Research
  * 
- * @notice Entry point for users claiming chips. Responsible for setting the ers name for each chip in its enrollment as [chip].project.tsm.ers.
- * The TSM Registrar sets the root node of the ProjectRegistrar when addProject is called on the TSMRegistrar. This regostrar should be used by
- * projects that care about tracking the full chain of custody of their chips via ERSRegistry. If project only wants to use the protocol for chip
- * URL redirects other ProjectRegistrars may be a better fit.
+ * @notice Entry point for users claiming chips. Responsible for setting the ers name for each chip in its enrollment as [chip].project.developer.ers.
+ * The Developer Registrar sets the root node of the ProjectRegistrar when addProject is called on the DeveloperRegistrar. This regostrar should be
+ * used by projects that care about tracking the full chain of custody of their chips via ERSRegistry. If project only wants to use the protocol for
+ * chip URL redirects other ProjectRegistrars may be a better fit.
  */
 contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
     using ChipValidations for address;
@@ -27,32 +27,32 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
     event RootNodeSet(bytes32 _rootNode);
 
     /* ============ Modifiers ============ */
-    modifier onlyTSMRegistrar() {
-        require(address(tsmRegistrar) == msg.sender, "onlyTSMRegistrar: Only the contract's TSM Registrar can call this function");
+    modifier onlyDeveloperRegistrar() {
+        require(address(developerRegistrar) == msg.sender, "onlyDeveloperRegistrar: Only the contract's Developer Registrar can call this function");
         _;
     }
 
     /* ============ State Variables ============ */
     IChipRegistry public immutable chipRegistry; 
     IERS public immutable ers; 
-    ITSMRegistrar public immutable tsmRegistrar; 
+    IDeveloperRegistrar public immutable developerRegistrar; 
     uint256 public immutable maxBlockWindow;
     
-    bytes32 public rootNode;                    // It is the hash(hash(projectName), node(tsm.ers))
+    bytes32 public rootNode;                    // It is the hash(hash(projectName), node(developer.ers))
 
     /* ============ Constructor ============ */
     /**
      * @param _projectManager           The address that will be set as the owner
      * @param _chipRegistry             The chip registry of the ERS system being used
      * @param _ers                      The ERS registry of the ERS system being used
-     * @param _tsmRegistrar             The TSMRegistrar that made this project
+     * @param _developerRegistrar       The DeveloperRegistrar that made this project
      * @param _maxBlockWindow           The maximum amount of blocks a signature used for updating chip table is valid for
      */
     constructor(
         address _projectManager, 
         IChipRegistry _chipRegistry, 
         IERS _ers, 
-        ITSMRegistrar _tsmRegistrar,
+        IDeveloperRegistrar _developerRegistrar,
         uint256 _maxBlockWindow
     ) 
         Ownable() 
@@ -60,7 +60,7 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
         _transferOwnership(_projectManager);
         chipRegistry = _chipRegistry;
         ers = _ers;
-        tsmRegistrar = _tsmRegistrar;
+        developerRegistrar = _developerRegistrar;
         maxBlockWindow = _maxBlockWindow;
     }
 
@@ -75,19 +75,19 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
      * @param _claimData                Struct containing chip info
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
      * @param _commitBlock              The block the signature is tied to (used to put a time limit on the signature)
-     * @param _ownershipProof           Chip signature of the chainId, _commitBlock, _nameHash, and msg.sender packed together
-     * @param _tsmCertificate           Chip's public key/ID signed by the projectPublicKey
-     * @param _custodyProof             Proof that the chip was in custody of the TSM, the projectPublicKey signed by the chip
+     * @param _chipOwnershipProof       Chip signature of the chainId, _commitBlock, _nameHash, and msg.sender packed together
+     * @param _developerInclusionProof  Chip's public key/ID signed by the projectPublicKey, indicates Developer approves chip as part of project
+     * @param _developerCustodyProof    Proof that the chip was in custody of the Developer, the projectPublicKey signed by the chip
      */
     function claimChip(
         address _chipId,
         bytes32 _nameHash,
-        IChipRegistry.TSMMerkleInfo memory _claimData,
+        IChipRegistry.DeveloperMerkleInfo memory _claimData,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
         uint256 _commitBlock,
-        bytes memory _ownershipProof,
-        bytes memory _tsmCertificate,
-        bytes memory _custodyProof
+        bytes memory _chipOwnershipProof,
+        bytes memory _developerInclusionProof,
+        bytes memory _developerCustodyProof
     ) 
         external 
     {
@@ -99,7 +99,7 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
             _commitBlock,
             maxBlockWindow,
             abi.encodePacked(block.chainid, _commitBlock, _nameHash, chipOwner), 
-            _ownershipProof
+            _chipOwnershipProof
         );
 
         // Call createSubnodeRecord from the ERS Registry to create a subnode with the chip as the resolver
@@ -109,19 +109,19 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
         IChipRegistry.ChipClaim memory chipClaim = IChipRegistry.ChipClaim({
             owner: chipOwner,
             ersNode: ersNode,
-            tsmMerkleInfo: _claimData
+            developerMerkleInfo: _claimData
         });
 
         // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.claimChip(_chipId, chipClaim, _manufacturerValidation, _tsmCertificate, _custodyProof);
+        chipRegistry.claimChip(_chipId, chipClaim, _manufacturerValidation, _developerInclusionProof, _developerCustodyProof);
     }
 
     /**
-     * @dev ONLY TSM REGISTRAR: Set the root node for this project (ie project.tsm.ers)
+     * @dev ONLY DEVELOPER REGISTRAR: Set the root node for this project (ie project.developer.ers)
      * 
      * @param _rootNode The root node for this project
      */
-    function setRootNode(bytes32 _rootNode) onlyTSMRegistrar() external override {
+    function setRootNode(bytes32 _rootNode) onlyDeveloperRegistrar() external override {
         rootNode = _rootNode;
         emit RootNodeSet(_rootNode);
     }

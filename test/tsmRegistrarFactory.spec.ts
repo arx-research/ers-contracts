@@ -2,7 +2,7 @@ import "module-alias/register";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { TSMRegistrarFactory } from "@utils/contracts";
+import { DeveloperRegistrarFactory } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
 import {
@@ -13,28 +13,28 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("TSMRegistrarFactory", () => {
+describe("DeveloperRegistrarFactory", () => {
   let owner: Account;
-  let tsmRegistry: Account;
+  let developerRegistry: Account;
   let chipRegistry: Account;
   let ersRegistry: Account;
-  let tsmRegistrarFactory: TSMRegistrarFactory;
+  let developerRegistrarFactory: DeveloperRegistrarFactory;
   let deployer: DeployHelper;
 
   beforeEach(async () => {
     [
       owner,
-      tsmRegistry,
+      developerRegistry,
       chipRegistry,
       ersRegistry,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
 
-    tsmRegistrarFactory = await deployer.deployTSMRegistrarFactory(
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      tsmRegistry.address
+      developerRegistry.address
     );
   });
 
@@ -42,13 +42,13 @@ describe("TSMRegistrarFactory", () => {
 
   describe("#constructor", async () => {
     it("should set all the state correctly", async () => {
-      const actualChipRegistry = await tsmRegistrarFactory.chipRegistry();
-      const actualErsRegistry = await tsmRegistrarFactory.ers();
-      const actualTsmRegistry = await tsmRegistrarFactory.tsmRegistry();
+      const actualChipRegistry = await developerRegistrarFactory.chipRegistry();
+      const actualErsRegistry = await developerRegistrarFactory.ers();
+      const actualDeveloperRegistry = await developerRegistrarFactory.developerRegistry();
 
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualErsRegistry).to.eq(ersRegistry.address);
-      expect(actualTsmRegistry).to.eq(tsmRegistry.address);
+      expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
     });
   });
 
@@ -58,50 +58,50 @@ describe("TSMRegistrarFactory", () => {
 
     beforeEach(async () => {
       subjectOwner = owner.address;
-      subjectCaller = tsmRegistry;
+      subjectCaller = developerRegistry;
     });
 
     async function subject(): Promise<any> {
-      return await tsmRegistrarFactory.connect(subjectCaller.wallet).deployRegistrar(subjectOwner);
+      return await developerRegistrarFactory.connect(subjectCaller.wallet).deployRegistrar(subjectOwner);
     }
 
     async function subjectCall(): Promise<any> {
-      return await tsmRegistrarFactory.connect(subjectCaller.wallet).callStatic.deployRegistrar(subjectOwner);
+      return await developerRegistrarFactory.connect(subjectCaller.wallet).callStatic.deployRegistrar(subjectOwner);
     }
 
-    it("should set the state correctly on the newly deployed TSMRegistrar", async () => {
+    it("should set the state correctly on the newly deployed DeveloperRegistrar", async () => {
       const expectedRegistrarAddress = await subjectCall();
 
       await subject();
 
-      const tsmRegistrar = await deployer.getTSMRegistrar(expectedRegistrarAddress);
+      const developerRegistrar = await deployer.getDeveloperRegistrar(expectedRegistrarAddress);
 
-      const actualChipRegistry = await tsmRegistrar.chipRegistry();
-      const actualErsRegistry = await tsmRegistrar.ers();
-      const actualTsmRegistry = await tsmRegistrar.tsmRegistry();
-      const actualOwner = await tsmRegistrar.owner();
+      const actualChipRegistry = await developerRegistrar.chipRegistry();
+      const actualErsRegistry = await developerRegistrar.ers();
+      const actualDeveloperRegistry = await developerRegistrar.developerRegistry();
+      const actualOwner = await developerRegistrar.owner();
 
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualErsRegistry).to.eq(ersRegistry.address);
-      expect(actualTsmRegistry).to.eq(tsmRegistry.address);
+      expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
       expect(actualOwner).to.eq(subjectOwner);
     });
 
-    it("should emit the correct TSMRegistrarDeployed event", async () => {
+    it("should emit the correct DeveloperRegistrarDeployed event", async () => {
       const expectedRegistrarAddress = await subjectCall();
-      await expect(subject()).to.emit(tsmRegistrarFactory, "TSMRegistrarDeployed").withArgs(
+      await expect(subject()).to.emit(developerRegistrarFactory, "DeveloperRegistrarDeployed").withArgs(
         expectedRegistrarAddress,
         subjectOwner
       );
     });
 
-    describe("when the caller is not the tsm registry", async () => {
+    describe("when the caller is not the developer registry", async () => {
       beforeEach(async () => {
         subjectCaller = owner;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be TSMRegistry");
+        await expect(subject()).to.be.revertedWith("Caller must be DeveloperRegistry");
       });
     });
   });
