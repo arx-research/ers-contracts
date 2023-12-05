@@ -326,7 +326,7 @@ describe("AuthenticityProjectRegistrar", () => {
         chainId,
         subjectCommitBlock,
         subjectNameHash,
-        subjectCaller
+        subjectCaller.address
       );
     });
 
@@ -378,7 +378,7 @@ describe("AuthenticityProjectRegistrar", () => {
           chainId,
           subjectCommitBlock,
           subjectNameHash,
-          chipTwo
+          chipTwo.address
         );
       });
 
@@ -395,7 +395,7 @@ describe("AuthenticityProjectRegistrar", () => {
           badChainId,
           subjectCommitBlock,
           subjectNameHash,
-          chipTwo
+          chipTwo.address
         );
       });
 

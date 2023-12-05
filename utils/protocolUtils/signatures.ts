@@ -33,7 +33,7 @@ export async function createChipOwnershipProof(
   chainId: number,
   commitBlock: BigNumber,
   nameHash: string,
-  caller: Account
+  caller: Address
 ): Promise<string> {
   const packedMsg = ethers.utils.solidityPack(
     ["uint256", "uint256", "bytes32", "address"],
