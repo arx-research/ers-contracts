@@ -321,11 +321,6 @@ describe("AuthenticityProjectRegistrar", () => {
       subjectDeveloperInclusionProof = await createDeveloperInclusionProof(developerOne, chipOne.address);
       subjectDeveloperCustodyProof = await createDeveloperCustodyProof(chipOne, developerOne.address);
       subjectCaller = owner;
-
-      packedChipOwnershipProof = ethers.utils.solidityPack(
-        ["uint256", "uint256", "bytes32", "address"],
-        [chainId, subjectCommitBlock, subjectNameHash, subjectCaller.address]
-      );
       subjectChipOwnershipProof = await createChipOwnershipProof(
         chipOne,
         chainId,
