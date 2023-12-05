@@ -81,6 +81,9 @@ contract ArxProjectEnrollmentManager is Ownable {
       * @param _nameHash                Keccak256 hash of the human-readable name for the chip being claimed
       * @param _merkleRoot              Merkle root of the Developer Merkle Tree made up of the chips enrolled to this project
       * @param _projectPublicKey        Public key used in the generation of the Developer certificates
+      * @param _developerMerkleInfo     The Developer Merkle Info of the proving chip
+      * @param _manufacturerValidation  Manufacturer Validation info for the proving chip
+      * @param _chipOwnershipProof      The chip signature of the hash of the chainId and msg.sender
       * @param _projectOwnershipProof   Signed hash of the _projectRegistrar address by the _projectPublicKey
       */
     function addProject(
@@ -89,12 +92,24 @@ contract ArxProjectEnrollmentManager is Ownable {
         bytes32 _nameHash,
         bytes32 _merkleRoot,
         address _projectPublicKey,
+        address _provingChip,
+        IChipRegistry.DeveloperMerkleInfo memory _developerMerkleInfo,
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+        bytes memory _chipOwnershipProof,
         bytes memory _projectOwnershipProof
     )
         public 
     {
         require(_isNotZeroAddress(_projectManager), "Invalid project manager address");
         require(_isNotZeroAddress(_projectPublicKey), "Invalid project public key address");
+
+        _validateOwnershipAndTreeInclusion(
+            _provingChip,
+            _chipOwnershipProof,
+            _merkleRoot,
+            _developerMerkleInfo,
+            _manufacturerValidation
+        );
 
         _deployProjectRegistrarAndAddProject(
             _projectManager,
@@ -136,6 +151,57 @@ contract ArxProjectEnrollmentManager is Ownable {
     function _isNotZeroAddress(address _address) internal pure returns(bool){
         return _address != address(0);
     }
+
+    /**
+     * @dev Validates that the chip used as proof of ownership is in possesion of the msg.sender, is included in the project merkle root, AND
+     * is a chip that's been enrolled in the ManufacturerRegistry.
+     *
+     * @param _provingChip                  The chip used as proof of ownership
+     * @param _chipOwnershipProof           The signature of the chip owner over the hash of the chainId and msg.sender
+     * @param _merkleRoot                   The merkle root of the project
+     * @param _developerMerkleInfo          The Developer Merkle Info of the proving chip
+     * @param _manufacturerValidation       Manufacturer Validation info for the proving chip
+     */
+    function _validateOwnershipAndTreeInclusion(
+        address _provingChip,
+        bytes memory _chipOwnershipProof,
+        bytes32 _merkleRoot,
+        IChipRegistry.DeveloperMerkleInfo memory _developerMerkleInfo,
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
+    )
+        internal
+        view
+    {
+        // Validate chip ownership
+        bytes32 msgHash = abi.encodePacked(block.chainid, msg.sender).toEthSignedMessageHash();
+        require(_provingChip.isValidSignatureNow(msgHash, _chipOwnershipProof), "Invalid chip ownership proof");
+
+        // Validate chip is included in merkle tree
+        bytes32 node = keccak256(
+            bytes.concat(keccak256(
+                abi.encode(
+                    _developerMerkleInfo.developerIndex,
+                    _provingChip,
+                    _manufacturerValidation.enrollmentId,
+                    _developerMerkleInfo.lockinPeriod,
+                    _developerMerkleInfo.serviceId,
+                    _developerMerkleInfo.tokenUri
+                )
+            ))
+        );
+
+        require(MerkleProof.verify(_developerMerkleInfo.developerProof, _merkleRoot, node), "Invalid chip tree inclusion proof");
+
+        // Validate that the chip is part of a valid manufacturer enrollment
+        bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
+            _manufacturerValidation.enrollmentId,
+            _manufacturerValidation.mIndex,
+            _provingChip,
+            _manufacturerValidation.manufacturerProof
+        );
+        require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
+    }
+
 
     /**
      * @dev Deploys a new ProjectRegistrar contract via CREATE2 and registers it to the Developer Registrar

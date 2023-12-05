@@ -5,7 +5,9 @@ import { BigNumber, ContractTransaction } from "ethers";
 import {
   Address,
   ServiceRecord,
-  DeveloperClaimTreeInfo
+  DeveloperClaimTreeInfo,
+  DeveloperMerkleProofInfo,
+  ManufacturerValidationInfo
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
@@ -304,6 +306,10 @@ describe("ArxProjectEnrollmentManager", () => {
     let subjectNameHash: string;
     let subjectMerkleRoot: string;
     let subjectProjectPublicKey: string;
+    let subjectProvingChipId: Address;
+    let subjectDeveloperMerkleInfo: DeveloperMerkleProofInfo;
+    let subjectManufacturerValidation: ManufacturerValidationInfo;
+    let subjectChipOwnershipProof: string;
     let subjectProjectOwnershipProof: string;
     let subjectCaller: Account;
 
@@ -312,6 +318,23 @@ describe("ArxProjectEnrollmentManager", () => {
       subjectProjectClaimDataUri = developerClaimDataUri;
       subjectNameHash = projectNameHash;
       subjectMerkleRoot = projectMerkleRoot;
+      subjectProvingChipId = chipOne.address;
+      subjectDeveloperMerkleInfo = {
+        developerIndex: ZERO,
+        serviceId: chipOneClaim.primaryServiceId,
+        lockinPeriod: chipOneClaim.lockinPeriod,
+        tokenUri: chipOneClaim.tokenUri,
+        developerProof: projectMerkleTree.getProof(0),
+      } as DeveloperMerkleProofInfo;
+      subjectManufacturerValidation = {
+        enrollmentId: developerChipsEnrollmentId,
+        mIndex: ZERO,
+        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
+      } as ManufacturerValidationInfo;
+
+      const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, developerOne.address]);
+      subjectChipOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+
 
       subjectProjectPublicKey = projectOwnerPublicKey;
       subjectProjectOwnershipProof = projectOwnershipProof;
@@ -325,6 +348,10 @@ describe("ArxProjectEnrollmentManager", () => {
         subjectNameHash,
         subjectMerkleRoot,
         subjectProjectPublicKey,
+        subjectProvingChipId,
+        subjectDeveloperMerkleInfo,
+        subjectManufacturerValidation,
+        subjectChipOwnershipProof,
         subjectProjectOwnershipProof
       );
     }
@@ -365,6 +392,43 @@ describe("ArxProjectEnrollmentManager", () => {
         expectedProjectRegistrarAddress,
         developerOne.address
       );
+    });
+
+    describe("when the chip ownership proof is invalid", async () => {
+      beforeEach(async () => {
+        const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, developerOne.address]);
+        subjectChipOwnershipProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid chip ownership proof");
+      });
+    });
+
+    describe("when the chip is not included in the Developer Merkle Tree", async () => {
+      beforeEach(async () => {
+        const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, developerOne.address]);
+        subjectChipOwnershipProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+        subjectProvingChipId = developerOne.address;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid chip tree inclusion proof");
+      });
+    });
+
+    describe("when the manufacturer enrollment is not included in the manufacturer Merkle Tree", async () => {
+      beforeEach(async () => {
+        subjectManufacturerValidation = {
+          enrollmentId: developerChipsEnrollmentId,
+          mIndex: ZERO,
+          manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(1),
+        } as ManufacturerValidationInfo;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Chip not enrolled with ManufacturerRegistry");
+      });
     });
 
     describe("when the projectManager param is the zero address", async () => {
