@@ -1,44 +1,39 @@
-import MerkleTree from './merkleTree'
-import { BigNumber, utils } from 'ethers'
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
+import { Address } from "@utils/types";
 
 export class ManufacturerTree {
-  private readonly tree: MerkleTree
+  private readonly tree: StandardMerkleTree<[number, string]>;
   constructor(enrollmentData: { chipId: string }[]) {
-    this.tree = new MerkleTree(
-      enrollmentData.map(({ chipId }, index) => {
-        return ManufacturerTree.toNode(index, chipId)
-      })
-    )
+    this.tree = StandardMerkleTree.of(
+      enrollmentData.map((info, index) => [index, info.chipId]),
+      ["uint256", "address"]
+    );
   }
 
-  public static verifyProof(
-    index: number | BigNumber,
-    chipId: string,
-    proof: Buffer[],
-    root: Buffer
+  public verifyProof(
+    index: number,
+    chipId: Address,
+    proof: string[]
   ): boolean {
-    let pair = ManufacturerTree.toNode(index, chipId)
-    for (const item of proof) {
-      pair = MerkleTree.combinedHash(pair, item)
-    }
-
-    return pair.equals(root)
+    return StandardMerkleTree.verify(
+      this.tree.root,
+      ["uint256", "address"],
+      [index, chipId],
+      proof
+    );
   }
 
-  // keccak256(abi.encode(index, chipId))
-  public static toNode(index: number | BigNumber, chipId: string): Buffer {
-    return Buffer.from(
-      utils.solidityKeccak256(['uint256', 'address'], [index, chipId]).substring(2),
-      'hex'
-    )
+  // keccak(keccak256(abi.encode(index, chipId)))
+  public toNode(index: number, chipId: string): string {
+    return this.tree.leafHash([index, chipId]);
   }
 
-  public getHexRoot(): string {
-    return this.tree.getHexRoot()
+  public getRoot(): string {
+    return this.tree.root;
   }
 
   // returns the hex bytes32 values of the proof
-  public getProof(index: number | BigNumber, chipId: string): string[] {
-    return this.tree.getHexProof(ManufacturerTree.toNode(index, chipId))
+  public getProof(index: number | [number, string]): string[] {
+    return this.tree.getProof(index);
   }
 }

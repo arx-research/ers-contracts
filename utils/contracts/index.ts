@@ -1,6 +1,7 @@
 export {
   AccountMock,
   ArxProjectEnrollmentManager,
+  AuthenticityProjectRegistrar,
   ChipRegistry,
   ChipRegistryMock,
   ChipValidationsMock,
@@ -9,13 +10,12 @@ export {
   ERSRegistry,
   InterfaceIdGetterMock,
   ManufacturerRegistry,
-  ProjectRegistrar,
   ProjectRegistrarMock,
   SECP256k1Model,
   ServicesRegistry,
   TransferPolicyMock,
-  TSMRegistrar,
-  TSMRegistrarFactory,
-  TSMRegistry,
-  TSMRegistryMock
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistry,
+  DeveloperRegistryMock
 } from "../../typechain";

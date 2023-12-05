@@ -10,7 +10,7 @@ import {
   InterfaceIdGetterMock__factory,
   ProjectRegistrarMock__factory,
   TransferPolicyMock__factory,
-  TSMRegistryMock__factory
+  DeveloperRegistryMock__factory
 } from "../../typechain/factories/contracts/mocks";
 
 import {
@@ -21,7 +21,7 @@ import {
   InterfaceIdGetterMock,
   ProjectRegistrarMock,
   TransferPolicyMock,
-  TSMRegistryMock
+  DeveloperRegistryMock
 } from "../contracts";
 
 export default class DeployMocks {
@@ -31,11 +31,11 @@ export default class DeployMocks {
     this._deployerSigner = deployerSigner;
   }
 
-  public async deployTSMRegistryMock(
+  public async deployDeveloperRegistryMock(
     owner: Address
-  ): Promise<TSMRegistryMock> {
-    const tsmRegistry = await new TSMRegistryMock__factory(this._deployerSigner).deploy(owner);
-    return tsmRegistry;
+  ): Promise<DeveloperRegistryMock> {
+    const developerRegistry = await new DeveloperRegistryMock__factory(this._deployerSigner).deploy(owner);
+    return developerRegistry;
   }
 
   public async deployClaimedPBTMock(
@@ -53,7 +53,7 @@ export default class DeployMocks {
 
   public async deployAccountMock(
     publicKey: Address,
-    chipRegistry: Address,
+    chipRegistry: Address
   ): Promise<AccountMock> {
     const accountMock = await new AccountMock__factory(this._deployerSigner).deploy(publicKey, chipRegistry);
     return accountMock;

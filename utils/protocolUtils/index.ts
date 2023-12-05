@@ -11,11 +11,13 @@ import {
   ERSRegistry,
   ManufacturerRegistry,
   ServicesRegistry,
-  TSMRegistrar,
-  TSMRegistrarFactory,
-  TSMRegistry
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistry
 } from "..";
-import { TSMRegistrar__factory } from "../../typechain/factories/contracts";
+import { DeveloperRegistrar__factory } from "../../typechain/factories/contracts";
+
+export * from "./signatures";
 
 export const createTokenData = (ersNode: string, enrollmentId: string): string => {
   return ethers.utils.solidityPack(["bytes32", "bytes32"], [ersNode, enrollmentId]);
@@ -59,13 +61,13 @@ export class ERSFixture {
 
   public manufacturerRegistry: ManufacturerRegistry;
   public chipRegistry: ChipRegistry;
-  public tsmRegistry: TSMRegistry;
+  public developerRegistry: DeveloperRegistry;
   public ersRegistry: ERSRegistry;
   public servicesRegistry: ServicesRegistry;
-  public tsmRegistrarFactory: TSMRegistrarFactory;
+  public developerRegistrarFactory: DeveloperRegistrarFactory;
 
-  public tsmRegistrar: TSMRegistrar;
-  public tsmManager: ArxProjectEnrollmentManager;
+  public developerRegistrar: DeveloperRegistrar;
+  public developerManager: ArxProjectEnrollmentManager;
 
   constructor(provider: providers.Web3Provider | providers.JsonRpcProvider, ownerAddress: Address) {
     this._provider = provider;
@@ -77,33 +79,33 @@ export class ERSFixture {
   public async initializeProtocol(maxBlockWindow: BigNumber = BigNumber.from(10)): Promise<void> {
     this.manufacturerRegistry = await this._deployer.deployManufacturerRegistry(this._ownerAddress);
     this.chipRegistry = await this._deployer.deployChipRegistry(this.manufacturerRegistry.address, [], maxBlockWindow);
-    this.tsmRegistry = await this._deployer.deployTSMRegistry(this._ownerAddress);
-    this.ersRegistry = await this._deployer.deployERSRegistry(this.chipRegistry.address, this.tsmRegistry.address);
+    this.developerRegistry = await this._deployer.deployDeveloperRegistry(this._ownerAddress);
+    this.ersRegistry = await this._deployer.deployERSRegistry(this.chipRegistry.address, this.developerRegistry.address);
     this.servicesRegistry = await this._deployer.deployServicesRegistry(this.chipRegistry.address, maxBlockWindow);
-    this.tsmRegistrarFactory = await this._deployer.deployTSMRegistrarFactory(this.chipRegistry.address, this.ersRegistry.address, this.tsmRegistry.address);
+    this.developerRegistrarFactory = await this._deployer.deployDeveloperRegistrarFactory(this.chipRegistry.address, this.ersRegistry.address, this.developerRegistry.address);
 
-    await this.tsmRegistry.initialize(this.ersRegistry.address, [this.tsmRegistrarFactory.address]);
-    await this.chipRegistry.initialize(this.ersRegistry.address, this.servicesRegistry.address, this.tsmRegistry.address);
+    await this.developerRegistry.initialize(this.ersRegistry.address, [this.developerRegistrarFactory.address]);
+    await this.chipRegistry.initialize(this.ersRegistry.address, this.servicesRegistry.address, this.developerRegistry.address);
 
     await this.ersRegistry.createSubnodeRecord(
       NULL_NODE,
       calculateLabelHash("ers"),
-      this.tsmRegistry.address,
-      this.tsmRegistry.address
+      this.developerRegistry.address,
+      this.developerRegistry.address
     );
   }
 
   public async initializeProject(projectName: string, maxBlockWindow: BigNumber = BigNumber.from(10)): Promise<void> {
-    await this.tsmRegistry.addAllowedTSM(this._ownerAddress, calculateLabelHash(projectName));
+    await this.developerRegistry.addAllowedDeveloper(this._ownerAddress, calculateLabelHash(projectName));
 
-    const tx = await this.tsmRegistry.createNewTSMRegistrar(this.tsmRegistrarFactory.address);
-    this.tsmRegistrar = new TSMRegistrar__factory(this._ownerSigner).attach(
-      await this._getTSMRegistrarAddress(tx.hash, this.tsmRegistry)
+    const tx = await this.developerRegistry.createNewDeveloperRegistrar(this.developerRegistrarFactory.address);
+    this.developerRegistrar = new DeveloperRegistrar__factory(this._ownerSigner).attach(
+      await this._getDeveloperRegistrarAddress(tx.hash, this.developerRegistry)
     );
 
-    this.tsmManager = await this._deployer.deployArxProjectEnrollmentManager(
+    this.developerManager = await this._deployer.deployArxProjectEnrollmentManager(
       this.chipRegistry.address,
-      this.tsmRegistrar.address,
+      this.developerRegistrar.address,
       this.ersRegistry.address,
       this.manufacturerRegistry.address,
       ADDRESS_ZERO,
@@ -111,9 +113,9 @@ export class ERSFixture {
     );
   }
 
-  private async  _getTSMRegistrarAddress(txHash: string, tsmRegistry: TSMRegistry): Promise<Address> {
+  private async  _getDeveloperRegistrarAddress(txHash: string, developerRegistry: DeveloperRegistry): Promise<Address> {
     const receipt: ethers.providers.TransactionReceipt = await this._provider.getTransactionReceipt(txHash);
-    const registrarAddress: Address = tsmRegistry.interface.parseLog(receipt.logs[receipt.logs.length - 1]).args.tsmRegistrar;
+    const registrarAddress: Address = developerRegistry.interface.parseLog(receipt.logs[receipt.logs.length - 1]).args.developerRegistrar;
     return registrarAddress;
   }
 }

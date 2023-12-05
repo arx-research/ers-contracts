@@ -28,7 +28,7 @@ describe("ERSRegistry", () => {
   let resolver: Account;
 
   let chipRegistry: Account;
-  let tsmRegistry: Account;
+  let developerRegistry: Account;
   let ersRegistry: ERSRegistry;
   let deployer: DeployHelper;
   const NULL_NODE = ethers.utils.formatBytes32String("");
@@ -40,24 +40,24 @@ describe("ERSRegistry", () => {
       newOwner,
       resolver,
       chipRegistry,
-      tsmRegistry,
+      developerRegistry,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
 
-    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, tsmRegistry.address);
+    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
   });
 
   addSnapshotBeforeRestoreAfterEach();
 
   describe("#constructor", async () => {
-    it("should set the zero node to the TSMRegistry and contract state variables", async () => {
+    it("should set the zero node to the DeveloperRegistry and contract state variables", async () => {
       const actualOwner = await ersRegistry.getOwner(NULL_NODE);
-      const actualTSMRegistry = await ersRegistry.tsmRegistry();
+      const actualDeveloperRegistry = await ersRegistry.developerRegistry();
       const actualChipRegistry = await ersRegistry.chipRegistry();
 
       expect(actualOwner).to.eq(owner.address);
-      expect(actualTSMRegistry).to.eq(tsmRegistry.address);
+      expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
       expect(actualChipRegistry).to.eq(chipRegistry.address);
     });
   });
@@ -129,7 +129,7 @@ describe("ERSRegistry", () => {
 
     describe("when the caller is not the node owner", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmRegistry;
+        subjectCaller = developerRegistry;
       });
 
       it("should revert", async () => {
@@ -147,15 +147,15 @@ describe("ERSRegistry", () => {
       await ersRegistry.connect(owner.wallet).createSubnodeRecord(
         NULL_NODE,
         calculateLabelHash("ers"),
-        tsmRegistry.address,
+        developerRegistry.address,
         resolver.address
       );
 
       subjectNode = calculateSubnodeHash("ers");
-      subjectNameHash = calculateLabelHash("tsm");
-      subjectCaller = tsmRegistry;
+      subjectNameHash = calculateLabelHash("developer");
+      subjectCaller = developerRegistry;
 
-      await ersRegistry.connect(tsmRegistry.wallet).createSubnodeRecord(
+      await ersRegistry.connect(developerRegistry.wallet).createSubnodeRecord(
         subjectNode,
         subjectNameHash,
         owner.address,
@@ -168,7 +168,7 @@ describe("ERSRegistry", () => {
     }
 
     it("should set the record", async () => {
-      const subnodeHash = calculateSubnodeHash("tsm.ers");
+      const subnodeHash = calculateSubnodeHash("developer.ers");
       const preActualOwner = await ersRegistry.getOwner(subnodeHash);
       const preActualResolver = await ersRegistry.getResolver(subnodeHash);
       expect(preActualOwner).to.not.eq(ADDRESS_ZERO);
@@ -185,7 +185,7 @@ describe("ERSRegistry", () => {
     it("should emit the correct NewOwner event", async () => {
       await expect(subject()).to.emit(ersRegistry, "NewOwner").withArgs(
         subjectNode,
-        calculateSubnodeHash("tsm.ers"),
+        calculateSubnodeHash("developer.ers"),
         subjectNameHash,
         ADDRESS_ZERO
       );
@@ -193,7 +193,7 @@ describe("ERSRegistry", () => {
 
     it("should emit the correct NewResolver event", async () => {
       await expect(subject()).to.emit(ersRegistry, "NewResolver").withArgs(
-        calculateSubnodeHash("tsm.ers"),
+        calculateSubnodeHash("developer.ers"),
         ADDRESS_ZERO
       );
     });
@@ -208,7 +208,7 @@ describe("ERSRegistry", () => {
       });
     });
 
-    describe("when the caller is not the TSMRegistry", async () => {
+    describe("when the caller is not the DeveloperRegistry", async () => {
       beforeEach(async () => {
         subjectNode = NULL_NODE;
         subjectNameHash = calculateLabelHash("ers");
@@ -216,13 +216,13 @@ describe("ERSRegistry", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be TSMRegistry");
+        await expect(subject()).to.be.revertedWith("Caller must be DeveloperRegistry");
       });
     });
 
-    describe("when the caller is the TSMRegistry but the TSMRegistry is not the node owner (this shouldn't happen)", async () => {
+    describe("when the caller is the DeveloperRegistry but the DeveloperRegistry is not the node owner (this shouldn't happen)", async () => {
       beforeEach(async () => {
-        const nodeHash = calculateSubnodeHash("tsm.ers");
+        const nodeHash = calculateSubnodeHash("developer.ers");
         await ersRegistry.connect(owner.wallet).createSubnodeRecord(nodeHash, subjectNameHash, owner.address, resolver.address);
         subjectNode = nodeHash;
       });
@@ -322,11 +322,11 @@ describe("ERSRegistry", () => {
 
     describe("when the caller is not the ChipRegistry", async () => {
       beforeEach(async () => {
-        subjectCaller = tsmRegistry;
+        subjectCaller = developerRegistry;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry");
+        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry or owner of node");
       });
     });
   });

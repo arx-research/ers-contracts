@@ -28,9 +28,9 @@ contract ProjectRegistrarMock {
     function claimChip(
         bytes32 _nameHash,
         address chipOwner,
-        IChipRegistry.TSMMerkleInfo calldata _claimData,
+        IChipRegistry.DeveloperMerkleInfo calldata _claimData,
         IChipRegistry.ManufacturerValidation calldata _manufacturerValidation,
-        bytes calldata _tsmCertificate,
+        bytes calldata _developerInclusionProof,
         bytes calldata _signedCert
     )
         external
@@ -47,14 +47,14 @@ contract ProjectRegistrarMock {
         IChipRegistry.ChipClaim memory chipClaim = IChipRegistry.ChipClaim({
             owner: chipOwner,
             ersNode: chipErsNode,
-            tsmMerkleInfo: _claimData
+            developerMerkleInfo: _claimData
         });
 
         chipRegistry.claimChip(
             msg.sender,
             chipClaim,
             _manufacturerValidation,
-            _tsmCertificate,
+            _developerInclusionProof,
             _signedCert
         );
     }

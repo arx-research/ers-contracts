@@ -8,18 +8,18 @@ import { ITransferPolicy } from "./ITransferPolicy.sol";
 
 interface IChipRegistry is IPBT {
 
-    struct TSMMerkleInfo {
-        uint256 tsmIndex;
+    struct DeveloperMerkleInfo {
+        uint256 developerIndex;
         bytes32 serviceId;
         uint256 lockinPeriod;
         string tokenUri;
-        bytes32[] tsmProof;
+        bytes32[] developerProof;
     }
 
     struct ChipClaim {
         address owner;
         bytes32 ersNode;
-        TSMMerkleInfo tsmMerkleInfo;
+        DeveloperMerkleInfo developerMerkleInfo;
     }
 
     struct ManufacturerValidation {
@@ -42,8 +42,8 @@ interface IChipRegistry is IPBT {
         address _chipId,
         ChipClaim calldata _chipClaim,
         ManufacturerValidation calldata _manufacturerValidation,
-        bytes calldata _tsmCertificate,
-        bytes calldata _custodyProof
+        bytes calldata _developerInclusionProof,
+        bytes calldata _developerCustodyProof
     )
         external;
 }

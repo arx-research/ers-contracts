@@ -212,7 +212,7 @@ contract ManufacturerRegistry is Ownable {
         returns (bool)
     {
         bytes32 enrollmentMerkleRoot = enrollments[_enrollmentId].merkleRoot;
-        bytes32 node = keccak256(abi.encodePacked(_index, _chipId));
+        bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(_index, _chipId))));
 
         return MerkleProof.verify(_merkleProof, enrollmentMerkleRoot, node);
     }

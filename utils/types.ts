@@ -2,7 +2,7 @@ import { BigNumber } from "ethers";
 
 export type Address = string;
 
-export interface TSMClaimTreeInfo {
+export interface DeveloperClaimTreeInfo {
   chipId: Address;
   enrollmentId: string;
   lockinPeriod: BigNumber;
@@ -10,18 +10,18 @@ export interface TSMClaimTreeInfo {
   tokenUri: string;
 }
 
-export interface TSMMerkleProofInfo {
-  tsmIndex: BigNumber;          // When generating a merkle tree you input an array of leaves this is the index of the leaf in that array
-  serviceId: string;            // The id of the primary service the TSM specifies for the chip owner
+export interface DeveloperMerkleProofInfo {
+  developerIndex: BigNumber;          // When generating a merkle tree you input an array of leaves this is the index of the leaf in that array
+  serviceId: string;            // The id of the primary service the Developer specifies for the chip owner
   lockinPeriod: BigNumber;      // Length of time before the chip owner can change the primary service
   tokenUri: string;             // tokenUri like in ERC-721
-  tsmProof: string[];           // The merkle proof used to prove that the chip is part of a tree
+  developerProof: string[];           // The merkle proof used to prove that the chip is part of a tree
 }
 
 export interface ChipClaimInfo {
   owner: Address;
   ersNode: string;
-  tsmMerkleInfo: TSMMerkleProofInfo;
+  developerMerkleInfo: DeveloperMerkleProofInfo;
 }
 
 export interface ManufacturerValidationInfo {

@@ -1,6 +1,6 @@
 import "module-alias/register";
 
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
@@ -337,7 +337,7 @@ describe("ManufacturerRegistry", () => {
 
   describe("#isEnrolledChip", async () => {
     let subjectEnrollmentId: string;
-    let subjectIndex: BigNumber;
+    let subjectIndex: number;
     let subjectChipId: Address;
     let subjectMerkleProof: string[];
 
@@ -350,7 +350,7 @@ describe("ManufacturerRegistry", () => {
 
       merkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
 
-      const merkleRoot = merkleTree.getHexRoot();
+      const merkleRoot = merkleTree.getRoot();
       const certSigner = manufacturerOne.address;
       const chipAuthModel = authModel.address;
       const chipValidationDataUri = "ipfs://ipfsHash";
@@ -368,9 +368,9 @@ describe("ManufacturerRegistry", () => {
       );
 
       subjectEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
-      subjectIndex = ZERO;
+      subjectIndex = 0;
       subjectChipId = chipOne.address;
-      subjectMerkleProof = merkleTree.getProof(subjectIndex, subjectChipId);
+      subjectMerkleProof = merkleTree.getProof(subjectIndex);
     });
 
     async function subject(): Promise<any> {
@@ -390,7 +390,7 @@ describe("ManufacturerRegistry", () => {
 
     describe("when proof is invalid", () => {
       beforeEach(async () => {
-        subjectMerkleProof = merkleTree.getProof(ONE, chipTwo.address);
+        subjectMerkleProof = merkleTree.getProof(1);
       });
 
       it("should return false", async () => {

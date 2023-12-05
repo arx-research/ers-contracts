@@ -2,6 +2,6 @@
 
 pragma solidity ^0.8.17;
 
-interface ITSMRegistrarFactory {
+interface IDeveloperRegistrarFactory {
     function deployRegistrar(address _owner) external returns(address);
 }

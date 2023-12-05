@@ -6,18 +6,18 @@ import { BigNumber } from "ethers";
 import {
   ManufacturerValidationInfo,
   ServiceRecord,
-  TSMClaimTreeInfo,
-  TSMMerkleProofInfo
+  DeveloperClaimTreeInfo,
+  DeveloperMerkleProofInfo
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
+  AuthenticityProjectRegistrar,
   ERSRegistry,
   ManufacturerRegistry,
-  ProjectRegistrar,
   ServicesRegistry,
-  TSMRegistrar,
-  TSMRegistrarFactory,
-  TSMRegistry,
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistry,
   ChipRegistryMock
 } from "@utils/contracts";
 import { NULL_NODE, ZERO } from "@utils/constants";
@@ -27,34 +27,42 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
-import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash } from "@utils/protocolUtils";
-import { ManufacturerTree, TSMTree } from "@utils/common";
+import {
+  calculateEnrollmentId,
+  calculateLabelHash,
+  calculateSubnodeHash,
+  createChipOwnershipProof,
+  createDeveloperCustodyProof,
+  createDeveloperInclusionProof,
+  createProjectOwnershipProof
+} from "@utils/protocolUtils";
+import { ManufacturerTree, DeveloperTree } from "@utils/common";
 
 import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe("ProjectRegistrar", () => {
+describe("AuthenticityProjectRegistrar", () => {
   let owner: Account;
-  let tsmOne: Account;
+  let developerOne: Account;
   let manufacturerOne: Account;
   let chipOne: Account;
   let chipTwo: Account;
   let projectManager: Account;
   let authModel: Account;
-  let fakeTSMRegistrar: Account;
+  let fakeDeveloperRegistrar: Account;
 
-  let projectRegistrar: ProjectRegistrar;
+  let projectRegistrar: AuthenticityProjectRegistrar;
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
-  let tsmRegistrarFactory: TSMRegistrarFactory;
-  let tsmRegistry: TSMRegistry;
+  let developerRegistrarFactory: DeveloperRegistrarFactory;
+  let developerRegistry: DeveloperRegistry;
   let servicesRegistry: ServicesRegistry;
 
   // Chip Registry Mock is used to be able to test the arguments passed to ChipRegistry.claimChip
   let chipRegistry: ChipRegistryMock;
   let transferPolicy: Account;
-  let tsmRegistrar: TSMRegistrar;
+  let developerRegistrar: DeveloperRegistrar;
 
 
   let manufacturerId: string;
@@ -64,13 +72,13 @@ describe("ProjectRegistrar", () => {
   let projectNameHash: string;
   let manufacturerEnrollmentMerkleTree: ManufacturerTree;
   let deployer: DeployHelper;
-  let chipOneClaim: TSMClaimTreeInfo;
-  let chipTwoClaim: TSMClaimTreeInfo;
+  let chipOneClaim: DeveloperClaimTreeInfo;
+  let chipTwoClaim: DeveloperClaimTreeInfo;
 
-  // TSM Data
-  let tsmChipsEnrollmentId: string;
-  let tsmClaimTokenURI: string;
-  let tsmNameHash: string;
+  // Developer Data
+  let developerChipsEnrollmentId: string;
+  let developerClaimTokenURI: string;
+  let developerNameHash: string;
 
   // Manufacturer Chip Enrollment Data
   let manufacturerMerkleRoot: string;
@@ -81,8 +89,7 @@ describe("ProjectRegistrar", () => {
   let manufacturerChipModel: string;
 
   // Project Chip Enrollment Data
-  let projectPackedProjectRegistarAddress: string;
-  let projectMerkleTree: TSMTree;
+  let projectMerkleTree: DeveloperTree;
   let projectMerkleRoot: string;
   let projectOwnerPublicKey: string;
   let projectOwnershipProof: string;
@@ -98,22 +105,22 @@ describe("ProjectRegistrar", () => {
     // Environment set up
     [
       owner,
-      tsmOne,
+      developerOne,
       manufacturerOne,
       chipOne,
       chipTwo,
       projectManager,
       authModel,
-      fakeTSMRegistrar,
+      fakeDeveloperRegistrar,
       transferPolicy,
     ] = await getAccounts();
     deployer = new DeployHelper(owner.wallet);
 
     chainId = await blockchain.getChainId();
 
-    // Example TSM Data
-    tsmNameHash = calculateLabelHash("Gucci");
-    tsmClaimTokenURI = "https://tokenuri.com";
+    // Example Developer Data
+    developerNameHash = calculateLabelHash("Gucci");
+    developerClaimTokenURI = "https://tokenuri.com";
 
     // 1. Deploy example ERS system's Manufacturer Registry
     manufacturerRegistry = await deployer.deployManufacturerRegistry(owner.address);
@@ -122,12 +129,12 @@ describe("ProjectRegistrar", () => {
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
     await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
 
-    tsmChipsEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
+    developerChipsEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
 
     // 3. Enroll chips to Manufacturer Registry under example manufacturer
     // Example Manufacturer Chip Enrollment Data
     manufacturerEnrollmentMerkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getHexRoot();
+    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getRoot();
     manufacturerCertSigner = manufacturerOne.address;
     manufacturerChipAuthModel = authModel.address;
     manufacturerValidationUri = "ipfs://bafy";
@@ -149,59 +156,59 @@ describe("ProjectRegistrar", () => {
     chipRegistryGatewayURLs = ["www.resolve.com"];
     chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, chipRegistryGatewayURLs);
 
-    // 5. Deploy TSM Registry
-    tsmRegistry = await deployer.deployTSMRegistry(owner.address);
+    // 5. Deploy Developer Registry
+    developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
 
     // 6. Deploy ERS Registry
-    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, tsmRegistry.address);
-    await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), tsmRegistry.address, tsmRegistry.address);
+    ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
+    await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
     // 7. Deploy Services Registry
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address);
 
-    // 8. Deploy TSM Registrar Factory
-    tsmRegistrarFactory = await deployer.deployTSMRegistrarFactory(
+    // 8. Deploy Developer Registrar Factory
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      tsmRegistry.address
+      developerRegistry.address
     );
 
     // 9. Initialize Chip Registry
     await chipRegistry.connect(owner.wallet).initialize(
       ersRegistry.address,
       servicesRegistry.address,
-      tsmRegistry.address
+      developerRegistry.address
     );
 
-    // 10. Initialize TSM Registry
-    await tsmRegistry.connect(owner.wallet).initialize(ersRegistry.address, [tsmRegistrarFactory.address]);
+    // 10. Initialize Developer Registry
+    await developerRegistry.connect(owner.wallet).initialize(ersRegistry.address, [developerRegistrarFactory.address]);
 
-    // 12. Add owner as TSM
-    await tsmRegistry.connect(owner.wallet).addAllowedTSM(tsmOne.address, tsmNameHash);
+    // 12. Add owner as Developer
+    await developerRegistry.connect(owner.wallet).addAllowedDeveloper(developerOne.address, developerNameHash);
 
-    // 13. Deploy TSM Registrar from TSM Registry
-    // TSM Registry checks if it's initialized when createNewTSMRegistrar is called
+    // 13. Deploy Developer Registrar from Developer Registry
+    // Developer Registry checks if it's initialized when createNewDeveloperRegistrar is called
     // by checking the factory address & ers registry address
 
-    // Simulate call to retrieve expected TSM Registrar address
-    const expectedRegistrarAddress = await tsmRegistry
-      .connect(tsmOne.wallet)
-      .callStatic.createNewTSMRegistrar(tsmRegistrarFactory.address);
+    // Simulate call to retrieve expected Developer Registrar address
+    const expectedRegistrarAddress = await developerRegistry
+      .connect(developerOne.wallet)
+      .callStatic.createNewDeveloperRegistrar(developerRegistrarFactory.address);
 
     // Actual contract call
-    await tsmRegistry
-      .connect(tsmOne.wallet)
-      .createNewTSMRegistrar(tsmRegistrarFactory.address);
+    await developerRegistry
+      .connect(developerOne.wallet)
+      .createNewDeveloperRegistrar(developerRegistrarFactory.address);
 
-    // Create TSM Registrar object
-    tsmRegistrar = await deployer.getTSMRegistrar(expectedRegistrarAddress);
+    // Create Developer Registrar object
+    developerRegistrar = await deployer.getDeveloperRegistrar(expectedRegistrarAddress);
 
     // 14. Deploy project registrar
-    projectRegistrar = await deployer.deployProjectRegistrar(
+    projectRegistrar = await deployer.deployAuthenticityProjectRegistrar(
       projectManager.address,
       chipRegistry.address,
       ersRegistry.address,
-      tsmRegistrar.address
+      developerRegistrar.address
     );
 
     // 15. Create example service for project
@@ -215,7 +222,7 @@ describe("ProjectRegistrar", () => {
         appendId: true,
       },
       {
-        recordType: ethers.utils.formatBytes32String("contentApp"),
+        recordType: ethers.utils.formatBytes32String("redirectUrl"),
         content: ethers.utils.hexlify(Buffer.from("flex.gucci.com")),
         appendId: false,
       },
@@ -229,31 +236,30 @@ describe("ProjectRegistrar", () => {
     // Create Merkle tree for project-relevant chips
     chipOneClaim = {
       chipId: chipOne.address,
-      enrollmentId: tsmChipsEnrollmentId,
+      enrollmentId: developerChipsEnrollmentId,
       lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
       primaryServiceId: serviceId,
-      tokenUri: tsmClaimTokenURI,
+      tokenUri: developerClaimTokenURI,
     };
     chipTwoClaim = {
       chipId: chipTwo.address,
-      enrollmentId: tsmChipsEnrollmentId,
+      enrollmentId: developerChipsEnrollmentId,
       lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
       primaryServiceId: serviceId,
-      tokenUri: tsmClaimTokenURI,
+      tokenUri: developerClaimTokenURI,
     };
-    projectMerkleTree = new TSMTree([chipOneClaim, chipTwoClaim]);
+    projectMerkleTree = new DeveloperTree([chipOneClaim, chipTwoClaim]);
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
-    projectPackedProjectRegistarAddress = ethers.utils.solidityPack(["uint256", "address"], [chainId, projectRegistrar.address]);
-    projectMerkleRoot = projectMerkleTree.getHexRoot();
-    projectOwnerPublicKey = tsmOne.address;
-    projectOwnershipProof = await tsmOne.wallet.signMessage(ethers.utils.arrayify(projectPackedProjectRegistarAddress));
+    projectMerkleRoot = projectMerkleTree.getRoot();
+    projectOwnerPublicKey = developerOne.address;
+    projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chainId);
     projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
 
-    // Call TSM Registrar to add project
-    await tsmRegistrar
-      .connect(tsmOne.wallet)
+    // Call Developer Registrar to add project
+    await developerRegistrar
+      .connect(developerOne.wallet)
       .addProject(
         projectNameHash,
         projectRegistrar.address,
@@ -271,13 +277,13 @@ describe("ProjectRegistrar", () => {
       const actualOwner = await projectRegistrar.owner();
       const actualChipRegistry = await projectRegistrar.chipRegistry();
       const actualERSRegistry = await projectRegistrar.ers();
-      const actualTSMRegistrar = await projectRegistrar.tsmRegistrar();
+      const actualDeveloperRegistrar = await projectRegistrar.developerRegistrar();
       const actualMaxBlockWindow = await projectRegistrar.maxBlockWindow();
 
       expect(actualOwner).to.eq(projectManager.address);
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualERSRegistry).to.eq(ersRegistry.address);
-      expect(actualTSMRegistrar).to.eq(tsmRegistrar.address);
+      expect(actualDeveloperRegistrar).to.eq(developerRegistrar.address);
       expect(actualMaxBlockWindow).to.eq(maxBlockWindow);
     });
   });
@@ -285,47 +291,43 @@ describe("ProjectRegistrar", () => {
   describe("#claimChip", async() => {
     let subjectChipId: string;
     let subjectNameHash: string;
-    let subjectChipClaim: TSMMerkleProofInfo;
+    let subjectChipClaim: DeveloperMerkleProofInfo;
     let subjectManufacturerValidation: ManufacturerValidationInfo;
     let subjectCommitBlock: BigNumber;
-    let subjectOwnershipProof: string;
-    let subjectTSMCertificate: string;
-    let subjectCustodyProof: string;
+    let subjectChipOwnershipProof: string;
+    let subjectDeveloperInclusionProof: string;
+    let subjectDeveloperCustodyProof: string;
     let subjectCaller: Account;
-
-    let packedOwnershipProof: string;
 
     beforeEach(async () => {
       subjectChipId = chipOne.address;
       subjectNameHash = calculateLabelHash("chip1");
       subjectChipClaim = {
-        tsmIndex: ZERO,
+        developerIndex: ZERO,
         serviceId,
         lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
-        tokenUri: tsmClaimTokenURI,
-        tsmProof: projectMerkleTree.getProof(ZERO, chipOneClaim),
-      } as TSMMerkleProofInfo,
+        tokenUri: developerClaimTokenURI,
+        developerProof: projectMerkleTree.getProof(0),
+      } as DeveloperMerkleProofInfo,
 
       subjectManufacturerValidation = {
-        enrollmentId: tsmChipsEnrollmentId,
+        enrollmentId: developerChipsEnrollmentId,
         mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(ZERO, chipOne.address),
+        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
       };
 
       subjectCommitBlock = await blockchain.getLatestBlockNumber();
 
-      const packedTSMCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-      subjectTSMCertificate = await tsmOne.wallet.signMessage(ethers.utils.arrayify(packedTSMCert));
-
-      const packedCustodyProof = ethers.utils.solidityPack(["address"], [tsmOne.address]);
-      subjectCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedCustodyProof));
+      subjectDeveloperInclusionProof = await createDeveloperInclusionProof(developerOne, chipOne.address);
+      subjectDeveloperCustodyProof = await createDeveloperCustodyProof(chipOne, developerOne.address);
       subjectCaller = owner;
-
-      packedOwnershipProof = ethers.utils.solidityPack(
-        ["uint256", "uint256", "bytes32", "address"],
-        [chainId, subjectCommitBlock, subjectNameHash, subjectCaller.address]
+      subjectChipOwnershipProof = await createChipOwnershipProof(
+        chipOne,
+        chainId,
+        subjectCommitBlock,
+        subjectNameHash,
+        subjectCaller.address
       );
-      subjectOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedOwnershipProof));
     });
 
     async function subject(): Promise<any> {
@@ -335,9 +337,9 @@ describe("ProjectRegistrar", () => {
         subjectChipClaim,
         subjectManufacturerValidation,
         subjectCommitBlock,
-        subjectOwnershipProof,
-        subjectTSMCertificate,
-        subjectCustodyProof
+        subjectChipOwnershipProof,
+        subjectDeveloperInclusionProof,
+        subjectDeveloperCustodyProof
       );
     }
 
@@ -355,8 +357,8 @@ describe("ProjectRegistrar", () => {
       await subject();
 
       expect(await chipRegistry.chipId()).to.be.equal(subjectChipId);
-      expect(await chipRegistry.tsmCertificate()).to.be.equal(subjectTSMCertificate);
-      expect(await chipRegistry.signedCert()).to.be.equal(subjectCustodyProof);
+      expect(await chipRegistry.developerInclusionProof()).to.be.equal(subjectDeveloperInclusionProof);
+      expect(await chipRegistry.developerCustodyProof()).to.be.equal(subjectDeveloperCustodyProof);
     });
 
     describe("when caller is the chip", async () => {
@@ -371,7 +373,13 @@ describe("ProjectRegistrar", () => {
 
     describe("claimChip will revert if the ownership proof passed has an invalid signature", async () => {
       beforeEach(async() => {
-        subjectOwnershipProof = await owner.wallet.signMessage(ethers.utils.arrayify(packedOwnershipProof));
+        subjectChipOwnershipProof = await createChipOwnershipProof(
+          owner,
+          chainId,
+          subjectCommitBlock,
+          subjectNameHash,
+          chipTwo.address
+        );
       });
 
       it("should revert", async() => {
@@ -382,11 +390,13 @@ describe("ProjectRegistrar", () => {
     describe("claimChip will revert if wrong chainId is used", async () => {
       beforeEach(async() => {
         const badChainId = 1000;
-        packedOwnershipProof = ethers.utils.solidityPack(
-          ["uint256", "uint256", "bytes32"],
-          [badChainId, subjectCommitBlock, subjectNameHash]
+        subjectChipOwnershipProof = await createChipOwnershipProof(
+          chipOne,
+          badChainId,
+          subjectCommitBlock,
+          subjectNameHash,
+          chipTwo.address
         );
-        subjectOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedOwnershipProof));
       });
 
       it("should revert", async() => {
@@ -410,15 +420,15 @@ describe("ProjectRegistrar", () => {
     let subjectCaller:Account;
 
     beforeEach(async () => {
-      // Deploy new project registrar with the fake TSM Registrar as the set TSM Registrar
+      // Deploy new project registrar with the fake Developer Registrar as the set Developer Registrar
       // This is done so we can call setRootNode externally
-      projectRegistrar = await deployer.deployProjectRegistrar(
+      projectRegistrar = await deployer.deployAuthenticityProjectRegistrar(
         projectManager.address,
         chipRegistry.address,
         ersRegistry.address,
-        fakeTSMRegistrar.address
+        fakeDeveloperRegistrar.address
       );
-      subjectCaller = fakeTSMRegistrar;
+      subjectCaller = fakeDeveloperRegistrar;
       subjectRootNode = ethers.utils.formatBytes32String("SomethingElse");
     });
 
@@ -437,14 +447,14 @@ describe("ProjectRegistrar", () => {
       );
     });
 
-    describe("setRootNode reverts when the caller is not the TSM Registrar contract", async() => {
+    describe("setRootNode reverts when the caller is not the Developer Registrar contract", async() => {
       beforeEach(() => {
-        // Any Account should cause a revert as long as it isn't the fakeTSMRegistrar
+        // Any Account should cause a revert as long as it isn't the fakeDeveloperRegistrar
         subjectCaller = projectManager;
       });
 
       it("should revert",  async() => {
-        await expect(subject()).to.be.revertedWith("onlyTSMRegistrar: Only the contract's TSM Registrar can call this function");
+        await expect(subject()).to.be.revertedWith("onlyDeveloperRegistrar: Only the contract's Developer Registrar can call this function");
       });
     });
 

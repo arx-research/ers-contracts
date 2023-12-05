@@ -80,7 +80,7 @@ describe("ServicesRegistry", () => {
       recordOneType = ethers.utils.formatBytes32String("tokenUri");
       recordOneContent = ethers.utils.hexlify(Buffer.from("//api.gucci.com/tokens/1"));
 
-      recordTwoType = ethers.utils.formatBytes32String("contentApp");
+      recordTwoType = ethers.utils.formatBytes32String("redirectUrl");
       recordTwoContent = ethers.utils.hexlify(Buffer.from("flex.gucci.com"));
     });
 
@@ -199,7 +199,7 @@ describe("ServicesRegistry", () => {
       recordOneType = ethers.utils.formatBytes32String("tokenUri");
       recordOneContent = ethers.utils.hexlify(Buffer.from("//api.gucci.com/tokens/1"));
 
-      recordTwoType = ethers.utils.formatBytes32String("contentApp");
+      recordTwoType = ethers.utils.formatBytes32String("redirectUrl");
       recordTwoContent = ethers.utils.hexlify(Buffer.from("flex.gucci.com"));
 
       serviceId = ethers.utils.formatBytes32String("Gucci-Flex");
@@ -607,7 +607,7 @@ describe("ServicesRegistry", () => {
 
   context("when multiple services have been created", async () => {
     const uriDataType = ethers.utils.formatBytes32String("tokenUri");
-    const contentAppType = ethers.utils.formatBytes32String("contentApp");
+    const redirectUrlType = ethers.utils.formatBytes32String("redirectUrl");
 
     const serviceOneId = ethers.utils.formatBytes32String("Gucci-Flex");
     const serviceTwoId = ethers.utils.formatBytes32String("Rainbow-Wallet");
@@ -627,7 +627,7 @@ describe("ServicesRegistry", () => {
           appendId: true,
         },
         {
-          recordType: contentAppType,
+          recordType: redirectUrlType,
           content: ethers.utils.hexlify(Buffer.from(content)),
           appendId: false,
         },
@@ -1186,7 +1186,7 @@ describe("ServicesRegistry", () => {
 
       describe("when the chipId should not be concatenated", async () => {
         beforeEach(async() => {
-          subjectRecordtype = contentAppType;
+          subjectRecordtype = redirectUrlType;
         });
 
         it("should return the correct content", async () => {
@@ -1217,7 +1217,7 @@ describe("ServicesRegistry", () => {
         const bytesChipId = ethers.utils.hexlify(Buffer.from(subjectChipId.toLowerCase())).slice(2);
         expect(records[0].recordType).to.eq(uriDataType);
         expect(records[0].content).to.eq(serviceRecordsTwo[0].content.concat(bytesChipId));
-        expect(records[1].recordType).to.eq(contentAppType);
+        expect(records[1].recordType).to.eq(redirectUrlType);
         expect(records[1].content).to.eq(serviceRecordsTwo[1].content);
       });
     });
@@ -1248,7 +1248,7 @@ describe("ServicesRegistry", () => {
         const bytesChipId = ethers.utils.hexlify(Buffer.from(subjectChipId.toLowerCase())).slice(2);
         expect(records[0].recordType).to.eq(uriDataType);
         expect(records[0].content).to.eq(serviceRecordsOne[0].content.concat(bytesChipId));
-        expect(records[1].recordType).to.eq(contentAppType);
+        expect(records[1].recordType).to.eq(redirectUrlType);
         expect(records[1].content).to.eq(serviceRecordsOne[1].content);
       });
     });
@@ -1313,11 +1313,11 @@ describe("ServicesRegistry", () => {
         expect(secondaryServiceTwo.records[0].recordType).to.eq(uriDataType);
         expect(secondaryServiceTwo.records[0].content).to.eq(serviceRecordsThree[0].content.concat(bytesChipId));
 
-        expect(primaryService.records[1].recordType).to.eq(contentAppType);
+        expect(primaryService.records[1].recordType).to.eq(redirectUrlType);
         expect(primaryService.records[1].content).to.eq(serviceRecordsOne[1].content);
-        expect(secondaryServiceOne.records[1].recordType).to.eq(contentAppType);
+        expect(secondaryServiceOne.records[1].recordType).to.eq(redirectUrlType);
         expect(secondaryServiceOne.records[1].content).to.eq(serviceRecordsTwo[1].content);
-        expect(secondaryServiceTwo.records[1].recordType).to.eq(contentAppType);
+        expect(secondaryServiceTwo.records[1].recordType).to.eq(redirectUrlType);
         expect(secondaryServiceTwo.records[1].content).to.eq(serviceRecordsThree[1].content);
       });
     });
