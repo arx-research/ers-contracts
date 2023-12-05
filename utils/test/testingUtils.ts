@@ -1,9 +1,6 @@
 
 import chai from "chai";
-import { solidity } from "ethereum-waffle";
 import { Blockchain } from "../common";
-
-chai.use(solidity);
 
 // Use HARDHAT version of providers
 import { ethers } from "hardhat";

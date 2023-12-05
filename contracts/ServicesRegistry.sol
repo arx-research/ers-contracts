@@ -217,7 +217,7 @@ contract ServicesRegistry is IServicesRegistry {
      *
      * @param _chipId           The chip ID
      * @param _serviceId        The service ID to enroll
-     * @param _timelock         Timelock before which the primaryService cannot be changed
+     * @param _timelock         Timestamp before which the primaryService cannot be changed
      */
     function setInitialService(
         address _chipId,

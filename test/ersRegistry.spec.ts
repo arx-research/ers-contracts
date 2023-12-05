@@ -326,7 +326,7 @@ describe("ERSRegistry", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry");
+        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry or owner of node");
       });
     });
   });
