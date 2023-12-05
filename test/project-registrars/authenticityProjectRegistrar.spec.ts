@@ -27,7 +27,15 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
-import { calculateEnrollmentId, calculateLabelHash, calculateSubnodeHash, createProjectOwnershipProof } from "@utils/protocolUtils";
+import {
+  calculateEnrollmentId,
+  calculateLabelHash,
+  calculateSubnodeHash,
+  createChipOwnershipProof,
+  createDeveloperCustodyProof,
+  createDeveloperInclusionProof,
+  createProjectOwnershipProof
+} from "@utils/protocolUtils";
 import { ManufacturerTree, DeveloperTree } from "@utils/common";
 
 import { Blockchain } from "@utils/common";
@@ -246,7 +254,7 @@ describe("AuthenticityProjectRegistrar", () => {
     projectNameHash = calculateLabelHash("ProjectX");
     projectMerkleRoot = projectMerkleTree.getRoot();
     projectOwnerPublicKey = developerOne.address;
-    projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chipRegistry.address, chainId);
+    projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chainId);
     projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
 
     // Call Developer Registrar to add project
@@ -291,8 +299,6 @@ describe("AuthenticityProjectRegistrar", () => {
     let subjectDeveloperCustodyProof: string;
     let subjectCaller: Account;
 
-    let packedChipOwnershipProof: string;
-
     beforeEach(async () => {
       subjectChipId = chipOne.address;
       subjectNameHash = calculateLabelHash("chip1");
@@ -312,18 +318,21 @@ describe("AuthenticityProjectRegistrar", () => {
 
       subjectCommitBlock = await blockchain.getLatestBlockNumber();
 
-      const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-      subjectDeveloperInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
-
-      const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
-      subjectDeveloperCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+      subjectDeveloperInclusionProof = await createDeveloperInclusionProof(developerOne, chipOne.address);
+      subjectDeveloperCustodyProof = await createDeveloperCustodyProof(chipOne, developerOne.address);
       subjectCaller = owner;
 
       packedChipOwnershipProof = ethers.utils.solidityPack(
         ["uint256", "uint256", "bytes32", "address"],
         [chainId, subjectCommitBlock, subjectNameHash, subjectCaller.address]
       );
-      subjectChipOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipProof));
+      subjectChipOwnershipProof = await createChipOwnershipProof(
+        chipOne,
+        chainId,
+        subjectCommitBlock,
+        subjectNameHash,
+        subjectCaller
+      );
     });
 
     async function subject(): Promise<any> {
@@ -369,7 +378,13 @@ describe("AuthenticityProjectRegistrar", () => {
 
     describe("claimChip will revert if the ownership proof passed has an invalid signature", async () => {
       beforeEach(async() => {
-        subjectChipOwnershipProof = await owner.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipProof));
+        subjectChipOwnershipProof = await createChipOwnershipProof(
+          owner,
+          chainId,
+          subjectCommitBlock,
+          subjectNameHash,
+          chipTwo
+        );
       });
 
       it("should revert", async() => {
@@ -380,11 +395,13 @@ describe("AuthenticityProjectRegistrar", () => {
     describe("claimChip will revert if wrong chainId is used", async () => {
       beforeEach(async() => {
         const badChainId = 1000;
-        packedChipOwnershipProof = ethers.utils.solidityPack(
-          ["uint256", "uint256", "bytes32"],
-          [badChainId, subjectCommitBlock, subjectNameHash]
+        subjectChipOwnershipProof = await createChipOwnershipProof(
+          chipOne,
+          badChainId,
+          subjectCommitBlock,
+          subjectNameHash,
+          chipTwo
         );
-        subjectChipOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipProof));
       });
 
       it("should revert", async() => {

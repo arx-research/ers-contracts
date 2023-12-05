@@ -1,33 +1,43 @@
 import { ethers } from "hardhat";
+import { BigNumber } from "ethers";
 
-import { Address, EIP712Domain } from "@utils/types";
+import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-
-const ERS_DOMAIN = {
-  name: "Ethereum Reality Service",
-  version: "1"
-} as EIP712Domain;
 
 export async function createProjectOwnershipProof(
   signer: Account,
   projectRegistrarAddress: Address,
-  chipRegistryAddress: Address,
   chainId: number
 ): Promise<string> {
-  const domain = {
-    ...ERS_DOMAIN,
-    chainId,
-    verifyingContract: chipRegistryAddress
-  };
+  const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, projectRegistrarAddress]);
+  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+}
 
-  const message = {
-    projectRegistrar: projectRegistrarAddress
-  };
+export async function createDeveloperInclusionProof(signer: Account, chipId: Address): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(["address"], [chipId]);
+  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+}
 
-  const types = {
-    Contents: [{ name: "projectRegistrar", type: "address" }]
-  };
+export async function createDeveloperCustodyProof(signer: Account, projectPublicKey: Address): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(["address"], [projectPublicKey]);
+  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+}
 
-  const signature = await signer.wallet._signTypedData(domain, types, message);
-  return signature;
+export async function createProvingChipOwnershipProof(signer: Account, chipHolder: Address, chainId: number): Promise<string> {
+  const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, chipHolder]);
+  return await signer.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+}
+
+export async function createChipOwnershipProof(
+  signer: Account,
+  chainId: number,
+  commitBlock: BigNumber,
+  nameHash: string,
+  caller: Account
+): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(
+    ["uint256", "uint256", "bytes32", "address"],
+    [chainId, commitBlock, nameHash, caller]
+  );
+  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
 }

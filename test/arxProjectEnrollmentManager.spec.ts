@@ -26,7 +26,8 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
-  createProjectOwnershipProof
+  createProjectOwnershipProof,
+  createProvingChipOwnershipProof
 } from "@utils/protocolUtils";
 import { ADDRESS_ZERO, NULL_NODE, ZERO } from "@utils/constants";
 
@@ -271,7 +272,6 @@ describe("ArxProjectEnrollmentManager", () => {
     projectOwnershipProof = await createProjectOwnershipProof(
       developerOne,
       expectedProjectRegistrarAddress,
-      chipRegistry.address,
       chainId
     );
     projectOwnerPublicKey = developerOne.address;
@@ -331,11 +331,7 @@ describe("ArxProjectEnrollmentManager", () => {
         mIndex: ZERO,
         manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
       } as ManufacturerValidationInfo;
-
-      const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, developerOne.address]);
-      subjectChipOwnershipProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
-
-
+      subjectChipOwnershipProof = await createProvingChipOwnershipProof(chipOne, developerOne.address, chainId);
       subjectProjectPublicKey = projectOwnerPublicKey;
       subjectProjectOwnershipProof = projectOwnershipProof;
       subjectCaller = developerOne;
@@ -396,8 +392,7 @@ describe("ArxProjectEnrollmentManager", () => {
 
     describe("when the chip ownership proof is invalid", async () => {
       beforeEach(async () => {
-        const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, developerOne.address]);
-        subjectChipOwnershipProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+        subjectChipOwnershipProof = await createProvingChipOwnershipProof(chipTwo, developerOne.address, chainId);
       });
 
       it("should revert", async () => {
@@ -407,8 +402,7 @@ describe("ArxProjectEnrollmentManager", () => {
 
     describe("when the chip is not included in the Developer Merkle Tree", async () => {
       beforeEach(async () => {
-        const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, developerOne.address]);
-        subjectChipOwnershipProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+        subjectChipOwnershipProof = await createProvingChipOwnershipProof(developerOne, developerOne.address, chainId);
         subjectProvingChipId = developerOne.address;
       });
 

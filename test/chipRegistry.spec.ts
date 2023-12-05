@@ -35,6 +35,8 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
+  createDeveloperCustodyProof,
+  createDeveloperInclusionProof,
   createProjectOwnershipProof,
   createTokenData
 } from "@utils/protocolUtils";
@@ -241,7 +243,7 @@ describe("ChipRegistry", () => {
         subjectTransferPolicy = developerOne.address;
         subjectMerkleRoot = ethers.utils.formatBytes32String("0x1234");
         subjectProjectClaimDataUri = "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm";
-        subjectProjectOwnershipProof = await createProjectOwnershipProof(developerOne, subjectProjectRegistrar, chipRegistry.address, chainId);
+        subjectProjectOwnershipProof = await createProjectOwnershipProof(developerOne, subjectProjectRegistrar, chainId);
         subjectCaller = owner;
       });
 
@@ -312,8 +314,7 @@ describe("ChipRegistry", () => {
 
       describe("when the passed signature is not signed by the project public key", async () => {
         beforeEach(async () => {
-          const packedMsg = ethers.utils.solidityPack(["address"], [subjectProjectRegistrar]);
-          subjectProjectOwnershipProof = await manufacturerOne.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+          subjectProjectOwnershipProof = await createProjectOwnershipProof(manufacturerOne, subjectProjectRegistrar, chainId);
         });
 
         it("should revert", async () => {
@@ -377,7 +378,6 @@ describe("ChipRegistry", () => {
         projectOwnershipSignature = await createProjectOwnershipProof(
           projectWallet,
           fakeProjectRegistrar.address,
-          chipRegistry.address,
           chainId
         );
 
@@ -437,13 +437,8 @@ describe("ChipRegistry", () => {
             mIndex: ZERO,
             manufacturerProof: manufacturerMerkleTree.getProof(0),
           };
-
-          const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-          subjectDeveloperInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
-
-          const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
-          subjectDeveloperCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
-
+          subjectDeveloperInclusionProof = await createDeveloperInclusionProof(developerOne, chipOne.address);
+          subjectDeveloperCustodyProof = await createDeveloperCustodyProof(chipOne, developerOne.address);
           subjectCaller = fakeProjectRegistrar;
         });
 
@@ -574,13 +569,8 @@ describe("ChipRegistry", () => {
               mIndex: ONE,
               manufacturerProof: manufacturerMerkleTree.getProof(1),
             };
-
-            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-            subjectDeveloperInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
-
-            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
-            subjectDeveloperCustodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
-
+            subjectDeveloperInclusionProof = await createDeveloperInclusionProof(developerOne, chipTwo.address);
+            subjectDeveloperCustodyProof = await createDeveloperCustodyProof(chipTwo, developerOne.address);
             subjectCaller = fakeProjectRegistrar;
           });
 
@@ -639,8 +629,7 @@ describe("ChipRegistry", () => {
 
         describe("when the developer certificate signature is invalid", async () => {
           beforeEach(async () => {
-            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-            subjectDeveloperInclusionProof = await owner.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
+            subjectDeveloperInclusionProof = await createDeveloperInclusionProof(owner, chipOne.address);
           });
 
           it("should revert", async () => {
@@ -650,8 +639,7 @@ describe("ChipRegistry", () => {
 
         describe("when the custody proof signature is invalid", async () => {
           beforeEach(async () => {
-            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
-            subjectDeveloperCustodyProof = await owner.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+            subjectDeveloperCustodyProof = await createDeveloperCustodyProof(owner, developerOne.address);
           });
 
           it("should revert", async () => {
@@ -746,12 +734,8 @@ describe("ChipRegistry", () => {
               mIndex: ZERO,
               manufacturerProof: manufacturerMerkleTree.getProof(0),
             };
-
-            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-            const developerInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
-
-            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerOne.address]);
-            const developerCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+            const developerInclusionProof = await createDeveloperInclusionProof(developerOne, chipOne.address);
+            const developerCustodyProof = await createDeveloperCustodyProof(chipOne, developerOne.address);
 
             await chipRegistry.connect(fakeProjectRegistrar.wallet).claimChip(
               chipId,
@@ -813,7 +797,7 @@ describe("ChipRegistry", () => {
           developerRegistrar = await deployer.getDeveloperRegistrar(developerRegistrarAddress);
 
           // Add Project via DeveloperRegistrar
-          const signature = await createProjectOwnershipProof(developerTwo, projectRegistrar.address, chipRegistry.address, chainId);
+          const signature = await createProjectOwnershipProof(developerTwo, projectRegistrar.address, chainId);
           const projectNameHash = calculateLabelHash("ProjectFlex");
           await developerRegistrar.connect(developerTwo.wallet).addProject(
             projectNameHash,
@@ -843,11 +827,8 @@ describe("ChipRegistry", () => {
             manufacturerProof: manufacturerMerkleTree.getProof(0),
           };
 
-          const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipOne.address]);
-          const developerInclusionProof = await developerTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
-
-          const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
-          const signedCertificate = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+          const developerInclusionProof = await createDeveloperInclusionProof(developerTwo, chipOne.address);
+          const developerCustodyProof = await createDeveloperCustodyProof(chipOne, developerTwo.address);
 
           await projectRegistrar.connect(chip.wallet).claimChip(
             chipNameHash,
@@ -855,7 +836,7 @@ describe("ChipRegistry", () => {
             chipClaim,
             manufacturerValidation,
             developerInclusionProof,
-            signedCertificate
+            developerCustodyProof
           );
         });
 
@@ -907,11 +888,8 @@ describe("ChipRegistry", () => {
           const abiCoder = new ethers.utils.AbiCoder();
 
           before(async () => {
-            const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-            developerInclusionProof = await developerTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
-
-            const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
-            developerCustodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+            developerInclusionProof = await createDeveloperInclusionProof(developerTwo, chipTwo.address);
+            developerCustodyProof = await createDeveloperCustodyProof(chipTwo, developerTwo.address);
 
             timelock = chipTwoClaim.lockinPeriod;
 
@@ -1017,13 +995,11 @@ describe("ChipRegistry", () => {
 
           describe("but the developerInclusionProof is invalid (and manufacturer proof is valid)", async () => {
             before(async () => {
-              const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-              developerInclusionProof = await developerOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
+              developerInclusionProof = await createDeveloperInclusionProof(developerOne, chipTwo.address);
             });
 
             after(async () => {
-              const packedDeveloperCert = ethers.utils.solidityPack(["address"], [chipTwo.address]);
-              developerInclusionProof = await developerTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCert));
+              developerInclusionProof = await createDeveloperInclusionProof(developerTwo, chipTwo.address);
             });
 
             it("should return the chips bootloader app", async () => {
@@ -1036,13 +1012,11 @@ describe("ChipRegistry", () => {
 
           describe("but the custody proof is invalid (and manufacturer proof is valid)", async () => {
             before(async () => {
-              const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
-              developerCustodyProof = await chipOne.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+              developerCustodyProof = await createDeveloperCustodyProof(chipOne, developerTwo.address);
             });
 
             after(async () => {
-              const packedDeveloperCustodyProof = ethers.utils.solidityPack(["address"], [developerTwo.address]);
-              developerCustodyProof = await chipTwo.wallet.signMessage(ethers.utils.arrayify(packedDeveloperCustodyProof));
+              developerCustodyProof = await createDeveloperCustodyProof(chipTwo, developerTwo.address);
             });
 
             it("should return the chips bootloader app", async () => {

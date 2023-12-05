@@ -190,7 +190,6 @@ describe("DeveloperRegistrar", () => {
       subjectProjectOwnershipProof = await createProjectOwnershipProof(
         developerOne,
         subjectProjectRegistrar,
-        chipRegistry.address,
         await blockchain.getChainId()
       );
       subjectProjectClaimDataUri = "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm";
