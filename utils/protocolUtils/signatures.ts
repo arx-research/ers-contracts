@@ -1,5 +1,4 @@
-import { ethers } from "hardhat";
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";

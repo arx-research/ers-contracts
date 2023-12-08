@@ -2,7 +2,7 @@
   "name": "@arx-research/ers-contracts",
   "author": "Arx Research",
   "license": "MIT",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "",
   "keywords": [],
   "main": "dist/index.js",
