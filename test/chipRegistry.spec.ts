@@ -115,7 +115,7 @@ describe("ChipRegistry", () => {
       developerRegistry.address
     );
 
-    await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address]);
+    await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address], owner.address);
 
     transferPolicy = await deployer.mocks.deployTransferPolicyMock();
 

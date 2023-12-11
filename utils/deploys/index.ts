@@ -6,27 +6,29 @@ import { Account } from "@utils/test/types";
 import {
   ArxProjectEnrollmentManager__factory,
   ChipRegistry__factory,
-  ERSRegistry__factory,
-  ManufacturerRegistry__factory,
-  ServicesRegistry__factory,
   DeveloperRegistrar__factory,
   DeveloperRegistrarFactory__factory,
-  DeveloperRegistry__factory
+  DeveloperRegistry__factory,
+  ERSRegistry__factory,
+  ManufacturerRegistry__factory,
+  ServicesRegistry__factory
 } from "../../typechain/factories/contracts";
 
 import { AuthenticityProjectRegistrar__factory } from "../../typechain/factories/contracts/project-registrars";
+import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
 import {
+  ArxProjectEnrollmentManager,
+  AuthenticityProjectRegistrar,
   ChipRegistry,
-  ERSRegistry,
-  ManufacturerRegistry,
-  SECP256k1Model,
-  ServicesRegistry,
+  DeveloperNameGovernor,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
   DeveloperRegistry,
-  AuthenticityProjectRegistrar,
-  ArxProjectEnrollmentManager
+  ERSRegistry,
+  ManufacturerRegistry,
+  SECP256k1Model,
+  ServicesRegistry
 } from "../contracts";
 
 import DeployMocks from "./deployMocks";
@@ -73,9 +75,7 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistry(owner: Address): Promise<DeveloperRegistry> {
-    const developerRegistry = await new DeveloperRegistry__factory(this._deployerSigner).deploy(
-      owner
-    );
+    const developerRegistry = await new DeveloperRegistry__factory(this._deployerSigner).deploy(owner);
     return developerRegistry;
   }
 
@@ -177,6 +177,18 @@ export default class DeployHelper {
     );
 
     return arxProjectEnrollmentManager;
+  }
+
+  public async deployDeveloperNameGovernor(
+    developerRegistry: Address,
+    nameGovernor: Address
+  ): Promise<DeveloperNameGovernor> {
+    const developerNameGovernor = await new DeveloperNameGovernor__factory(this._deployerSigner).deploy(
+      developerRegistry,
+      nameGovernor
+    );
+
+    return developerNameGovernor;
   }
 
   public async deploySECP256k1Model(): Promise<SECP256k1Model> {

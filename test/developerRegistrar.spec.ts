@@ -62,7 +62,7 @@ describe("DeveloperRegistrar", () => {
       ersRegistry.address,
       developerRegistry.address
     );
-    await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address]);
+    await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address], owner.address);
 
     await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
 
