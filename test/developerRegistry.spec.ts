@@ -81,9 +81,11 @@ describe("DeveloperRegistry", () => {
 
       const actualErsRegistry = await developerRegistry.ersRegistry();
       const isFactory = await developerRegistry.registrarFactories(subjectFactories[0]);
+      const actualNameGovernor = await developerRegistry.nameGovernor();
       const isInitialized = await developerRegistry.initialized();
 
       expect(actualErsRegistry).to.eq(subjectERSRegistry);
+      expect(actualNameGovernor).to.eq(subjectNameGovernor);
       expect(isFactory).to.be.true;
       expect(isInitialized).to.be.true;
     });
