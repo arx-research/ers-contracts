@@ -20,7 +20,7 @@ import { ethers } from "hardhat";
 
 const expect = getWaffleExpect();
 
-describe("DeveloperRegistry", () => {
+describe.only("DeveloperRegistry", () => {
   let owner: Account;
   let nameCoordinator: Account;
   let developerOne: Account;
@@ -68,19 +68,18 @@ describe("DeveloperRegistry", () => {
   });
 
   describe("#claimName", async () => {
-    let subjectDeveloperOwner: Address;
     let subjectDeveloperName: string;
     let subjectApprovalProof: string;
+    let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectDeveloperOwner = developerOne.address;
       subjectDeveloperName = ethers.utils.formatBytes32String("testName");
-      subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectDeveloperOwner, subjectDeveloperName);
+      subjectCaller = developerOne;
+      subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectCaller.address, subjectDeveloperName);
     });
 
     async function subject(): Promise<any> {
-      return await developerNameGovernor.connect(developerOne.wallet).claimName(
-        subjectDeveloperOwner,
+      return await developerNameGovernor.connect(subjectCaller.wallet).claimName(
         subjectDeveloperName,
         subjectApprovalProof
       );
@@ -89,13 +88,13 @@ describe("DeveloperRegistry", () => {
     it("should set the developer name correctly in the pendingDevelopers mapping", async () => {
       await subject();
 
-      const developerName = await developerRegistry.pendingDevelopers(subjectDeveloperOwner);
+      const developerName = await developerRegistry.pendingDevelopers(subjectCaller.address);
       expect(developerName).to.eq(subjectDeveloperName);
     });
 
     describe("when an invalid name proof is provided", async () => {
       beforeEach(async () => {
-        subjectDeveloperOwner = attacker.address;
+        subjectCaller = attacker;
       });
 
       it("should revert", async () => {
@@ -112,10 +111,9 @@ describe("DeveloperRegistry", () => {
     beforeEach(async () => {
       subjectDeveloperOwner = developerOne.address;
       developerName = ethers.utils.formatBytes32String("testName");
-      const subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectDeveloperOwner, developerName);
+      const subjectApprovalProof = await createNameApprovalProof(nameCoordinator, developerOne.address, developerName);
 
       await developerNameGovernor.connect(developerOne.wallet).claimName(
-        subjectDeveloperOwner,
         developerName,
         subjectApprovalProof
       );

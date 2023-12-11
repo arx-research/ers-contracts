@@ -47,20 +47,20 @@ contract DeveloperNameGovernor is Ownable {
      * @notice Claim a name for a developer. The caller must submit a transaction with a valid signature signed by the name coordinator. The
      * name coordinator performs checks for name validity and availability.
      *
-     * @param _developerOwner       Address of the developer owner
      * @param _developerName        ERS name of the developer
-     * @param _nameApprovalProof    Signature of the name coordinator over hash(developerOwner, developerName)
+     * @param _nameApprovalProof    Signature of the name coordinator over hash(msg.sender, developerName)
      */
     function claimName(
-        address _developerOwner,
         bytes32 _developerName,
         bytes memory _nameApprovalProof
     ) public {
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
-        bytes32 messageHash = abi.encodePacked(_developerOwner, _developerName).toEthSignedMessageHash();
+        address sender = msg.sender;
+        
+        bytes32 messageHash = abi.encodePacked(sender, _developerName).toEthSignedMessageHash();
         require(nameCoordinator.isValidSignatureNow(messageHash, _nameApprovalProof), "Invalid signature");
 
-        developerRegistry.addAllowedDeveloper(_developerOwner, _developerName);
+        developerRegistry.addAllowedDeveloper(sender, _developerName);
     }
 
     /**
