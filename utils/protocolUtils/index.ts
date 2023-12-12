@@ -84,7 +84,11 @@ export class ERSFixture {
     this.servicesRegistry = await this._deployer.deployServicesRegistry(this.chipRegistry.address, maxBlockWindow);
     this.developerRegistrarFactory = await this._deployer.deployDeveloperRegistrarFactory(this.chipRegistry.address, this.ersRegistry.address, this.developerRegistry.address);
 
-    await this.developerRegistry.initialize(this.ersRegistry.address, [this.developerRegistrarFactory.address]);
+    await this.developerRegistry.initialize(
+      this.ersRegistry.address,
+      [this.developerRegistrarFactory.address],
+      this._ownerAddress
+    );
     await this.chipRegistry.initialize(this.ersRegistry.address, this.servicesRegistry.address, this.developerRegistry.address);
 
     await this.ersRegistry.createSubnodeRecord(

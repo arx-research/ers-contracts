@@ -7,15 +7,16 @@ export {
   ChipValidationsMock,
   ClaimedPBT,
   ClaimedPBTMock,
+  DeveloperNameGovernor,
+  DeveloperRegistrar,
+  DeveloperRegistrarFactory,
+  DeveloperRegistry,
+  DeveloperRegistryMock,
   ERSRegistry,
   InterfaceIdGetterMock,
   ManufacturerRegistry,
   ProjectRegistrarMock,
   SECP256k1Model,
   ServicesRegistry,
-  TransferPolicyMock,
-  DeveloperRegistrar,
-  DeveloperRegistrarFactory,
-  DeveloperRegistry,
-  DeveloperRegistryMock
+  TransferPolicyMock
 } from "../../typechain";

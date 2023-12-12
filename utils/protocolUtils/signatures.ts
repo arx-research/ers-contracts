@@ -27,6 +27,15 @@ export async function createProvingChipOwnershipProof(signer: Account, chipHolde
   return await signer.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
 }
 
+export async function createNameApprovalProof(
+  signer: Account,
+  developerOwner: Address,
+  nameHash: string
+): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(["address", "bytes32"], [developerOwner, nameHash]);
+  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+}
+
 export async function createChipOwnershipProof(
   signer: Account,
   chainId: number,

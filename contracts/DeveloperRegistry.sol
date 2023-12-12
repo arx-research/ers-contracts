@@ -31,6 +31,12 @@ contract DeveloperRegistry is Ownable {
     event RegistrarFactoryRemoved(address indexed factory);
     event RegistryInitialized(address ers);
 
+    /* ============ Modifiers ============ */
+    modifier onlyNameGovernor() {
+        require(msg.sender == nameGovernor, "Only the Name Governor can call this function");
+        _;
+    }
+    
     /* ============ Constants ============ */
     // Equal to keccak256(abi.encodePacked(uint256(0), keccak256("ers")))
     bytes32 public constant ROOT_NODE = 0xda53397877d78746657194546b25f20b5c2e580045028a6fa27f07cf94e704ba;
@@ -38,6 +44,7 @@ contract DeveloperRegistry is Ownable {
     /* ============ State Variables ============ */
     IERS public ersRegistry;
     bool public initialized;
+    address public nameGovernor;
 
     mapping(IDeveloperRegistrarFactory=>bool) public registrarFactories;  // Mapping indicating if address is a registered DeveloperRegistrarFactory
     mapping(address=>bytes32) public pendingDevelopers;                   // Mapping of Developer owner address to the nameHash they want for their 
@@ -58,10 +65,19 @@ contract DeveloperRegistry is Ownable {
      *
      * @param _ers                       Address of the ERS contract
      * @param _factories                 Array of DeveloperRegistrarFactory contracts
+     * @param _nameGovernor              Address of the Name Governor which can assign names to Developers
      */
-    function initialize(IERS _ers, IDeveloperRegistrarFactory[] calldata _factories) external onlyOwner {
+    function initialize(
+        IERS _ers,
+        IDeveloperRegistrarFactory[] calldata _factories,
+        address _nameGovernor
+    )
+        external
+        onlyOwner
+    {
         require(!initialized, "Contract already initialized");
         ersRegistry = _ers;
+        nameGovernor = _nameGovernor;
 
         for (uint256 i = 0; i < _factories.length; ++i) {
             _addRegistrarFactory(_factories[i]);
@@ -132,7 +148,7 @@ contract DeveloperRegistry is Ownable {
      * @param _developerOwner       Address that has the ability to create a new DeveloperRegistrar with the below nameHash
      * @param _nameHash             Bytes32 hash of the ERS name the Developer wants for their Registrar
      */
-    function addAllowedDeveloper(address _developerOwner, bytes32 _nameHash) external onlyOwner {
+    function addAllowedDeveloper(address _developerOwner, bytes32 _nameHash) external onlyNameGovernor {
         require(pendingDevelopers[_developerOwner] == bytes32(0), "Developer already allowed");
         // can't allow zero bytes since it's the default value for pendingDevelopers. Will not allow someone to deploy a Registrar with zero
         // bytes name.
@@ -149,7 +165,7 @@ contract DeveloperRegistry is Ownable {
      *
      * @param _developerOwner       Address that has the ability to create a new DeveloperRegistrar with the below nameHash
      */
-    function removeAllowedDeveloper(address _developerOwner) external onlyOwner {
+    function removeAllowedDeveloper(address _developerOwner) external onlyNameGovernor {
         require(pendingDevelopers[_developerOwner]!= bytes32(0), "Developer not allowed");
 
         delete pendingDevelopers[_developerOwner];

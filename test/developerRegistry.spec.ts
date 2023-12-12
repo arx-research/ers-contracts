@@ -18,6 +18,7 @@ const expect = getWaffleExpect();
 
 describe("DeveloperRegistry", () => {
   let owner: Account;
+  let nameGovernor: Account;
   let developerOne: Account;
   let developerTwo: Account;
   let ersRegistry: ERSRegistry;
@@ -29,6 +30,7 @@ describe("DeveloperRegistry", () => {
   beforeEach(async () => {
     [
       owner,
+      nameGovernor,
       developerOne,
       developerTwo,
       chipRegistry,
@@ -56,16 +58,22 @@ describe("DeveloperRegistry", () => {
   describe("#initialize", async () => {
     let subjectERSRegistry: Address;
     let subjectFactories: Address[];
+    let subjectNameGovernor: Address;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       subjectERSRegistry = ersRegistry.address;
       subjectFactories = [developerRegistrarFactory.address];
+      subjectNameGovernor = nameGovernor.address;
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return developerRegistry.connect(subjectCaller.wallet).initialize(subjectERSRegistry, subjectFactories);
+      return developerRegistry.connect(subjectCaller.wallet).initialize(
+        subjectERSRegistry,
+        subjectFactories,
+        subjectNameGovernor
+      );
     }
 
     it("should set factories, and set contract to initialized", async () => {
@@ -73,9 +81,11 @@ describe("DeveloperRegistry", () => {
 
       const actualErsRegistry = await developerRegistry.ersRegistry();
       const isFactory = await developerRegistry.registrarFactories(subjectFactories[0]);
+      const actualNameGovernor = await developerRegistry.nameGovernor();
       const isInitialized = await developerRegistry.initialized();
 
       expect(actualErsRegistry).to.eq(subjectERSRegistry);
+      expect(actualNameGovernor).to.eq(subjectNameGovernor);
       expect(isFactory).to.be.true;
       expect(isInitialized).to.be.true;
     });
@@ -111,7 +121,7 @@ describe("DeveloperRegistry", () => {
 
   context("when the contract is initialized", async () => {
     beforeEach(async () => {
-      await developerRegistry.initialize(ersRegistry.address, []);
+      await developerRegistry.initialize(ersRegistry.address, [], nameGovernor.address);
     });
 
     describe("#addAllowedDeveloper", async () => {
@@ -122,7 +132,7 @@ describe("DeveloperRegistry", () => {
       beforeEach(async () => {
         subjectDeveloperOwner = developerOne.address;
         subjectNameHash = calculateLabelHash("gucci");
-        subjectCaller = owner;
+        subjectCaller = nameGovernor;
       });
 
       async function subject(): Promise<any> {
@@ -182,13 +192,13 @@ describe("DeveloperRegistry", () => {
         });
       });
 
-      describe("when the caller is not the owner", async () => {
+      describe("when the caller is not the name governor", async () => {
         beforeEach(async () => {
-          subjectCaller = developerOne;
+          subjectCaller = owner;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+          await expect(subject()).to.be.revertedWith("Only the Name Governor can call this function");
         });
       });
     });
@@ -254,7 +264,7 @@ describe("DeveloperRegistry", () => {
         developerNameHash = calculateLabelHash("gucci");
 
         await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
-        await developerRegistry.addAllowedDeveloper(developerOne.address, developerNameHash);
+        await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerOne.address, developerNameHash);
       });
 
       describe("#createNewDeveloperRegistrar", async () => {
@@ -444,7 +454,7 @@ describe("DeveloperRegistry", () => {
 
         beforeEach(async () => {
           subjectDeveloperOwner = developerOne.address;
-          subjectCaller = owner;
+          subjectCaller = nameGovernor;
         });
 
         async function subject(): Promise<any> {
@@ -474,11 +484,11 @@ describe("DeveloperRegistry", () => {
 
         describe("when the caller is not the owner", async () => {
           beforeEach(async () => {
-            subjectCaller = developerOne;
+            subjectCaller = owner;
           });
 
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(subject()).to.be.revertedWith("Only the Name Governor can call this function");
           });
         });
       });

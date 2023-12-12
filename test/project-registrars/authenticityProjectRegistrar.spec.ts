@@ -181,7 +181,11 @@ describe("AuthenticityProjectRegistrar", () => {
     );
 
     // 10. Initialize Developer Registry
-    await developerRegistry.connect(owner.wallet).initialize(ersRegistry.address, [developerRegistrarFactory.address]);
+    await developerRegistry.connect(owner.wallet).initialize(
+      ersRegistry.address,
+      [developerRegistrarFactory.address],
+      owner.address
+    );
 
     // 12. Add owner as Developer
     await developerRegistry.connect(owner.wallet).addAllowedDeveloper(developerOne.address, developerNameHash);
