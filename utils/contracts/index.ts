@@ -16,6 +16,7 @@ export {
   InterfaceIdGetterMock,
   ManufacturerRegistry,
   ProjectRegistrarMock,
+  RedirectProjectRegistrar,
   SECP256k1Model,
   ServicesRegistry,
   TransferPolicyMock

@@ -37,6 +37,15 @@ export interface ClaimedPBTChipInfo {
   tokenData: string;
 }
 
+export interface ProjectChipClaim {
+  chipId: Address;
+  chipNameHash: string;
+  developerMerkleInfo: DeveloperMerkleProofInfo;
+  manufacturerValidation: ManufacturerValidationInfo;
+  developerInclusionProof: string;
+  developerCustodyProof: string;
+}
+
 export interface ServiceRecord{
   recordType: string;
   content: string;

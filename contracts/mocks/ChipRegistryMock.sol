@@ -9,11 +9,9 @@ import { IManufacturerRegistry } from "../interfaces/IManufacturerRegistry.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
 contract ChipRegistryMock is ChipRegistry {
-    address public chipId;
-    IChipRegistry.ChipClaim public chipClaim;
-    IChipRegistry.ManufacturerValidation public  manufacturerValidation;
-    bytes public developerInclusionProof;
-    bytes public developerCustodyProof;
+    mapping(address=>bool) public chipIds;
+    mapping(bytes=>bool) public developerInclusionProofs;
+    mapping(bytes=>bool) public developerCustodyProofs;
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
@@ -26,16 +24,14 @@ contract ChipRegistryMock is ChipRegistry {
 
     function claimChip(
         address _chipId,
-        IChipRegistry.ChipClaim calldata _chipClaim,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+        IChipRegistry.ChipClaim calldata /*_chipClaim*/,
+        IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/,
         bytes calldata _developerInclusionProof,
         bytes calldata _developerCustodyProof
     ) external override {
-        chipId = _chipId;
-        chipClaim = _chipClaim;
-        manufacturerValidation = _manufacturerValidation;
-        developerInclusionProof = _developerInclusionProof;
-        developerCustodyProof = _developerCustodyProof;
+        chipIds[_chipId] = true;
+        developerInclusionProofs[_developerInclusionProof] = true;
+        developerCustodyProofs[_developerCustodyProof] = true;
     }
 
     function mockClaimChip(address _chipId, address _owner) external {
