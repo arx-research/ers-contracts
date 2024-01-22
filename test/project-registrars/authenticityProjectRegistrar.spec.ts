@@ -451,6 +451,16 @@ describe("AuthenticityProjectRegistrar", () => {
       );
     });
 
+    describe("when rootNode has already been set", async() => {
+      beforeEach(async () => {
+        await subject();
+      });
+
+      it("should revert",  async() => {
+        await expect(subject()).to.be.revertedWith("Root node already set");
+      });
+    });
+
     describe("setRootNode reverts when the caller is not the Developer Registrar contract", async() => {
       beforeEach(() => {
         // Any Account should cause a revert as long as it isn't the fakeDeveloperRegistrar

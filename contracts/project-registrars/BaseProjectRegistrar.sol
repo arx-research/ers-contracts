@@ -66,6 +66,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
      * @param _rootNode The root node for this project
      */
     function setRootNode(bytes32 _rootNode) onlyDeveloperRegistrar() external override {
+        require(rootNode == bytes32(0), "Root node already set");
         rootNode = _rootNode;
         emit RootNodeSet(_rootNode);
     }
