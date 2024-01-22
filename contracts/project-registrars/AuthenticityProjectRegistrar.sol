@@ -2,12 +2,10 @@
 
 pragma solidity ^0.8.17;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-
+import { BaseProjectRegistrar } from "./BaseProjectRegistrar.sol";
 import { ChipValidations } from "../lib/ChipValidations.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
-import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
 
 /**
@@ -19,26 +17,11 @@ import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
  * used by projects that care about tracking the full chain of custody of their chips via ERSRegistry. If project only wants to use the protocol for
  * chip URL redirects other ProjectRegistrars may be a better fit.
  */
-contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
+contract AuthenticityProjectRegistrar is BaseProjectRegistrar {
     using ChipValidations for address;
 
-    /* ============ Events ============ */
-    // Emitted when a new root node has been set
-    event RootNodeSet(bytes32 _rootNode);
-
-    /* ============ Modifiers ============ */
-    modifier onlyDeveloperRegistrar() {
-        require(address(developerRegistrar) == msg.sender, "onlyDeveloperRegistrar: Only the contract's Developer Registrar can call this function");
-        _;
-    }
-
     /* ============ State Variables ============ */
-    IChipRegistry public immutable chipRegistry; 
-    IERS public immutable ers; 
-    IDeveloperRegistrar public immutable developerRegistrar; 
     uint256 public immutable maxBlockWindow;
-    
-    bytes32 public rootNode;                    // It is the hash(hash(projectName), node(developer.ers))
 
     /* ============ Constructor ============ */
     /**
@@ -55,12 +38,13 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
         IDeveloperRegistrar _developerRegistrar,
         uint256 _maxBlockWindow
     ) 
-        Ownable() 
+        BaseProjectRegistrar(
+            _projectManager,
+            _chipRegistry,
+            _ers,
+            _developerRegistrar
+        )
     {
-        _transferOwnership(_projectManager);
-        chipRegistry = _chipRegistry;
-        ers = _ers;
-        developerRegistrar = _developerRegistrar;
         maxBlockWindow = _maxBlockWindow;
     }
 
@@ -104,26 +88,15 @@ contract AuthenticityProjectRegistrar is Ownable, IProjectRegistrar {
 
         // Call createSubnodeRecord from the ERS Registry to create a subnode with the chip as the resolver
         // and the caller as the owner.
-        bytes32 ersNode = ers.createSubnodeRecord(rootNode, _nameHash, chipOwner, _chipId);
-
-        IChipRegistry.ChipClaim memory chipClaim = IChipRegistry.ChipClaim({
-            owner: chipOwner,
-            ersNode: ersNode,
-            developerMerkleInfo: _claimData
-        });
-
-        // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.claimChip(_chipId, chipClaim, _manufacturerValidation, _developerInclusionProof, _developerCustodyProof);
-    }
-
-    /**
-     * @dev ONLY DEVELOPER REGISTRAR: Set the root node for this project (ie project.developer.ers)
-     * 
-     * @param _rootNode The root node for this project
-     */
-    function setRootNode(bytes32 _rootNode) onlyDeveloperRegistrar() external override {
-        rootNode = _rootNode;
-        emit RootNodeSet(_rootNode);
+        _createSubnodeAndClaimChip(
+            _chipId,
+            _nameHash,
+            chipOwner,
+            _claimData,
+            _manufacturerValidation,
+            _developerInclusionProof,
+            _developerCustodyProof
+        );
     }
 }
 

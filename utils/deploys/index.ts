@@ -14,7 +14,10 @@ import {
   ServicesRegistry__factory
 } from "../../typechain/factories/contracts";
 
-import { AuthenticityProjectRegistrar__factory } from "../../typechain/factories/contracts/project-registrars";
+import {
+  AuthenticityProjectRegistrar__factory,
+  RedirectProjectRegistrar__factory
+} from "../../typechain/factories/contracts/project-registrars";
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
 import {
@@ -27,6 +30,7 @@ import {
   DeveloperRegistry,
   ERSRegistry,
   ManufacturerRegistry,
+  RedirectProjectRegistrar,
   SECP256k1Model,
   ServicesRegistry
 } from "../contracts";
@@ -150,6 +154,22 @@ export default class DeployHelper {
       ersRegistry,
       developerRegistrar,
       maxBlockWindow
+    );
+
+    return projectRegistrar;
+  }
+
+  public async deployRedirectProjectRegistrar(
+    projectManager: Address,
+    chipRegistry: Address,
+    ersRegistry: Address,
+    developerRegistrar: Address
+  ): Promise<RedirectProjectRegistrar> {
+    const projectRegistrar = await new RedirectProjectRegistrar__factory(this._deployerSigner).deploy(
+      projectManager,
+      chipRegistry,
+      ersRegistry,
+      developerRegistrar
     );
 
     return projectRegistrar;
