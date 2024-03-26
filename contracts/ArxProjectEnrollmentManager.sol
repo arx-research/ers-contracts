@@ -86,38 +86,52 @@ contract ArxProjectEnrollmentManager is Ownable {
       * @param _chipOwnershipProof      The chip signature of the hash of the chainId and msg.sender
       * @param _projectOwnershipProof   Signed hash of the _projectRegistrar address by the _projectPublicKey
       */
+    // function addProject(
+    //     address _projectManager,
+    //     string memory _projectClaimDataUri,
+    //     bytes32 _nameHash,
+    //     bytes32 _merkleRoot,
+    //     address _projectPublicKey,
+    //     address _provingChip,
+    //     IChipRegistry.DeveloperMerkleInfo memory _developerMerkleInfo,
+    //     IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+    //     bytes memory _chipOwnershipProof,
+    //     bytes memory _projectOwnershipProof
+    // )
+
+    // function addProject(
+    //     address _projectManager,
+    //     string memory _projectClaimDataUri,
+    //     bytes32 _nameHash,
+    //     address _projectPublicKey,
+    //     address _provingChip,
+    //     IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+    //     bytes memory _chipOwnershipProof,
+    //     bytes memory _projectOwnershipProof
+    // )
+
+    // TODO: require that the project add an initial chip? Add function to add chips.
     function addProject(
         address _projectManager,
         string memory _projectClaimDataUri,
         bytes32 _nameHash,
-        bytes32 _merkleRoot,
         address _projectPublicKey,
-        address _provingChip,
-        IChipRegistry.DeveloperMerkleInfo memory _developerMerkleInfo,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
-        bytes memory _chipOwnershipProof,
-        bytes memory _projectOwnershipProof
     )
         public 
     {
         require(_isNotZeroAddress(_projectManager), "Invalid project manager address");
         require(_isNotZeroAddress(_projectPublicKey), "Invalid project public key address");
 
-        _validateOwnershipAndTreeInclusion(
+        _validateManufacturerCertificate(
             _provingChip,
-            _chipOwnershipProof,
-            _merkleRoot,
-            _developerMerkleInfo,
             _manufacturerValidation
         );
 
         _deployProjectRegistrarAndAddProject(
             _projectManager,
-            _merkleRoot,
             _nameHash,
-            _projectPublicKey,
-            _projectOwnershipProof,
-            _projectClaimDataUri
+            _projectPublicKey
         );
     }
 
@@ -162,42 +176,40 @@ contract ArxProjectEnrollmentManager is Ownable {
      * @param _developerMerkleInfo          The Developer Merkle Info of the proving chip
      * @param _manufacturerValidation       Manufacturer Validation info for the proving chip
      */
-    function _validateOwnershipAndTreeInclusion(
+
+    // TODO: I am debating whether we need a chipOwnershipProof; I don't believe it adds anything and have ommited
+    function _validateManufacturerCertificate(
         address _provingChip,
-        bytes memory _chipOwnershipProof,
-        bytes32 _merkleRoot,
-        IChipRegistry.DeveloperMerkleInfo memory _developerMerkleInfo,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     )
         internal
         view
     {
-        // Validate chip ownership
-        bytes32 msgHash = abi.encodePacked(block.chainid, msg.sender).toEthSignedMessageHash();
-        require(_provingChip.isValidSignatureNow(msgHash, _chipOwnershipProof), "Invalid chip ownership proof");
+        // // Validate chip ownership
+        // bytes32 msgHash = abi.encodePacked(block.chainid, msg.sender).toEthSignedMessageHash();
+        // require(_provingChip.isValidSignatureNow(msgHash, _chipOwnershipProof), "Invalid chip ownership proof");
 
-        // Validate chip is included in merkle tree
-        bytes32 node = keccak256(
-            bytes.concat(keccak256(
-                abi.encode(
-                    _developerMerkleInfo.developerIndex,
-                    _provingChip,
-                    _manufacturerValidation.enrollmentId,
-                    _developerMerkleInfo.lockinPeriod,
-                    _developerMerkleInfo.serviceId,
-                    _developerMerkleInfo.tokenUri
-                )
-            ))
-        );
+        // // Validate chip is included in merkle tree
+        // bytes32 node = keccak256(
+        //     bytes.concat(keccak256(
+        //         abi.encode(
+        //             _developerMerkleInfo.developerIndex,
+        //             _provingChip,
+        //             _manufacturerValidation.enrollmentId,
+        //             _developerMerkleInfo.lockinPeriod,
+        //             _developerMerkleInfo.serviceId,
+        //             _developerMerkleInfo.tokenUri
+        //         )
+        //     ))
+        // );
 
-        require(MerkleProof.verify(_developerMerkleInfo.developerProof, _merkleRoot, node), "Invalid chip tree inclusion proof");
+        // require(MerkleProof.verify(_developerMerkleInfo.developerProof, _merkleRoot, node), "Invalid chip tree inclusion proof");
 
         // Validate that the chip is part of a valid manufacturer enrollment
         bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
             _manufacturerValidation.enrollmentId,
-            _manufacturerValidation.mIndex,
             _provingChip,
-            _manufacturerValidation.manufacturerProof
+            _manufacturerValidation._chipCertificate
         );
         require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
     }
@@ -213,18 +225,25 @@ contract ArxProjectEnrollmentManager is Ownable {
      * @param _projectOwnershipProof   Signed hash of the _projectRegistrar address by the _projectPublicKey
      * @param _projectClaimDataUri     URI pointing to location of off-chain data required to claim chips
      */
+    // function _deployProjectRegistrarAndAddProject(
+    //     address _projectManager,
+    //     bytes32 _merkleRoot,
+    //     bytes32 _nameHash,
+    //     address _projectPublicKey,
+    //     bytes memory _projectOwnershipProof,
+    //     string memory _projectClaimDataUri
+    // )
+
     function _deployProjectRegistrarAndAddProject(
         address _projectManager,
-        bytes32 _merkleRoot,
         bytes32 _nameHash,
         address _projectPublicKey,
-        bytes memory _projectOwnershipProof,
-        string memory _projectClaimDataUri
     )
         internal
     {
+        // TODO: what salt should we use instead of the merkle root? _projectPublicKey isn't great since this can be reused.
         // Deploy new AuthenticityProjectRegistrar with Create2
-        AuthenticityProjectRegistrar newProjectRegistrar = new AuthenticityProjectRegistrar{salt: _merkleRoot}(
+        AuthenticityProjectRegistrar newProjectRegistrar = new AuthenticityProjectRegistrar{salt: _nameHash}(
             _projectManager, 
             chipRegistry, 
             ers, 
@@ -232,15 +251,23 @@ contract ArxProjectEnrollmentManager is Ownable {
             maxBlockWindow
         );
 
+        // // Register new Project Registrar to Developer Registrar
+        // developerRegistrar.addProject(
+        //     _nameHash, 
+        //     newProjectRegistrar, 
+        //     _merkleRoot, 
+        //     _projectPublicKey, 
+        //     transferPolicy, 
+        //     _projectOwnershipProof,
+        //     _projectClaimDataUri
+        // );
+
         // Register new Project Registrar to Developer Registrar
         developerRegistrar.addProject(
             _nameHash, 
             newProjectRegistrar, 
-            _merkleRoot, 
             _projectPublicKey, 
             transferPolicy, 
-            _projectOwnershipProof,
-            _projectClaimDataUri
         );
 
         emit ProjectRegistrarDeployed(address(newProjectRegistrar), msg.sender);

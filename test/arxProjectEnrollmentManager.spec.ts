@@ -128,9 +128,7 @@ describe("ArxProjectEnrollmentManager", () => {
 
     // 3. Enroll chips to Manufacturer Registry under example manufacturer
     // Example Manufacturer Chip Enrollment Data
-    manufacturerEnrollmentMerkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getRoot();
-    manufacturerCertSigner = manufacturerOne.address;
+    manufacturerCertSigner = manufacturerOne.address; // TODO: sign certificates
     manufacturerChipAuthModel = authModel.address;
     manufacturerValidationUri = "ipfs://bafy";
     manufacturerBootloaderApp = "https://bootloader.app";
@@ -139,7 +137,6 @@ describe("ArxProjectEnrollmentManager", () => {
     // Contract function call
     await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
       manufacturerId,
-      manufacturerMerkleRoot,
       manufacturerCertSigner,
       manufacturerChipAuthModel,
       manufacturerValidationUri,

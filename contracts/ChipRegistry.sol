@@ -46,15 +46,22 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         address indexed projectRegistrar,
         address indexed transferPolicy,
         address projectPublicKey,
-        bytes32 merkleRoot,
-        string projectClaimDataUri
     );
 
-    event ProjectMerkleRootUpdated(                 // Emitted during updateProjectMerkleRoot
-        address indexed projectRegistrar,
-        bytes32 merkleRoot,
-        string projectClaimDataUri
-    );
+    // event ProjectEnrollmentAdded(                   // Emitted during addProjectEnrollment
+    //     address indexed developerRegistrar,
+    //     address indexed projectRegistrar,
+    //     address indexed transferPolicy,
+    //     address projectPublicKey,
+    //     bytes32 merkleRoot,
+    //     string projectClaimDataUri
+    // );
+
+    // event ProjectMerkleRootUpdated(                 // Emitted during updateProjectMerkleRoot
+    //     address indexed projectRegistrar,
+    //     bytes32 merkleRoot,
+    //     string projectClaimDataUri
+    // );
 
     event ChipClaimed(                              // Emitted during claimChip
         address indexed chipId,
@@ -77,13 +84,21 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
 
     /* ============ Structs ============ */
 
+    // Do we need an identifier to replace the merkle root?
+    // struct ProjectInfo {
+    //     bytes32 merkleRoot;
+    //     address projectPublicKey;
+    //     ITransferPolicy transferPolicy;
+    //     uint256 creationTimestamp;
+    //     bool claimsStarted;
+    //     string projectClaimDataUri;
+    // }
+    
     struct ProjectInfo {
-        bytes32 merkleRoot;
         address projectPublicKey;
         ITransferPolicy transferPolicy;
         uint256 creationTimestamp;
         bool claimsStarted;
-        string projectClaimDataUri;
     }
     
     /* ============ Constants ============ */
@@ -144,13 +159,20 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      *                                   key that signed the chip custodyProofs and developerInclusionProofs   
      * @param _projectClaimDataUri       URI pointing to location of off-chain data required to claim chips
      */
+    // function addProjectEnrollment(
+    //     IProjectRegistrar _projectRegistrar,
+    //     address _projectPublicKey,
+    //     ITransferPolicy _transferPolicy,
+    //     bytes32 _merkleRoot,
+    //     bytes calldata _projectOwnershipProof,
+    //     string calldata _projectClaimDataUri
+    // )
+
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
         ITransferPolicy _transferPolicy,
-        bytes32 _merkleRoot,
         bytes calldata _projectOwnershipProof,
-        string calldata _projectClaimDataUri
     )
         external
     {
@@ -160,26 +182,42 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         // with a project enrollment during claim
         require(_projectPublicKey != address(0), "Invalid project public key");
 
+        // TODO: Cameron wondering if we need this; we could probably skip of projectPublicKey == projectRegistrar.owner...
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
         bytes32 messageHash = abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash();
         require(_projectPublicKey.isValidSignatureNow(messageHash, _projectOwnershipProof), "Invalid signature");
 
+
+        // projectEnrollments[_projectRegistrar] = ProjectInfo({
+        //     merkleRoot: _merkleRoot,
+        //     projectPublicKey: _projectPublicKey,
+        //     transferPolicy: _transferPolicy,
+        //     projectClaimDataUri: _projectClaimDataUri,
+        //     creationTimestamp: block.timestamp,
+        //     claimsStarted: false
+        // });
+
         projectEnrollments[_projectRegistrar] = ProjectInfo({
-            merkleRoot: _merkleRoot,
             projectPublicKey: _projectPublicKey,
             transferPolicy: _transferPolicy,
-            projectClaimDataUri: _projectClaimDataUri,
             creationTimestamp: block.timestamp,
             claimsStarted: false
         });
+
+        // emit ProjectEnrollmentAdded(
+        //     msg.sender,
+        //     address(_projectRegistrar),
+        //     _projectPublicKey,
+        //     address(_transferPolicy),
+        //     _merkleRoot,
+        //     _projectClaimDataUri
+        // );
 
         emit ProjectEnrollmentAdded(
             msg.sender,
             address(_projectRegistrar),
             _projectPublicKey,
             address(_transferPolicy),
-            _merkleRoot,
-            _projectClaimDataUri
         );
     }
 
@@ -192,22 +230,22 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * @param _merkleRoot                Merkle root of the project's chip claims
      * @param _projectClaimDataUri       URI pointing to location of off-chain data required to claim chips
      */
-    function updateProjectMerkleRoot(
-        IProjectRegistrar _projectRegistrar,
-        bytes32 _merkleRoot,
-        string calldata _projectClaimDataUri
-    )
-        external
-    {
-        require(msg.sender == projectEnrollments[_projectRegistrar].projectPublicKey, "Caller must be project public key");
-        require(projectEnrollments[_projectRegistrar].creationTimestamp + 30 days > block.timestamp, "Update period has elapsed");
-        require(!projectEnrollments[_projectRegistrar].claimsStarted, "Claims have already started");
+    // function updateProjectMerkleRoot(
+    //     IProjectRegistrar _projectRegistrar,
+    //     bytes32 _merkleRoot,
+    //     string calldata _projectClaimDataUri
+    // )
+    //     external
+    // {
+    //     require(msg.sender == projectEnrollments[_projectRegistrar].projectPublicKey, "Caller must be project public key");
+    //     require(projectEnrollments[_projectRegistrar].creationTimestamp + 30 days > block.timestamp, "Update period has elapsed");
+    //     require(!projectEnrollments[_projectRegistrar].claimsStarted, "Claims have already started");
 
-        projectEnrollments[_projectRegistrar].merkleRoot = _merkleRoot;
-        projectEnrollments[_projectRegistrar].projectClaimDataUri = _projectClaimDataUri;
+    //     projectEnrollments[_projectRegistrar].merkleRoot = _merkleRoot;
+    //     projectEnrollments[_projectRegistrar].projectClaimDataUri = _projectClaimDataUri;
         
-        emit ProjectMerkleRootUpdated(address(_projectRegistrar), _merkleRoot, _projectClaimDataUri);
-    }
+    //     emit ProjectMerkleRootUpdated(address(_projectRegistrar), _merkleRoot, _projectClaimDataUri);
+    // }
 
     /**
      * @notice Allow a user to claim a chip from a project enrollment. Enrollment allows the chip to resolve to the project's preferred
@@ -224,34 +262,43 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * @param _developerInclusionProof      Signature of the chipId signed by the project's public key
      * @param _developerCustodyProof        Signature of the projectPublicKey signed by the chip's private key
      */
-    function claimChip(
+    // function claimChip(
+    //     address _chipId,
+    //     ChipClaim calldata _chipClaim,
+    //     ManufacturerValidation memory _manufacturerValidation,
+    //     bytes memory _developerInclusionProof,
+    //     bytes memory _developerCustodyProof
+    // )
+
+    function addChip(
         address _chipId,
         ChipClaim calldata _chipClaim,
         ManufacturerValidation memory _manufacturerValidation,
-        bytes memory _developerInclusionProof,
-        bytes memory _developerCustodyProof
     )
         external virtual
     {
         ProjectInfo memory projectInfo = projectEnrollments[IProjectRegistrar(msg.sender)];
+        require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
 
-        require(chipTable[_chipId].tokenId == 0, "Chip already claimed");
+        require(chipTable[_chipId].tokenId == 0, "Chip already added");
         require(_chipClaim.owner != address(0), "Invalid chip owner");
         require(projectInfo.projectPublicKey != address(0), "Project not enrolled");
+
+        //TODO: is there more we are loading onto projectInfo that we want to write?
         
         // Validate that chip state has been set correctly in ERS
         require(ers.isValidChipState(_chipClaim.ersNode, _chipId, _chipClaim.owner), "Inconsistent state in ERS");
 
-        _validateCertificates(_chipId, projectInfo.projectPublicKey, _developerInclusionProof, _developerCustodyProof);
+        // _validateCertificates(_chipId, projectInfo.projectPublicKey, _developerInclusionProof, _developerCustodyProof);
 
         // Validate merkle proofs verifying enrollment in project and project using manufacturer chips
-        _validateDeveloperMerkleProof(
-            _chipId,
-            _chipClaim.developerMerkleInfo,
-            _manufacturerValidation.enrollmentId,
-            projectInfo.merkleRoot
-        );
-        _validateManufacturerMerkleProof(_chipId, _manufacturerValidation);
+        // _validateDeveloperMerkleProof(
+        //     _chipId,
+        //     _chipClaim.developerMerkleInfo,
+        //     _manufacturerValidation.enrollmentId,
+        //     projectInfo.merkleRoot
+        // );
+        _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
         uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > _chipClaim.developerMerkleInfo.lockinPeriod ?
@@ -366,7 +413,7 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      *
      * @param _ers                       Address of the ERS contract
      * @param _servicesRegistry          Address of the ServicesRegistry contract
-     * @param _developerRegistry               Address of the DeveloperRegistry contract
+     * @param _developerRegistry         Address of the DeveloperRegistry contract
      */
     function initialize(IERS _ers, IServicesRegistry _servicesRegistry, IDeveloperRegistry _developerRegistry) external onlyOwner {
         require(!initialized, "Contract already initialized");
@@ -384,12 +431,12 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      *
      * @param _gatewayUrl       The URL to add to the array of gateway URLs
      */
-    function addGatewayURL(string memory _gatewayUrl) external onlyOwner {
-        require(!gatewayUrls.contains(_gatewayUrl), "Gateway URL already added");
+    // function addGatewayURL(string memory _gatewayUrl) external onlyOwner {
+    //     require(!gatewayUrls.contains(_gatewayUrl), "Gateway URL already added");
 
-        gatewayUrls.push(_gatewayUrl);
-        emit GatewayURLAdded(_gatewayUrl);
-    }
+    //     gatewayUrls.push(_gatewayUrl);
+    //     emit GatewayURLAdded(_gatewayUrl);
+    // }
 
     /**
      * @notice ONLY OWNER: Remove a gateway URL from the array of gateway URLs. This array returns different URLs the client can call to
@@ -397,12 +444,12 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      *
      * @param _gatewayUrl       The URL to remove from the array of gateway URLs
      */
-    function removeGatewayURL(string memory _gatewayUrl) external onlyOwner {
-        require(gatewayUrls.contains(_gatewayUrl), "Gateway URL not in array");
+    // function removeGatewayURL(string memory _gatewayUrl) external onlyOwner {
+    //     require(gatewayUrls.contains(_gatewayUrl), "Gateway URL not in array");
 
-        gatewayUrls.removeStorage(_gatewayUrl);
-        emit GatewayURLRemoved(_gatewayUrl);
-    }
+    //     gatewayUrls.removeStorage(_gatewayUrl);
+    //     emit GatewayURLRemoved(_gatewayUrl);
+    // }
 
     /**
      * @notice ONLY OWNER: Update the maximum amount of time a chip can be locked into a service for beyond the project's creation timestamp
@@ -428,19 +475,19 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * @param _chipId           The chip public key
      * @return                  The content associated with the chip (if chip has been claimed already)
      */
-    function resolveChipId(address _chipId) external view returns (IServicesRegistry.Record[] memory) {
-        if (_exists(_chipId)) {
-            return servicesRegistry.getPrimaryServiceContent(_chipId);
-        } else {
-            revert OffchainLookup(
-                address(this),
-                gatewayUrls,
-                abi.encodePacked(_chipId),
-                this.resolveUnclaimedChip.selector,
-                abi.encode(_chipId)
-            );
-        }
-    }
+    // function resolveChipId(address _chipId) external view returns (IServicesRegistry.Record[] memory) {
+    //     if (_exists(_chipId)) {
+    //         return servicesRegistry.getPrimaryServiceContent(_chipId);
+    //     } else {
+    //         revert OffchainLookup(
+    //             address(this),
+    //             gatewayUrls,
+    //             abi.encodePacked(_chipId),
+    //             this.resolveUnclaimedChip.selector,
+    //             abi.encode(_chipId)
+    //         );
+    //     }
+    // }
 
     /**
      * @notice Callback function for resolving unclaimed chip following EIP-3668 conventions. If the chip has been enrolled in
@@ -454,73 +501,79 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * @param _extraData        Extra data required to resolve the unclaimed chip
      * @return                  The bootloader app or content associated with the chip
      */
-    function resolveUnclaimedChip(
-        bytes calldata _response,
-        bytes calldata _extraData
-    )
-        external
-        view
-        returns(IServicesRegistry.Record[] memory)
-    {   
-        address chipId = abi.decode(_extraData, (address));
 
-        if(_exists(chipId)) {
-            return servicesRegistry.getPrimaryServiceContent(chipId);
-        }
+    // TODO: replace resolveUnclaimedChip with a validateUnclaimedChip function; this would validate that a chip is in a specific manufacturer enrollment, e.g.
+    // function validateUnclaimedChip(
+        // Expects a chipId and enrollmentId
+    // )
 
-        (
-            uint8 developerEntries,
-            bytes[] memory entries
-        ) = abi.decode(_response, (uint8, bytes[]));
-        uint8 entryLength = uint8(entries.length);
+    // function resolveUnclaimedChip(
+    //     bytes calldata _response,
+    //     bytes calldata _extraData
+    // )
+    //     external
+    //     view
+    //     returns(IServicesRegistry.Record[] memory)
+    // {   
+    //     address chipId = abi.decode(_extraData, (address));
 
-        // Check that the response at least has a manufacturerValidation entry
-        require(entryLength == developerEntries + 1, "Invalid response length");
+    //     if(_exists(chipId)) {
+    //         return servicesRegistry.getPrimaryServiceContent(chipId);
+    //     }
 
-        // Cycle through Developer entries and check if any are valid, return first valid entry. If there is no valid Developer entry then
-        // check the manufacturerValidation entry and return bootloader app. Most likely reason for a malicious invalid entry
-        // is not being able to create valid developerCustodyProof.
-        if (developerEntries > 0) {
-            for (uint8 i = 0; i < entryLength - 1; ++i) {
-                (
-                    bytes32 enrollmentId,
-                    IProjectRegistrar projectRegistrar,
-                    DeveloperMerkleInfo memory developerMerkleInfo,
-                    bytes memory developerInclusionProof,
-                    bytes memory developerCustodyProof
-                ) = abi.decode(entries[i], (bytes32, IProjectRegistrar, DeveloperMerkleInfo, bytes, bytes));
+    //     (
+    //         uint8 developerEntries,
+    //         bytes[] memory entries
+    //     ) = abi.decode(_response, (uint8, bytes[]));
+    //     uint8 entryLength = uint8(entries.length);
 
-                (bool validCertificates, ) = _areValidCertificates(
-                    chipId,
-                    projectEnrollments[projectRegistrar].projectPublicKey,
-                    developerInclusionProof,
-                    developerCustodyProof
-                );
+    //     // Check that the response at least has a manufacturerValidation entry
+    //     require(entryLength == developerEntries + 1, "Invalid response length");
 
-                bool validProof = _isValidDeveloperMerkleProof(
-                    chipId,
-                    developerMerkleInfo,
-                    enrollmentId,
-                    projectEnrollments[projectRegistrar].merkleRoot
-                );
-                if (validProof && validCertificates) {
-                    return servicesRegistry.getServiceContent(chipId, developerMerkleInfo.serviceId);
-                }
-            }
-        }
-        // If no valid Developer entries then we know the chip is not enrolled in a project and we can return the bootloader app
-        ManufacturerValidation memory manufacturerValidation = abi.decode(entries[entryLength - 1], (ManufacturerValidation));
+    //     // Cycle through Developer entries and check if any are valid, return first valid entry. If there is no valid Developer entry then
+    //     // check the manufacturerValidation entry and return bootloader app. Most likely reason for a malicious invalid entry
+    //     // is not being able to create valid developerCustodyProof.
+    //     if (developerEntries > 0) {
+    //         for (uint8 i = 0; i < entryLength - 1; ++i) {
+    //             (
+    //                 bytes32 enrollmentId,
+    //                 IProjectRegistrar projectRegistrar,
+    //                 DeveloperMerkleInfo memory developerMerkleInfo,
+    //                 bytes memory developerInclusionProof,
+    //                 bytes memory developerCustodyProof
+    //             ) = abi.decode(entries[i], (bytes32, IProjectRegistrar, DeveloperMerkleInfo, bytes, bytes));
 
-        _validateManufacturerMerkleProof(chipId, manufacturerValidation);
+    //             (bool validCertificates, ) = _areValidCertificates(
+    //                 chipId,
+    //                 projectEnrollments[projectRegistrar].projectPublicKey,
+    //                 developerInclusionProof,
+    //                 developerCustodyProof
+    //             );
 
-        IServicesRegistry.Record[] memory bootloaderResponse = new IServicesRegistry.Record[](1);
-        bootloaderResponse[0] = IServicesRegistry.Record({
-            recordType: REDIRECT_URL_RECORDTYPE,
-            content: bytes(manufacturerRegistry.getEnrollmentBootloaderApp(manufacturerValidation.enrollmentId))
-        });
+    //             bool validProof = _isValidDeveloperMerkleProof(
+    //                 chipId,
+    //                 developerMerkleInfo,
+    //                 enrollmentId,
+    //                 projectEnrollments[projectRegistrar].merkleRoot
+    //             );
+    //             if (validProof && validCertificates) {
+    //                 return servicesRegistry.getServiceContent(chipId, developerMerkleInfo.serviceId);
+    //             }
+    //         }
+    //     }
+    //     // If no valid Developer entries then we know the chip is not enrolled in a project and we can return the bootloader app
+    //     ManufacturerValidation memory manufacturerValidation = abi.decode(entries[entryLength - 1], (ManufacturerValidation));
 
-        return bootloaderResponse;
-    }
+    //     _validateManufacturerMerkleProof(chipId, manufacturerValidation);
+
+    //     IServicesRegistry.Record[] memory bootloaderResponse = new IServicesRegistry.Record[](1);
+    //     bootloaderResponse[0] = IServicesRegistry.Record({
+    //         recordType: REDIRECT_URL_RECORDTYPE,
+    //         content: bytes(manufacturerRegistry.getEnrollmentBootloaderApp(manufacturerValidation.enrollmentId))
+    //     });
+
+    //     return bootloaderResponse;
+    // }
 
     /**
      * @notice Get tokenUri from tokenId. TokenURI associated with primary service takes precedence, if no tokenURI as
@@ -546,9 +599,9 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         return bytes(tokenUri).length == 0 ? ClaimedPBT.tokenURI(_chipId) : tokenUri;
     }
 
-    function getGatewayUrls() external view returns(string[] memory) {
-        return gatewayUrls;
-    }
+    // function getGatewayUrls() external view returns(string[] memory) {
+    //     return gatewayUrls;
+    // }
 
     /* ============ Internal Functions ============ */
 
@@ -565,24 +618,24 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * the address of the chip. We then check the validity of the signed certificate which is the project public key
      * signed by the chip.
      */
-    function _validateCertificates(
-        address _chipId,
-        address _projectPublicKey,
-        bytes memory _developerInclusionProof,
-        bytes memory _developerCustodyProof
-    )
-        internal
-        view
-    {
-        (bool validCertificates, string memory errorMessage) = _areValidCertificates(
-            _chipId,
-            _projectPublicKey,
-            _developerInclusionProof,
-            _developerCustodyProof
-        );
+    // function _validateCertificates(
+    //     address _chipId,
+    //     address _projectPublicKey,
+    //     bytes memory _developerInclusionProof,
+    //     bytes memory _developerCustodyProof
+    // )
+    //     internal
+    //     view
+    // {
+    //     (bool validCertificates, string memory errorMessage) = _areValidCertificates(
+    //         _chipId,
+    //         _projectPublicKey,
+    //         _developerInclusionProof,
+    //         _developerCustodyProof
+    //     );
 
-        require(validCertificates, errorMessage);
-    }
+    //     require(validCertificates, errorMessage);
+    // }
 
     /**
      * Check that certificates passed as part of claim are valid. Developer cert is valid if the project public key signed
@@ -592,33 +645,49 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * @return  bool    Whether or not the certificates are valid
      * @return  string  Error message if certificates are invalid
      */
-    function _areValidCertificates(
-        address _chipId,
-        address _projectPublicKey,
-        bytes memory _developerInclusionProof,
-        bytes memory _developerCustodyProof
-    )
-        internal
-        view
-        returns (bool, string memory)
-    {
-        // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
-        bytes32 developerInclusionProofHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
-        bytes32 signedCertHash = abi.encodePacked(_projectPublicKey).toEthSignedMessageHash();
+    // function _areValidCertificates(
+    //     address _chipId,
+    //     address _projectPublicKey,
+    //     bytes memory _developerInclusionProof,
+    //     bytes memory _developerCustodyProof
+    // )
+    //     internal
+    //     view
+    //     returns (bool, string memory)
+    // {
+    //     // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
+    //     bytes32 developerInclusionProofHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+    //     bytes32 signedCertHash = abi.encodePacked(_projectPublicKey).toEthSignedMessageHash();
 
-        if (!_projectPublicKey.isValidSignatureNow(developerInclusionProofHash, _developerInclusionProof)) {
-            return (false, "Invalid Developer certificate");
-        } else if (!_chipId.isValidSignatureNow(signedCertHash, _developerCustodyProof)) {
-            return (false, "Invalid custody proof");
-        } else {
-            return (true, "");
-        }
-    }
+    //     if (!_projectPublicKey.isValidSignatureNow(developerInclusionProofHash, _developerInclusionProof)) {
+    //         return (false, "Invalid Developer certificate");
+    //     } else if (!_chipId.isValidSignatureNow(signedCertHash, _developerCustodyProof)) {
+    //         return (false, "Invalid custody proof");
+    //     } else {
+    //         return (true, "");
+    //     }
+    // }
 
     /**
      * Validate inclusion in Manufacturer's chip enrollment
      */
-    function _validateManufacturerMerkleProof(
+    // function _validateManufacturerMerkleProof(
+    //     address chipId,
+    //     ManufacturerValidation memory _manufacturerValidation
+    // )
+    //     internal
+    //     view
+    // {
+    //     bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
+    //         _manufacturerValidation.enrollmentId,
+    //         _manufacturerValidation.mIndex,
+    //         chipId,
+    //         _manufacturerValidation.manufacturerProof
+    //     );
+    //     require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
+    // }
+
+    function _validateManufacturerCertificate(
         address chipId,
         ManufacturerValidation memory _manufacturerValidation
     )
@@ -627,9 +696,8 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
     {
         bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
             _manufacturerValidation.enrollmentId,
-            _manufacturerValidation.mIndex,
             chipId,
-            _manufacturerValidation.manufacturerProof
+            _manufacturerValidation._chipCertificate
         );
         require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
     }
@@ -637,46 +705,46 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
     /**
      * Indicate inclusion in Developer's merkle tree
      */
-    function _isValidDeveloperMerkleProof(
-        address _chipId,
-        DeveloperMerkleInfo memory _merkleProofInfo,
-        bytes32 _enrollmentId,
-        bytes32 _merkleRoot
-    )
-        internal
-        pure
-        returns (bool)
-    {
-        bytes32 node = keccak256(
-            bytes.concat(keccak256(
-                abi.encode(
-                    _merkleProofInfo.developerIndex,
-                    _chipId,
-                    _enrollmentId,
-                    _merkleProofInfo.lockinPeriod,
-                    _merkleProofInfo.serviceId,
-                    _merkleProofInfo.tokenUri
-                )
-            ))
-        );
+    // function _isValidDeveloperMerkleProof(
+    //     address _chipId,
+    //     DeveloperMerkleInfo memory _merkleProofInfo,
+    //     bytes32 _enrollmentId,
+    //     bytes32 _merkleRoot
+    // )
+    //     internal
+    //     pure
+    //     returns (bool)
+    // {
+    //     bytes32 node = keccak256(
+    //         bytes.concat(keccak256(
+    //             abi.encode(
+    //                 _merkleProofInfo.developerIndex,
+    //                 _chipId,
+    //                 _enrollmentId,
+    //                 _merkleProofInfo.lockinPeriod,
+    //                 _merkleProofInfo.serviceId,
+    //                 _merkleProofInfo.tokenUri
+    //             )
+    //         ))
+    //     );
 
-        return MerkleProof.verify(_merkleProofInfo.developerProof, _merkleRoot, node);
-    }
+    //     return MerkleProof.verify(_merkleProofInfo.developerProof, _merkleRoot, node);
+    // }
 
     /**
      * Validate inclusion in Developer's merkle tree
      */
-    function _validateDeveloperMerkleProof(
-        address _chipId,
-        DeveloperMerkleInfo memory _merkleProofInfo,
-        bytes32 _enrollmentId,
-        bytes32 _merkleRoot
-    )
-        internal
-        pure
-    {
-        require(_isValidDeveloperMerkleProof(_chipId, _merkleProofInfo, _enrollmentId, _merkleRoot), "Invalid Developer merkle proof");
-    }
+    // function _validateDeveloperMerkleProof(
+    //     address _chipId,
+    //     DeveloperMerkleInfo memory _merkleProofInfo,
+    //     bytes32 _enrollmentId,
+    //     bytes32 _merkleRoot
+    // )
+    //     internal
+    //     pure
+    // {
+    //     require(_isValidDeveloperMerkleProof(_chipId, _merkleProofInfo, _enrollmentId, _merkleRoot), "Invalid Developer merkle proof");
+    // }
 
     /**
      * @notice Grab passed record type of primary service. For purposes of use within this contract we convert bytes

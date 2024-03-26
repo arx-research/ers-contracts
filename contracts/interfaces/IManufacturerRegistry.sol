@@ -3,11 +3,21 @@
 pragma solidity ^0.8.17;
 
 interface IManufacturerRegistry {
+    // function isEnrolledChip(
+    //     bytes32 _enrollmentId,
+    //     uint256 _index,
+    //     address _chipId,
+    //     bytes32[] calldata _merkleProof
+    // )
+    //     external
+    //     view
+    //     returns (bool);
+
+
     function isEnrolledChip(
         bytes32 _enrollmentId,
-        uint256 _index,
         address _chipId,
-        bytes32[] calldata _merkleProof
+        bytes calldata _chipCertificate        
     )
         external
         view
