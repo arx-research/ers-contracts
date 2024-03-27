@@ -8,6 +8,7 @@ import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-etherscan';
 import '@nomicfoundation/hardhat-chai-matchers';
 import 'solidity-docgen';
+import "hardhat-gas-reporter"
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -49,6 +50,9 @@ const config: HardhatUserConfig = {
   docgen: {
     exclude: ["mocks", "interfaces", "lib", "token/IPBT.sol"],
     pages: 'files',
+  },
+  gasReporter: {
+    enabled: true,
   },
 };
 

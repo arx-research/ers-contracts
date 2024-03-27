@@ -3,6 +3,11 @@ import { BigNumber, ethers } from "ethers";
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 
+export async function createManufacturerCertificate(signer: Account, chipId: Address): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(["address"], [chipId]);
+  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+}
+
 export async function createProjectOwnershipProof(
   signer: Account,
   projectRegistrarAddress: Address,

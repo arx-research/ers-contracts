@@ -15,7 +15,6 @@ export interface DeveloperMerkleProofInfo {
   serviceId: string;            // The id of the primary service the Developer specifies for the chip owner
   lockinPeriod: BigNumber;      // Length of time before the chip owner can change the primary service
   tokenUri: string;             // tokenUri like in ERC-721
-  developerProof: string[];           // The merkle proof used to prove that the chip is part of a tree
 }
 
 export interface ChipClaimInfo {
@@ -41,8 +40,6 @@ export interface ProjectChipClaim {
   chipNameHash: string;
   developerMerkleInfo: DeveloperMerkleProofInfo;
   manufacturerValidation: ManufacturerValidationInfo;
-  developerInclusionProof: string;
-  developerCustodyProof: string;
 }
 
 export interface ServiceRecord{

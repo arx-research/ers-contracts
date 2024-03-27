@@ -77,13 +77,11 @@ export default class DeployMocks {
 
   public async deployChipRegistryMock(
     manufacturerRegistry: Address,
-    gatewayUrls: string[],
     maxBlockWindow: BigNumber = BigNumber.from(5),
     maxLockinPeriod: BigNumber = BigNumber.from(1000)
   ): Promise<ChipRegistryMock>{
     const chipRegistryMock = await new ChipRegistryMock__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      gatewayUrls,
       maxBlockWindow,
       maxLockinPeriod
     );

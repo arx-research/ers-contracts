@@ -15,11 +15,10 @@ contract ChipRegistryMock is ChipRegistry {
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
-        string[] memory _gatewayUrls,
         uint256 _maxBlockWindow,
         uint256 _maxLockinPeriod
     )
-        ChipRegistry(_manufacturerRegistry, _gatewayUrls, _maxBlockWindow, _maxLockinPeriod)
+        ChipRegistry(_manufacturerRegistry, _maxBlockWindow, _maxLockinPeriod)
     {}
 
     function addChip(

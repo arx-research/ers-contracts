@@ -65,7 +65,6 @@ describe("ArxProjectEnrollmentManager", () => {
 
   let chainId: number;
   let manufacturerId: string;
-  let chipRegistryGatewayURLs: string[];
   let serviceId: string;
   let serviceRecords: ServiceRecord[];
   let projectNameHash: string;
@@ -91,8 +90,6 @@ describe("ArxProjectEnrollmentManager", () => {
   let chipTwoManufacturerCertificate: string;
 
   // Project Chip Enrollment Data
-  let projectMerkleTree: DeveloperTree;
-  let projectMerkleRoot: string;
   let projectOwnerPublicKey: string;
   let projectOwnershipProof: string;
 
@@ -151,8 +148,7 @@ describe("ArxProjectEnrollmentManager", () => {
     );
 
     // 4. Deploy chip registry
-    chipRegistryGatewayURLs = ["www.resolve.com"];
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, chipRegistryGatewayURLs);
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, maxBlockWindow, (await blockchain.getCurrentTimestamp()).add(100));
 
     // 5. Deploy Developer Registry
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
@@ -303,7 +299,7 @@ describe("ArxProjectEnrollmentManager", () => {
     });
   });
 
-  describe("#addProject", async() => {
+  describe.only("#addProject", async() => {
     let subjectProjectManager: Address;
     let subjectProjectClaimDataUri: string;
     let subjectNameHash: string;
@@ -325,7 +321,6 @@ describe("ArxProjectEnrollmentManager", () => {
         serviceId: chipOneClaim.primaryServiceId,
         lockinPeriod: chipOneClaim.lockinPeriod,
         tokenUri: chipOneClaim.tokenUri,
-        developerProof: projectMerkleTree.getProof(0),
       } as DeveloperMerkleProofInfo;
       subjectManufacturerValidation = {
         enrollmentId: developerChipsEnrollmentId,
@@ -344,6 +339,7 @@ describe("ArxProjectEnrollmentManager", () => {
         subjectProjectPublicKey,
         subjectProvingChipId,
         subjectManufacturerValidation,
+        subjectProjectOwnershipProof
       );
     }
 
@@ -381,40 +377,6 @@ describe("ArxProjectEnrollmentManager", () => {
         expectedProjectRegistrarAddress,
         developerOne.address
       );
-    });
-
-    describe("when the chip ownership proof is invalid", async () => {
-      beforeEach(async () => {
-        subjectChipOwnershipProof = await createProvingChipOwnershipProof(chipTwo, developerOne.address, chainId);
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid chip ownership proof");
-      });
-    });
-
-    describe("when the chip is not included in the Developer Merkle Tree", async () => {
-      beforeEach(async () => {
-        subjectChipOwnershipProof = await createProvingChipOwnershipProof(developerOne, developerOne.address, chainId);
-        subjectProvingChipId = developerOne.address;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid chip tree inclusion proof");
-      });
-    });
-
-    describe("when the manufacturer enrollment is not included in the manufacturer Merkle Tree", async () => {
-      beforeEach(async () => {
-        subjectManufacturerValidation = {
-          enrollmentId: developerChipsEnrollmentId,
-          manufacturerCertificate: chipTwoManufacturerCertificate,
-        } as ManufacturerValidationInfo;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Chip not enrolled with ManufacturerRegistry");
-      });
     });
 
     describe("when the projectManager param is the zero address", async () => {

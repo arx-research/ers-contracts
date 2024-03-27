@@ -21,26 +21,10 @@ interface IChipRegistry is IPBT {
         DeveloperMerkleInfo developerMerkleInfo;
     }
 
-    // struct ManufacturerValidation {
-    //     bytes32 enrollmentId;
-    //     uint256 mIndex;
-    //     bytes32[] manufacturerProof;
-    // }
-
     struct ManufacturerValidation {
         bytes32 enrollmentId;
         bytes manufacturerCertificate;
     }
-
-    // function addProjectEnrollment(
-    //     IProjectRegistrar _projectRegistrar,
-    //     address _projectPublicKey,
-    //     ITransferPolicy _transferPolicy,
-    //     bytes32 _merkleRoot,
-    //     bytes calldata _signature,
-    //     string calldata _projectClaimDataUri
-    // )
-    //     external;
 
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
@@ -49,15 +33,6 @@ interface IChipRegistry is IPBT {
         bytes calldata _signature
     )
         external;
-    
-    // function claimChip(
-    //     address _chipId,
-    //     ChipClaim calldata _chipClaim,
-    //     ManufacturerValidation calldata _manufacturerValidation,
-    //     bytes calldata _developerInclusionProof,
-    //     bytes calldata _developerCustodyProof
-    // )
-    //     external;
 
     function addChip(
         address _chipId,

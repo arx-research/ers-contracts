@@ -107,13 +107,11 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
      * @notice Constructor for ChipRegistry
      *
      * @param _manufacturerRegistry     Address of the ManufacturerRegistry contract
-     * @param _gatewayUrls              Array of gateway URLs for resolving unclaimed chips using EIP-3668
      * @param _maxBlockWindow           The maximum amount of blocks a signature used for updating chip table is valid for
      * @param _maxLockinPeriod          The maximum amount of time a chip can be locked into a service for beyond the project's creation timestamp
     */
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
-        string[] memory _gatewayUrls,
         uint256 _maxBlockWindow,
         uint256 _maxLockinPeriod
     )
@@ -121,7 +119,6 @@ contract ChipRegistry is IChipRegistry, ClaimedPBT, Ownable {
         Ownable()
     {
         manufacturerRegistry = _manufacturerRegistry;
-        gatewayUrls = _gatewayUrls;
         maxLockinPeriod = _maxLockinPeriod;
     }
 

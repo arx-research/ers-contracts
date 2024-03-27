@@ -80,6 +80,7 @@ contract ArxProjectEnrollmentManager is Ownable {
       * @param _projectPublicKey        Public key used in the generation of the Developer certificates
       * @param _provingChip             The chip used as proof of ownership
       * @param _manufacturerValidation  Manufacturer Validation info for the proving chip
+      * @param _projectOwnershipProof   Proof of ownership of the project
       */
 
     // TODO: require that the project add an initial chip? Add function to add chips.
@@ -88,7 +89,8 @@ contract ArxProjectEnrollmentManager is Ownable {
         bytes32 _nameHash,
         address _projectPublicKey,
         address _provingChip,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+        bytes memory _projectOwnershipProof
     )
         public 
     {
@@ -103,7 +105,8 @@ contract ArxProjectEnrollmentManager is Ownable {
         _deployProjectRegistrarAndAddProject(
             _projectManager,
             _nameHash,
-            _projectPublicKey
+            _projectPublicKey,
+            _projectOwnershipProof
         );
     }
 
@@ -176,7 +179,9 @@ contract ArxProjectEnrollmentManager is Ownable {
     function _deployProjectRegistrarAndAddProject(
         address _projectManager,
         bytes32 _nameHash,
-        address _projectPublicKey
+        address _projectPublicKey,
+        bytes memory _projectOwnershipProof
+
     )
         internal
     {
@@ -195,7 +200,8 @@ contract ArxProjectEnrollmentManager is Ownable {
             _nameHash, 
             newProjectRegistrar, 
             _projectPublicKey, 
-            transferPolicy
+            transferPolicy,
+            _projectOwnershipProof
         );
 
         emit ProjectRegistrarDeployed(address(newProjectRegistrar), msg.sender);
