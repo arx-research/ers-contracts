@@ -20,7 +20,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  *    Once a manufacturerId has been put in this state it CANNOT leave it.
  */
 contract ManufacturerRegistry is Ownable {
-    
+
+    using SignatureChecker for address;
+    using ECDSA for bytes;
+
     /* ============ Events ============ */
     event ManufacturerAdded(                // Called in addManufacturer
         bytes32 indexed manufacturerId,
