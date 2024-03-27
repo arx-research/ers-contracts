@@ -25,8 +25,6 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
         bytes32 chipNameHash;
         IChipRegistry.DeveloperMerkleInfo developerMerkleInfo;
         IChipRegistry.ManufacturerValidation manufacturerValidation;
-        bytes developerInclusionProof;
-        bytes developerCustodyProof;
     }
 
     /* ============ Constructor ============ */
@@ -72,9 +70,7 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
                 claim.chipNameHash,
                 msg.sender,
                 claim.developerMerkleInfo,
-                claim.manufacturerValidation,
-                claim.developerInclusionProof,
-                claim.developerCustodyProof
+                claim.manufacturerValidation
             );
         }
     }

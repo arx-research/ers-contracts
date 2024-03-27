@@ -29,7 +29,7 @@ interface IChipRegistry is IPBT {
 
     struct ManufacturerValidation {
         bytes32 enrollmentId;
-        bytes calldata manufacturerCertificate;
+        bytes manufacturerCertificate;
     }
 
     // function addProjectEnrollment(
@@ -46,7 +46,7 @@ interface IChipRegistry is IPBT {
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
         ITransferPolicy _transferPolicy,
-        bytes calldata _signature,
+        bytes calldata _signature
     )
         external;
     
@@ -62,7 +62,7 @@ interface IChipRegistry is IPBT {
     function addChip(
         address _chipId,
         ChipClaim calldata _chipClaim,
-        ManufacturerValidation calldata _manufacturerValidation,
+        ManufacturerValidation calldata _manufacturerValidation
     )
         external;        
 }

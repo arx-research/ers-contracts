@@ -27,6 +27,7 @@ import {
   calculateLabelHash,
   calculateSubnodeHash,
   createProjectOwnershipProof,
+  createManufacturerCertificate,
   createProvingChipOwnershipProof
 } from "@utils/protocolUtils";
 import { ADDRESS_ZERO, NULL_NODE, ZERO } from "@utils/constants";
@@ -86,6 +87,8 @@ describe("ArxProjectEnrollmentManager", () => {
   let manufacturerValidationUri: string;
   let manufacturerBootloaderApp: string;
   let manufacturerChipModel: string;
+  let chipOneManufacturerCertificate: string;
+  let chipTwoManufacturerCertificate: string;
 
   // Project Chip Enrollment Data
   let projectMerkleTree: DeveloperTree;
@@ -120,7 +123,7 @@ describe("ArxProjectEnrollmentManager", () => {
     // 1. Deploy example ERS system's Manufacturer Registry
     manufacturerRegistry = await deployer.deployManufacturerRegistry(owner.address);
 
-    // 2. Add example manufacture to Manufacturer Registry
+    // 2. Add example manufacturer to Manufacturer Registry
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
     await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
 
@@ -133,6 +136,9 @@ describe("ArxProjectEnrollmentManager", () => {
     manufacturerValidationUri = "ipfs://bafy";
     manufacturerBootloaderApp = "https://bootloader.app";
     manufacturerChipModel = "SuperCool ChipModel";
+
+    chipOneManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chipOne.address);
+    chipTwoManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chipTwo.address);
 
     // Contract function call
     await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
@@ -246,13 +252,16 @@ describe("ArxProjectEnrollmentManager", () => {
       primaryServiceId: serviceId,
       tokenUri: developerClaimTokenURI,
     };
-    projectMerkleTree = new DeveloperTree([chipOneClaim, chipTwoClaim]);
-    projectMerkleRoot = projectMerkleTree.getRoot();
+    // projectMerkleTree = new DeveloperTree([chipOneClaim, chipTwoClaim]);
+    // projectMerkleRoot = projectMerkleTree.getRoot();
+
+    // Example project data
+    projectNameHash = calculateLabelHash("ProjectX");
 
     // Create expected Project Registrar address to sign
     expectedProjectRegistrarAddress = calculateAuthenticityProjectRegistrarAddress(
       arxProjectEnrollmentManager.address,
-      projectMerkleRoot,
+      projectNameHash,
       [
         projectManager.address,
         chipRegistry.address,
@@ -261,9 +270,6 @@ describe("ArxProjectEnrollmentManager", () => {
         maxBlockWindow,
       ]
     );
-
-    // Example project data
-    projectNameHash = calculateLabelHash("ProjectX");
 
     chainId = await blockchain.getChainId();
     projectOwnershipProof = await createProjectOwnershipProof(
@@ -301,7 +307,6 @@ describe("ArxProjectEnrollmentManager", () => {
     let subjectProjectManager: Address;
     let subjectProjectClaimDataUri: string;
     let subjectNameHash: string;
-    let subjectMerkleRoot: string;
     let subjectProjectPublicKey: string;
     let subjectProvingChipId: Address;
     let subjectDeveloperMerkleInfo: DeveloperMerkleProofInfo;
@@ -314,7 +319,6 @@ describe("ArxProjectEnrollmentManager", () => {
       subjectProjectManager = projectManager.address;
       subjectProjectClaimDataUri = developerClaimDataUri;
       subjectNameHash = projectNameHash;
-      subjectMerkleRoot = projectMerkleRoot;
       subjectProvingChipId = chipOne.address;
       subjectDeveloperMerkleInfo = {
         developerIndex: ZERO,
@@ -325,8 +329,7 @@ describe("ArxProjectEnrollmentManager", () => {
       } as DeveloperMerkleProofInfo;
       subjectManufacturerValidation = {
         enrollmentId: developerChipsEnrollmentId,
-        mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
+        manufacturerCertificate: chipOneManufacturerCertificate,
       } as ManufacturerValidationInfo;
       subjectChipOwnershipProof = await createProvingChipOwnershipProof(chipOne, developerOne.address, chainId);
       subjectProjectPublicKey = projectOwnerPublicKey;
@@ -337,15 +340,10 @@ describe("ArxProjectEnrollmentManager", () => {
     async function subject(): Promise<ContractTransaction> {
       return await arxProjectEnrollmentManager.connect(subjectCaller.wallet).addProject(
         subjectProjectManager,
-        subjectProjectClaimDataUri,
         subjectNameHash,
-        subjectMerkleRoot,
         subjectProjectPublicKey,
         subjectProvingChipId,
-        subjectDeveloperMerkleInfo,
         subjectManufacturerValidation,
-        subjectChipOwnershipProof,
-        subjectProjectOwnershipProof
       );
     }
 
@@ -374,10 +372,8 @@ describe("ArxProjectEnrollmentManager", () => {
       const enrollment = await chipRegistry.projectEnrollments(expectedProjectRegistrarAddress);
 
       expect(actualProjects).to.include(expectedProjectRegistrarAddress);
-      expect(enrollment.merkleRoot).to.eq(subjectMerkleRoot);
       expect(enrollment.projectPublicKey).to.eq(subjectProjectPublicKey);
       expect(enrollment.transferPolicy).to.eq(transferPolicy.address);
-      expect(enrollment.projectClaimDataUri).to.eq(subjectProjectClaimDataUri);
     });
 
     it("should emit the correct ProjectRegistrarDeployed event", async () => {
@@ -412,8 +408,7 @@ describe("ArxProjectEnrollmentManager", () => {
       beforeEach(async () => {
         subjectManufacturerValidation = {
           enrollmentId: developerChipsEnrollmentId,
-          mIndex: ZERO,
-          manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(1),
+          manufacturerCertificate: chipTwoManufacturerCertificate,
         } as ManufacturerValidationInfo;
       });
 

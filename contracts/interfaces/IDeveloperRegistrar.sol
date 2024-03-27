@@ -23,7 +23,7 @@ interface IDeveloperRegistrar {
         bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
-        ITransferPolicy _transferPolicy,
+        ITransferPolicy _transferPolicy
     )
         external;
      

@@ -60,8 +60,6 @@ contract AuthenticityProjectRegistrar is BaseProjectRegistrar {
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
      * @param _commitBlock              The block the signature is tied to (used to put a time limit on the signature)
      * @param _chipOwnershipProof       Chip signature of the chainId, _commitBlock, _nameHash, and msg.sender packed together
-     * @param _developerInclusionProof  Chip's public key/ID signed by the projectPublicKey, indicates Developer approves chip as part of project
-     * @param _developerCustodyProof    Proof that the chip was in custody of the Developer, the projectPublicKey signed by the chip
      */
     function claimChip(
         address _chipId,
@@ -69,9 +67,7 @@ contract AuthenticityProjectRegistrar is BaseProjectRegistrar {
         IChipRegistry.DeveloperMerkleInfo memory _claimData,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
         uint256 _commitBlock,
-        bytes memory _chipOwnershipProof,
-        bytes memory _developerInclusionProof,
-        bytes memory _developerCustodyProof
+        bytes memory _chipOwnershipProof
     ) 
         external 
     {
@@ -93,9 +89,7 @@ contract AuthenticityProjectRegistrar is BaseProjectRegistrar {
             _nameHash,
             chipOwner,
             _claimData,
-            _manufacturerValidation,
-            _developerInclusionProof,
-            _developerCustodyProof
+            _manufacturerValidation
         );
     }
 }

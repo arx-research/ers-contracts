@@ -83,17 +83,13 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
      * @param _chipOwner                Intended owner of the chip being claimed
      * @param _claimData                Struct containing chip info
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
-     * @param _developerInclusionProof  Chip's public key/ID signed by the projectPublicKey, indicates Developer approves chip as part of project
-     * @param _developerCustodyProof    Proof that the chip was in custody of the Developer, the projectPublicKey signed by the chip
      */
     function _createSubnodeAndClaimChip(
         address _chipId,
         bytes32 _nameHash,
         address _chipOwner,
         IChipRegistry.DeveloperMerkleInfo memory _claimData,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
-        bytes memory _developerInclusionProof,
-        bytes memory _developerCustodyProof
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     ) 
         internal
     {
@@ -108,7 +104,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         });
 
         // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.claimChip(_chipId, chipClaim, _manufacturerValidation, _developerInclusionProof, _developerCustodyProof);
+        chipRegistry.addChip(_chipId, chipClaim, _manufacturerValidation);
     }
 }
 

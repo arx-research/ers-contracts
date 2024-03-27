@@ -29,9 +29,7 @@ contract ProjectRegistrarMock {
         bytes32 _nameHash,
         address chipOwner,
         IChipRegistry.DeveloperMerkleInfo calldata _claimData,
-        IChipRegistry.ManufacturerValidation calldata _manufacturerValidation,
-        bytes calldata _developerInclusionProof,
-        bytes calldata _signedCert
+        IChipRegistry.ManufacturerValidation calldata _manufacturerValidation
     )
         external
     {
@@ -50,12 +48,10 @@ contract ProjectRegistrarMock {
             developerMerkleInfo: _claimData
         });
 
-        chipRegistry.claimChip(
+        chipRegistry.addChip(
             msg.sender,
             chipClaim,
-            _manufacturerValidation,
-            _developerInclusionProof,
-            _signedCert
+            _manufacturerValidation
         );
     }
 }

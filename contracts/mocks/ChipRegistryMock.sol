@@ -22,19 +22,15 @@ contract ChipRegistryMock is ChipRegistry {
         ChipRegistry(_manufacturerRegistry, _gatewayUrls, _maxBlockWindow, _maxLockinPeriod)
     {}
 
-    function claimChip(
+    function addChip(
         address _chipId,
         IChipRegistry.ChipClaim calldata /*_chipClaim*/,
-        IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/,
-        bytes calldata _developerInclusionProof,
-        bytes calldata _developerCustodyProof
+        IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
     ) external override {
         chipIds[_chipId] = true;
-        developerInclusionProofs[_developerInclusionProof] = true;
-        developerCustodyProofs[_developerCustodyProof] = true;
     }
 
-    function mockClaimChip(address _chipId, address _owner) external {
+    function mockAddChip(address _chipId, address _owner) external {
         ChipInfo memory chipInfo = ChipInfo({
             tokenId: 0,     // temporary value, will be set in _mint
             transferPolicy: ITransferPolicy(address(0)),

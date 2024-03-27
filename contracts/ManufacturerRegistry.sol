@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -29,17 +30,6 @@ contract ManufacturerRegistry is Ownable {
         bytes32 indexed manufacturerId
     );
 
-    // event EnrollmentAdded(                  // Called in addChipEnrollment
-    //     bytes32 indexed manufacturerId,     // Manufacturer identifier
-    //     bytes32 indexed enrollmentId,       // Enrollment identifier
-    //     bytes32 merkleRoot,                 // Merkle root of all chipIds (addresses) that are valid for this enrollment
-    //     address manufacturerCertSigner,     // Address of certificate signer for this enrollment
-    //     address authModel,                  // Address of contract that implements example signature validation for a chip
-    //     string chipValidationDataUri,       // URI pointing to location of off-chain data required to validate chip is part of manufacturer enrollment
-    //     string bootloaderApp,               // Bootloader app for this enrollment
-    //     string chipModel                    // Chip model for this enrollment
-    // );
-
     // TODO: add enrollment expiration? or enrollment count?
     event EnrollmentAdded(                  // Called in addChipEnrollment
         bytes32 indexed manufacturerId,     // Manufacturer identifier
@@ -57,15 +47,6 @@ contract ManufacturerRegistry is Ownable {
     );
 
     /* ============ Structs ============ */
-    // struct EnrollmentInfo {
-    //     uint256 manufacturerId;
-    //     bytes32 merkleRoot;
-    //     address manufacturerCertSigner;
-    //     address authModel;                  // Address with implementation for validating chip signatures
-    //     string chipValidationDataUri;       // URI pointing to location of off-chain data required to validate chip is part of manufacturer enrollment
-    //     string bootloaderApp;
-    //     string chipModel;                   // Description of chip
-    // }
 
     struct EnrollmentInfo {
         uint256 manufacturerId;
@@ -112,7 +93,6 @@ contract ManufacturerRegistry is Ownable {
      * associated with _manufacturerId can call this function. An "active" manufacturer is one with registered=true and a non-zero owner address.
      *
      * @param _manufacturerId               Bytes32 identifier for manufacturer (i.e. could be hash of manufacturer name)
-     * @param _merkleRoot                   Merkle root of all chipIds (addresses) that are valid for this enrollment
      * @param _certSigner                   Address of certificate signer for this enrollment
      * @param _authModel                    Address of contract that implements example signature validation for a chip
      * @param _chipValidationDataUri        URI pointing to location of off-chain data required to validate chip is part of manufacturer enrollment
@@ -120,15 +100,6 @@ contract ManufacturerRegistry is Ownable {
      * @param _chipModel                    Chip model for this enrollment
      * @return enrollmentId                 Id of enrollment
      */
-    // function addChipEnrollment(
-    //     bytes32 _manufacturerId,
-    //     bytes32 _merkleRoot,
-    //     address _certSigner,
-    //     address _authModel,
-    //     string calldata _chipValidationDataUri,
-    //     string calldata _bootloaderApp,
-    //     string calldata _chipModel
-    // )
 
     function addChipEnrollment(
         bytes32 _manufacturerId,
@@ -147,16 +118,6 @@ contract ManufacturerRegistry is Ownable {
 
         enrollmentId = keccak256(abi.encodePacked(_manufacturerId, manufacturers[_manufacturerId].nonce));
 
-        // enrollments[enrollmentId] = EnrollmentInfo({
-        //     manufacturerId: uint256(_manufacturerId),
-        //     merkleRoot: _merkleRoot,
-        //     manufacturerCertSigner: _certSigner,
-        //     authModel: _authModel,
-        //     chipValidationDataUri: _chipValidationDataUri,
-        //     bootloaderApp: _bootloaderApp,
-        //     chipModel: _chipModel
-        // });
-
         enrollments[enrollmentId] = EnrollmentInfo({
             manufacturerId: uint256(_manufacturerId),
             manufacturerCertSigner: _certSigner,
@@ -168,17 +129,6 @@ contract ManufacturerRegistry is Ownable {
 
         manufacturers[_manufacturerId].enrollments.push(enrollmentId);
         manufacturers[_manufacturerId].nonce++;
-
-        // emit EnrollmentAdded(
-        //     _manufacturerId,
-        //     enrollmentId,
-        //     _merkleRoot,
-        //     _certSigner,
-        //     _authModel,
-        //     _chipValidationDataUri,
-        //     _bootloaderApp,
-        //     _chipModel
-        // );
 
         emit EnrollmentAdded(
             _manufacturerId,
@@ -245,40 +195,23 @@ contract ManufacturerRegistry is Ownable {
     /**
      @dev Validate that _chipId is included in the merkle tree for _enrollmentId.
 
-     * @param _enrollmentId         bytes32 identifier of the manaufacturer enrollment
-     * @param _index                Index of enrollment in the merkle tree
-     * @param _chipId               Public key associated with the chip
-     * @param _merkleProof          Merkle Proof for _chipId's inclusion in _enrollmentId
+     * @param _enrollmentId             bytes32 identifier of the manaufacturer enrollment
+     * @param _chipId                   Public key associated with the chip
+     * @param _manufacturerCertificate  Manufacturer certificate for the chip
      */
-    // function isEnrolledChip(
-    //     bytes32 _enrollmentId,
-    //     uint256 _index,
-    //     address _chipId,
-    //     bytes32[] calldata _merkleProof
-    // )
-    //     external
-    //     view
-    //     returns (bool)
-    // {
-    //     bytes32 enrollmentMerkleRoot = enrollments[_enrollmentId].merkleRoot;
-    //     bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(_index, _chipId))));
-
-    //     return MerkleProof.verify(_merkleProof, enrollmentMerkleRoot, node);
-    // }
 
     function isEnrolledChip(
         bytes32 _enrollmentId,
-        address _chipId
-        bytes calldata _chipCertificate
+        address _chipId,
+        bytes calldata _manufacturerCertificate
     )
         external
         view
         returns (bool)
     {
-        // TODO: verify ECDSA signature
         // TODO: we might want block.chainid in sig
         bytes32 msgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
-        require(enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _chipCertificate), "Invalid chip ownership proof");
+        require(enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate), "Invalid chip ownership proof");
         // TODO: is require the right practice here?
         return true;
     }

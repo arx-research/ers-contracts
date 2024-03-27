@@ -20,21 +20,11 @@ import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
  */
 contract DeveloperRegistrar is Ownable {
 
-    /* ============ Events ============ */
-    // event ProjectAdded(
-    //     address indexed projectRegistrar,
-    //     bytes32 projectRootNode,
-    //     bytes32 merkleRoot,
-    //     address projectPublicKey,
-    //     address transferPolicy,
-    //     string projectClaimDataUri
-    // );
-
     event ProjectAdded(
         address indexed projectRegistrar,
         bytes32 projectRootNode,
         address projectPublicKey,
-        address transferPolicy,
+        address transferPolicy
     );
     event RegistrarInitialized(bytes32 rootNode);
 
@@ -95,27 +85,17 @@ contract DeveloperRegistrar is Ownable {
      *
      * @param _nameHash                     Namehash of the project
      * @param _projectRegistrar             ProjectRegistrar contract
-     * @param _merkleRoot                   Merkle root of the project's chip ownership
      * @param _projectPublicKey             Public key of the project
      * @param _transferPolicy               Transfer policy of the project
-     * @param _projectOwnershipProof        Signed hash of the _projectRegistrar address by the _projectPublicKey
-     * @param _projectClaimDataUri          URI pointing to location of off-chain data required to claim chips
+     * @param _projectOwnershipProof        Proof of ownership of the project
      */
-    // function addProject(
-    //     bytes32 _nameHash,
-    //     IProjectRegistrar _projectRegistrar,
-    //     bytes32 _merkleRoot,
-    //     address _projectPublicKey,
-    //     ITransferPolicy _transferPolicy,
-    //     bytes calldata _projectOwnershipProof,
-    //     string calldata _projectClaimDataUri
-    // )
 
     function addProject(
         bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
         ITransferPolicy _transferPolicy,
+        bytes calldata _projectOwnershipProof
     )
         external
         onlyOwner()
@@ -136,36 +116,18 @@ contract DeveloperRegistrar is Ownable {
         _projectRegistrar.setRootNode(projectNode);
         projects.push(address(_projectRegistrar));
 
-        // chipRegistry.addProjectEnrollment(
-        //     _projectRegistrar,
-        //     _projectPublicKey,
-        //     _transferPolicy,
-        //     _merkleRoot,
-        //     _projectOwnershipProof,
-        //     _projectClaimDataUri
-        // );
-
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
             _projectPublicKey,
             _transferPolicy,
-            _projectOwnershipProof,
+            _projectOwnershipProof
         );
-
-        // emit ProjectAdded(
-        //     address(_projectRegistrar),
-        //     projectNode,
-        //     _merkleRoot,
-        //     _projectPublicKey,
-        //     address(_transferPolicy),
-        //     _projectClaimDataUri
-        // );
 
         emit ProjectAdded(
             address(_projectRegistrar),
             projectNode,
             _projectPublicKey,
-            address(_transferPolicy),
+            address(_transferPolicy)
         );
     }
 
