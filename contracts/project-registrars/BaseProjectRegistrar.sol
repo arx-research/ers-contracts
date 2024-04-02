@@ -102,7 +102,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         IChipRegistry.ChipAddition memory chipAddition = IChipRegistry.ChipAddition({
             owner: _chipOwner,
             rootNode: rootNode,
-            _nameHash: _nameHash,
+            nameHash: _nameHash,
             developerMerkleInfo: _claimData
         });
 

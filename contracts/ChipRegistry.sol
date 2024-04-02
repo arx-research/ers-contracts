@@ -86,6 +86,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     bool public initialized;
 
     mapping(IProjectRegistrar=>ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
+    mapping(address => bytes32) public chipNode;                      // Maps chipId to node in ERS
     mapping(address => IProjectRegistrar) public chipProjectEnrollments; // Maps chipId to ProjectRegistrar
     mapping(address => bytes32) public chipManufacturerEnrollments; // Maps chipId to ManufacturerRegistry
     uint256 public maxLockinPeriod;                                     // Max amount of time chips can be locked into a service after a
@@ -209,7 +210,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Create the chips ERS node; this is the source of truth for the chip's ownership
-        bytes32 ersNode = ers.createSubnodeRecord(_chipAddition.rootNode, _chipAddition._nameHash, _chipAddition._chipOwner, _chipAddition._chipId);
+        bytes32 ersNode = ers.createSubnodeRecord(_chipAddition.rootNode, _chipAddition.nameHash, _chipAddition.owner, _chipId);
+        chipNode[_chipId] = ersNode;
 
         // chipManufacturerEnrollments[_chipId] = _manufacturerValidation.enrollmentId;
 
@@ -243,7 +245,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
             _chipId,
             _chipAddition.owner,
             _chipAddition.developerMerkleInfo.serviceId,
-            _chipAddition.ersNode,
+            ersNode,
             _manufacturerValidation.enrollmentId
         );
     }
@@ -288,7 +290,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     {
         // Validations happen in ChipPBT / TransferPolicy
         ChipPBT.transferToken(chipId,  signatureFromChip, blockNumberUsedInSig, useSafeTransferFrom, payload);
-        // _setERSOwnerForChip(chipId, msg.sender);
+        _setERSOwnerForChip(chipId, msg.sender);
     }
 
     /**
@@ -313,7 +315,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     {   
         // Validations happen in ChipPBT, ERC721 doesn't allow transfers to the zero address
         ChipPBT.setOwner(_chipId, _newOwner, _commitBlock, _signature);
-        // _setERSOwnerForChip(_chipId, _newOwner);
+        _setERSOwnerForChip(_chipId, _newOwner);
     }
 
     /* ============ External Admin Functions ============ */
@@ -394,11 +396,12 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     /**
      * Get ERS node from tokenData and then sets the new Owner of the chip on the ERSRegistry.
      */
-    // function _setERSOwnerForChip(address _chipId, address _newOwner) internal {
-    //     // TODO: is there a way to get chipErsNode without decoding tokenData?
-    //     (bytes32 chipErsNode, ) = _decodeTokenData(chipTable[_chipId].tokenData);
-    //     ers.setNodeOwner(chipErsNode, _newOwner);
-    // }
+    function _setERSOwnerForChip(address _chipId, address _newOwner) internal {
+        // TODO: is there a way to get chipErsNode without decoding tokenData?
+        // (bytes32 chipErsNode, ) = _decodeTokenData(chipTable[_chipId].tokenData);
+        bytes32 chipErsNode = chipNode[_chipId];
+        ers.setNodeOwner(chipErsNode, _newOwner);
+    }
 
     function _validateManufacturerCertificate(
         address chipId,

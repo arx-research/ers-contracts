@@ -42,6 +42,7 @@ import {
   createTokenData
 } from "@utils/protocolUtils";
 import { Blockchain, ManufacturerTree, DeveloperTree } from "@utils/common";
+import { namehash } from "ethers/lib/utils";
 
 const expect = getWaffleExpect();
 
@@ -406,6 +407,14 @@ describe("ChipRegistry", () => {
             chipOne.address
           );
 
+          await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
+
+          const mockNameHash = calculateLabelHash("mockDeveloper");
+          await developerRegistry.addAllowedDeveloper(developerOne.address, mockNameHash);
+    
+          mockRegistrarErsNode = calculateSubnodeHash("mockDeveloper.ers");
+          await developerRegistry.addMockRegistrar(owner.address, mockNameHash);
+
           subjectChipId = chipOne.address;
           subjectChipAddition = {
             developerMerkleInfo: {
@@ -415,7 +424,8 @@ describe("ChipRegistry", () => {
               tokenUri: claimTokenUri,
             } as DeveloperMerkleProofInfo,
             owner: owner.address,
-            ersNode: calculateSubnodeHash("myChip.project.mockDeveloper.ers"),
+            rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
+            nameHash: calculateLabelHash(chipOne.address),
           };
 
           subjectManufacturerValidation = {
@@ -497,7 +507,7 @@ describe("ChipRegistry", () => {
             subjectChipId,
             subjectChipAddition.owner,
             subjectChipAddition.developerMerkleInfo.serviceId,
-            subjectChipAddition.ersNode,
+            calculateSubnodeHash(`${subjectChipId}.project.mockDeveloper.ers`),
             subjectManufacturerValidation.enrollmentId
           );
         });
@@ -543,7 +553,8 @@ describe("ChipRegistry", () => {
                 developerProof: developerMerkleTree.getProof(1),
               } as DeveloperMerkleProofInfo,
               owner: owner.address,
-              ersNode: calculateSubnodeHash("myChip2.project.mockDeveloper.ers"),
+              rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
+              nameHash: calculateLabelHash(chipTwo.address),
             };
 
             subjectManufacturerValidation = {
@@ -598,7 +609,7 @@ describe("ChipRegistry", () => {
 
         describe("when the ERSRegistry state is set incorrectly", async () => {
           beforeEach(async () => {
-            subjectChipAddition.ersNode = calculateSubnodeHash("wrongChip.project.mockDeveloper.ers");
+            subjectChipAddition.nameHash = calculateSubnodeHash("wrongChip");
           });
 
           it("should revert", async () => {
@@ -647,7 +658,8 @@ describe("ChipRegistry", () => {
                 tokenUri: claimTokenUri,
               } as DeveloperMerkleProofInfo,
               owner: owner.address,
-              ersNode: calculateSubnodeHash("myChip.project.mockDeveloper.ers"),
+              rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
+              nameHash: calculateLabelHash(chipOne.address),
             };
 
             const manufacturerValidation = {
@@ -667,7 +679,7 @@ describe("ChipRegistry", () => {
           });
         });
 
-        describe("when the update tnpx harime period has elapsed", async () => {
+        describe("when the update time period has elapsed", async () => {
           beforeEach(async () => {
             await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.mul(31).toNumber());
           });

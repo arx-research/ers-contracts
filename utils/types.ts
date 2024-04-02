@@ -19,18 +19,14 @@ export interface DeveloperMerkleProofInfo {
 
 export interface ChipAdditionInfo {
   owner: Address;
-  ersNode: string;
+  rootNode: string;
+  nameHash: string;
   developerMerkleInfo: DeveloperMerkleProofInfo;
 }
 
 export interface ManufacturerValidationInfo {
   enrollmentId: string;             // id of manufacturer enrollment the chip belongs to
   manufacturerCertificate: string;      // The chip certificate signed by the manufacturer
-}
-
-export interface ChipPBTChipInfo {
-  transferPolicy: Address;
-  tokenData: string;
 }
 
 export interface ProjectChipAddition {

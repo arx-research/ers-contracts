@@ -17,7 +17,8 @@ interface IChipRegistry is IPBT {
 
     struct ChipAddition {
         address owner;
-        bytes32 ersNode;
+        bytes32 rootNode;
+        bytes32 nameHash;
         DeveloperMerkleInfo developerMerkleInfo;
     }
 

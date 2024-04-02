@@ -44,7 +44,8 @@ contract ProjectRegistrarMock {
 
         IChipRegistry.ChipAddition memory ChipAddition = IChipRegistry.ChipAddition({
             owner: chipOwner,
-            ersNode: chipErsNode,
+            rootNode: rootNode,
+            nameHash: _nameHash,
             developerMerkleInfo: _claimData
         });
 
