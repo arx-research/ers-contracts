@@ -1,8 +1,8 @@
 import { BigNumber, Signer } from "ethers";
 
-import { ClaimedPBT__factory } from "../../typechain/factories/contracts/token";
+import { ChipPBT__factory } from "../../typechain/factories/contracts/token";
 
-import { ClaimedPBT } from "../contracts";
+import { ChipPBT } from "../contracts";
 
 export default class DeployTokens {
   private _deployerSigner: Signer;
@@ -11,16 +11,17 @@ export default class DeployTokens {
     this._deployerSigner = deployerSigner;
   }
 
-  public async deployClaimedPBT(
+  public async deployChipPBT(
     name: string,
     symbol: string,
     maxBlockWindow: BigNumber
-  ): Promise<ClaimedPBT> {
-    const claimedPBT = await new ClaimedPBT__factory(this._deployerSigner).deploy(
+  ): Promise<ChipPBT> {
+    const ChipPBT = await new ChipPBT__factory(this._deployerSigner).deploy(
       name,
       symbol,
-      maxBlockWindow
+      maxBlockWindow,
+      baseTokenURI
     );
-    return claimedPBT;
+    return ChipPBT;
   }
 }

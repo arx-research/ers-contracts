@@ -234,6 +234,8 @@ contract ServicesRegistry is IServicesRegistry {
         require(chipServices[_chipId].primaryService == bytes32(0), "Primary service already set");
         // Covers case where _serviceId == bytes32(0) since that can't be a service per createService
         require(_isService(_serviceId), "Service does not exist");
+        // chipServices[_chipId].primaryService = _serviceId;
+        // chipServices[_chipId].secondaryServices = new bytes32[](0);
 
         chipServices[_chipId] = ChipServices({
             primaryService: _serviceId,

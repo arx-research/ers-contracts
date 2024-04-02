@@ -84,7 +84,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
      * @param _claimData                Struct containing chip info
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
      */
-    function _createSubnodeAndClaimChip(
+    function _createSubnodeAndAddChip(
         address _chipId,
         bytes32 _nameHash,
         address _chipOwner,
@@ -93,18 +93,21 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
     ) 
         internal
     {
+        // TODO: we probably should validate the manufacturer before creating the ers subnode?
+
         // Call createSubnodeRecord from the ERS Registry to create a subnode with the chip as the resolver
         // and the caller as the owner.
         bytes32 ersNode = ers.createSubnodeRecord(rootNode, _nameHash, _chipOwner, _chipId);
 
-        IChipRegistry.ChipClaim memory chipClaim = IChipRegistry.ChipClaim({
+        IChipRegistry.ChipAddition memory chipAddition = IChipRegistry.ChipAddition({
             owner: _chipOwner,
-            ersNode: ersNode,
+            rootNode: rootNode,
+            _nameHash: _nameHash,
             developerMerkleInfo: _claimData
         });
 
         // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.addChip(_chipId, chipClaim, _manufacturerValidation);
+        chipRegistry.addChip(_chipId, chipAddition, _manufacturerValidation);
     }
 }
 

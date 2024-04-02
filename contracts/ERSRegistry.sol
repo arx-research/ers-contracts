@@ -64,6 +64,8 @@ contract ERSRegistry {
 
     /* ============ External Functions ============ */
 
+    // TODO: consider letting owners set their own resolvers; change default resolver to services registry
+
     /**
      * @dev Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
      *
@@ -153,20 +155,18 @@ contract ERSRegistry {
      *
      * @param _node     The specified node.
      * @param _chipId   The specified chipId.
-     * @param _owner    The specified owner.
      * @return bool indicating whether state is valid
      */
     function isValidChipState(
         bytes32 _node,
-        address _chipId,
-        address _owner
+        address _chipId
     )
         external
         virtual
         view
         returns(bool)
     {
-        return (records[_node].owner == _owner && records[_node].resolver == _chipId);
+        return (records[_node].resolver == _chipId);
     }
 
     /**

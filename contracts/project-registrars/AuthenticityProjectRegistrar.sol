@@ -84,7 +84,7 @@ contract AuthenticityProjectRegistrar is BaseProjectRegistrar {
 
         // Call createSubnodeRecord from the ERS Registry to create a subnode with the chip as the resolver
         // and the caller as the owner.
-        _createSubnodeAndClaimChip(
+        _createSubnodeAndAddChip(
             _chipId,
             _nameHash,
             chipOwner,

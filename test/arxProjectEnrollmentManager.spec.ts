@@ -299,7 +299,7 @@ describe("ArxProjectEnrollmentManager", () => {
     });
   });
 
-  describe.only("#addProject", async() => {
+  describe("#addProject", async() => {
     let subjectProjectManager: Address;
     let subjectProjectClaimDataUri: string;
     let subjectNameHash: string;

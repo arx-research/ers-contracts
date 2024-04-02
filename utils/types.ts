@@ -17,7 +17,7 @@ export interface DeveloperMerkleProofInfo {
   tokenUri: string;             // tokenUri like in ERC-721
 }
 
-export interface ChipClaimInfo {
+export interface ChipAdditionInfo {
   owner: Address;
   ersNode: string;
   developerMerkleInfo: DeveloperMerkleProofInfo;
@@ -28,14 +28,12 @@ export interface ManufacturerValidationInfo {
   manufacturerCertificate: string;      // The chip certificate signed by the manufacturer
 }
 
-export interface ClaimedPBTChipInfo {
-  tokenId: BigNumber;
+export interface ChipPBTChipInfo {
   transferPolicy: Address;
-  tokenUri: string;
   tokenData: string;
 }
 
-export interface ProjectChipClaim {
+export interface ProjectChipAddition {
   chipId: Address;
   chipNameHash: string;
   developerMerkleInfo: DeveloperMerkleProofInfo;

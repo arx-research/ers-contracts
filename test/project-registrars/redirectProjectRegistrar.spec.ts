@@ -6,7 +6,7 @@ import {
   DeveloperClaimTreeInfo,
   DeveloperMerkleProofInfo,
   ManufacturerValidationInfo,
-  ProjectChipClaim,
+  ProjectChipAddition,
   ServiceRecord
 } from "@utils/types";
 import { Account } from "@utils/test/types";
@@ -31,8 +31,7 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
-  createDeveloperCustodyProof,
-  createDeveloperInclusionProof,
+  createManufacturerCertificate,
   createProjectOwnershipProof
 } from "@utils/protocolUtils";
 import { ManufacturerTree, DeveloperTree } from "@utils/common";
@@ -89,7 +88,6 @@ describe("RedirectProjectRegistrar", () => {
 
   // Project Chip Enrollment Data
   let projectMerkleTree: DeveloperTree;
-  let projectMerkleRoot: string;
   let projectOwnerPublicKey: string;
   let projectOwnershipProof: string;
   let projectClaimDataUri: string;
@@ -141,7 +139,6 @@ describe("RedirectProjectRegistrar", () => {
     // Contract function call
     await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
       manufacturerId,
-      manufacturerMerkleRoot,
       manufacturerCertSigner,
       manufacturerChipAuthModel,
       manufacturerValidationUri,
@@ -150,8 +147,7 @@ describe("RedirectProjectRegistrar", () => {
     );
 
     // 4. Deploy chip registry
-    chipRegistryGatewayURLs = ["www.resolve.com"];
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, chipRegistryGatewayURLs);
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address);
 
     // 5. Deploy Developer Registry
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
@@ -253,7 +249,6 @@ describe("RedirectProjectRegistrar", () => {
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
-    projectMerkleRoot = projectMerkleTree.getRoot();
     projectOwnerPublicKey = developerOne.address;
     projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chainId);
     projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
@@ -264,11 +259,9 @@ describe("RedirectProjectRegistrar", () => {
       .addProject(
         projectNameHash,
         projectRegistrar.address,
-        projectMerkleRoot,
         projectOwnerPublicKey,
         transferPolicy.address,
         projectOwnershipProof,
-        projectClaimDataUri
       );
 
   });
@@ -288,13 +281,13 @@ describe("RedirectProjectRegistrar", () => {
   });
 
   describe("#claimChip", async() => {
-    let subjectClaimData: ProjectChipClaim[];
+    let subjectClaimData: ProjectChipAddition[];
     let subjectCaller: Account;
 
     beforeEach(async () => {
       const chipIdOne = chipOne.address;
       const nameHashOne = calculateLabelHash("chip1");
-      const chipClaimOne = {
+      const ChipAdditionOne = {
         developerIndex: ZERO,
         serviceId,
         lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
@@ -304,16 +297,12 @@ describe("RedirectProjectRegistrar", () => {
 
       const manufacturerValidationOne = {
         enrollmentId: developerChipsEnrollmentId,
-        mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
       } as ManufacturerValidationInfo;
-
-      const developerInclusionProofOne = await createDeveloperInclusionProof(developerOne, chipOne.address);
-      const developerCustodyProofOne = await createDeveloperCustodyProof(chipOne, developerOne.address);
 
       const chipIdTwo = chipTwo.address;
       const nameHashTwo = calculateLabelHash("chip2");
-      const chipClaimTwo = {
+      const ChipAdditionTwo = {
         developerIndex: ONE,
         serviceId,
         lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
@@ -323,30 +312,20 @@ describe("RedirectProjectRegistrar", () => {
 
       const manufacturerValidationTwo = {
         enrollmentId: developerChipsEnrollmentId,
-        mIndex: ONE,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(1),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipTwo.address),
       } as ManufacturerValidationInfo;
-
-      const developerInclusionProofTwo = await createDeveloperInclusionProof(developerOne, chipTwo.address);
-      const developerCustodyProofTwo = await createDeveloperCustodyProof(chipTwo, developerOne.address);
 
       subjectClaimData = [
         {
           chipId: chipIdOne,
           chipNameHash: nameHashOne,
-          developerMerkleInfo: chipClaimOne,
           manufacturerValidation: manufacturerValidationOne,
-          developerInclusionProof: developerInclusionProofOne,
-          developerCustodyProof: developerCustodyProofOne,
-        } as ProjectChipClaim,
+        } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
           chipNameHash: nameHashTwo,
-          developerMerkleInfo: chipClaimTwo,
           manufacturerValidation: manufacturerValidationTwo,
-          developerInclusionProof: developerInclusionProofTwo,
-          developerCustodyProof: developerCustodyProofTwo,
-        } as ProjectChipClaim,
+        } as ProjectChipAddition,
       ];
       subjectCaller = projectManager;
     });
@@ -372,11 +351,7 @@ describe("RedirectProjectRegistrar", () => {
       await subject();
 
       expect(await chipRegistry.chipIds(subjectClaimData[0].chipId)).to.be.true;
-      expect(await chipRegistry.developerInclusionProofs(subjectClaimData[0].developerInclusionProof)).to.be.true;
-      expect(await chipRegistry.developerCustodyProofs(subjectClaimData[0].developerCustodyProof)).to.be.true;
       expect(await chipRegistry.chipIds(subjectClaimData[1].chipId)).to.be.true;
-      expect(await chipRegistry.developerInclusionProofs(subjectClaimData[1].developerInclusionProof)).to.be.true;
-      expect(await chipRegistry.developerCustodyProofs(subjectClaimData[1].developerCustodyProof)).to.be.true;
     });
 
     describe("when the caller is not the contract owner", async () => {

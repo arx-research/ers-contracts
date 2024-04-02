@@ -120,12 +120,14 @@ export default class DeployHelper {
   public async deployChipRegistry(
     manufacturerRegistry: Address,
     maxBlockWindow: BigNumber = BigNumber.from(5),
-    maxLockinPeriod: BigNumber = BigNumber.from(1000)
+    maxLockinPeriod: BigNumber = BigNumber.from(1000),
+    baseTokenUri: string = "https://resolve.com/chips/"
   ): Promise<ChipRegistry> {
     const chipRegistry = await new ChipRegistry__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
       maxBlockWindow,
-      maxLockinPeriod
+      maxLockinPeriod,
+      baseTokenUri
     );
     return chipRegistry;
   }

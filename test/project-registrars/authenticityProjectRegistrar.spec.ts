@@ -32,6 +32,7 @@ import {
   calculateLabelHash,
   calculateSubnodeHash,
   createChipOwnershipProof,
+  createManufacturerCertificate,
   createDeveloperCustodyProof,
   createDeveloperInclusionProof,
   createProjectOwnershipProof
@@ -66,7 +67,6 @@ describe("AuthenticityProjectRegistrar", () => {
 
 
   let manufacturerId: string;
-  let chipRegistryGatewayURLs: string[];
   let serviceId: string;
   let serviceRecords: ServiceRecord[];
   let projectNameHash: string;
@@ -134,7 +134,6 @@ describe("AuthenticityProjectRegistrar", () => {
     // 3. Enroll chips to Manufacturer Registry under example manufacturer
     // Example Manufacturer Chip Enrollment Data
     manufacturerEnrollmentMerkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getRoot();
     manufacturerCertSigner = manufacturerOne.address;
     manufacturerChipAuthModel = authModel.address;
     manufacturerValidationUri = "ipfs://bafy";
@@ -144,7 +143,6 @@ describe("AuthenticityProjectRegistrar", () => {
     // Contract function call
     await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
       manufacturerId,
-      manufacturerMerkleRoot,
       manufacturerCertSigner,
       manufacturerChipAuthModel,
       manufacturerValidationUri,
@@ -153,8 +151,7 @@ describe("AuthenticityProjectRegistrar", () => {
     );
 
     // 4. Deploy chip registry
-    chipRegistryGatewayURLs = ["www.resolve.com"];
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, chipRegistryGatewayURLs);
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address);
 
     // 5. Deploy Developer Registry
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
@@ -252,11 +249,9 @@ describe("AuthenticityProjectRegistrar", () => {
       primaryServiceId: serviceId,
       tokenUri: developerClaimTokenURI,
     };
-    projectMerkleTree = new DeveloperTree([chipOneClaim, chipTwoClaim]);
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
-    projectMerkleRoot = projectMerkleTree.getRoot();
     projectOwnerPublicKey = developerOne.address;
     projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chainId);
     projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
@@ -267,11 +262,9 @@ describe("AuthenticityProjectRegistrar", () => {
       .addProject(
         projectNameHash,
         projectRegistrar.address,
-        projectMerkleRoot,
         projectOwnerPublicKey,
         transferPolicy.address,
         projectOwnershipProof,
-        projectClaimDataUri
       );
 
   });
@@ -295,35 +288,29 @@ describe("AuthenticityProjectRegistrar", () => {
   describe("#claimChip", async() => {
     let subjectChipId: string;
     let subjectNameHash: string;
-    let subjectChipClaim: DeveloperMerkleProofInfo;
+    let subjectChipAddition: DeveloperMerkleProofInfo;
     let subjectManufacturerValidation: ManufacturerValidationInfo;
     let subjectCommitBlock: BigNumber;
     let subjectChipOwnershipProof: string;
-    let subjectDeveloperInclusionProof: string;
-    let subjectDeveloperCustodyProof: string;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       subjectChipId = chipOne.address;
       subjectNameHash = calculateLabelHash("chip1");
-      subjectChipClaim = {
+      subjectChipAddition = {
         developerIndex: ZERO,
         serviceId,
         lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
         tokenUri: developerClaimTokenURI,
-        developerProof: projectMerkleTree.getProof(0),
       } as DeveloperMerkleProofInfo,
 
       subjectManufacturerValidation = {
         enrollmentId: developerChipsEnrollmentId,
-        mIndex: ZERO,
-        manufacturerProof: manufacturerEnrollmentMerkleTree.getProof(0),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
       };
 
       subjectCommitBlock = await blockchain.getLatestBlockNumber();
 
-      subjectDeveloperInclusionProof = await createDeveloperInclusionProof(developerOne, chipOne.address);
-      subjectDeveloperCustodyProof = await createDeveloperCustodyProof(chipOne, developerOne.address);
       subjectCaller = owner;
       subjectChipOwnershipProof = await createChipOwnershipProof(
         chipOne,
@@ -338,12 +325,10 @@ describe("AuthenticityProjectRegistrar", () => {
       return projectRegistrar.connect(subjectCaller.wallet).claimChip(
         subjectChipId,
         subjectNameHash,
-        subjectChipClaim,
+        subjectChipAddition,
         subjectManufacturerValidation,
         subjectCommitBlock,
         subjectChipOwnershipProof,
-        subjectDeveloperInclusionProof,
-        subjectDeveloperCustodyProof
       );
     }
 
@@ -361,8 +346,6 @@ describe("AuthenticityProjectRegistrar", () => {
       await subject();
 
       expect(await chipRegistry.chipIds(subjectChipId)).to.be.true;
-      expect(await chipRegistry.developerInclusionProofs(subjectDeveloperInclusionProof)).to.be.true;
-      expect(await chipRegistry.developerCustodyProofs(subjectDeveloperCustodyProof)).to.be.true;
     });
 
     describe("when caller is the chip", async () => {

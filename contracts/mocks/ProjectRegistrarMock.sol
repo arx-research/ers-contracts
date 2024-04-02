@@ -33,7 +33,7 @@ contract ProjectRegistrarMock {
     )
         external
     {
-        // NOTE: Don't use in prod. We are passing in the "label" in the ChipClaim struct then over-writing for
+        // NOTE: Don't use in prod. We are passing in the "label" in the ChipAddition struct then over-writing for
         // testing convenience.
         bytes32 chipErsNode = ers.createSubnodeRecord(
             rootNode,
@@ -42,7 +42,7 @@ contract ProjectRegistrarMock {
             msg.sender
         );
 
-        IChipRegistry.ChipClaim memory chipClaim = IChipRegistry.ChipClaim({
+        IChipRegistry.ChipAddition memory ChipAddition = IChipRegistry.ChipAddition({
             owner: chipOwner,
             ersNode: chipErsNode,
             developerMerkleInfo: _claimData
@@ -50,7 +50,7 @@ contract ProjectRegistrarMock {
 
         chipRegistry.addChip(
             msg.sender,
-            chipClaim,
+            ChipAddition,
             _manufacturerValidation
         );
     }

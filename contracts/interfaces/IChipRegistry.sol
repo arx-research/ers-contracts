@@ -15,7 +15,7 @@ interface IChipRegistry is IPBT {
         string tokenUri;
     }
 
-    struct ChipClaim {
+    struct ChipAddition {
         address owner;
         bytes32 ersNode;
         DeveloperMerkleInfo developerMerkleInfo;
@@ -36,7 +36,7 @@ interface IChipRegistry is IPBT {
 
     function addChip(
         address _chipId,
-        ChipClaim calldata _chipClaim,
+        ChipAddition calldata _ChipAddition,
         ManufacturerValidation calldata _manufacturerValidation
     )
         external;        

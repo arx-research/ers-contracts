@@ -20,7 +20,7 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
     using ChipValidations for address;
 
     /* ============ Structs ============ */
-    struct ProjectChipClaim {
+    struct ProjectChipAddition {
         address chipId;
         bytes32 chipNameHash;
         IChipRegistry.DeveloperMerkleInfo developerMerkleInfo;
@@ -58,14 +58,14 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
      * @param _claimData    Array of information needed for claiming chips
      */
     function claimChips(
-        ProjectChipClaim[] calldata _claimData
+        ProjectChipAddition[] calldata _claimData
     ) 
         external
         onlyOwner()
     {
         for (uint256 i = 0; i < _claimData.length; i++) {
-            ProjectChipClaim memory claim = _claimData[i];
-            _createSubnodeAndClaimChip(
+            ProjectChipAddition memory claim = _claimData[i];
+            _createSubnodeAndAddChip(
                 claim.chipId,
                 claim.chipNameHash,
                 msg.sender,

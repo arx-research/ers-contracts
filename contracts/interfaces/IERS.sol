@@ -20,10 +20,15 @@ interface IERS {
         address _owner
     ) external;
 
+    function getOwner(
+        bytes32 _node
+    ) external 
+      view 
+      returns(address);
+
     function isValidChipState(
         bytes32 _node,
-        address _chipId,
-        address _owner
+        address _chipId
     ) external view returns(bool);
 
     function getSubnodeHash(
