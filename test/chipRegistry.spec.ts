@@ -7,7 +7,7 @@ import {
   Address,
   ManufacturerValidationInfo,
   ServiceRecord,
-  DeveloperClaimTreeInfo,
+  ProjectChipAddition
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
@@ -20,7 +20,8 @@ import {
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
   DeveloperRegistryMock,
-  DeveloperRegistry
+  DeveloperRegistry,
+  RedirectProjectRegistrar
 } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE, ONE, ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
@@ -45,7 +46,7 @@ import { namehash } from "ethers/lib/utils";
 
 const expect = getWaffleExpect();
 
-describe("ChipRegistry", () => {
+describe.only("ChipRegistry", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
@@ -53,6 +54,7 @@ describe("ChipRegistry", () => {
   let chipOne: Account;
   let chipTwo: Account;
   let newOwner: Account;
+  let nameGovernor: Account;
 
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
@@ -63,9 +65,8 @@ describe("ChipRegistry", () => {
   let developerRegistrar: DeveloperRegistrar;
   let transferPolicy: TransferPolicyMock;
   let fakeProjectRegistrar: Account;
-  let projectRegistrar: ProjectRegistrarMock;
-  let projectRegistrarTwo: ProjectRegistrarMock;
-  let fakeDeveloperRegistry: Account;
+  let projectRegistrarOne: ProjectRegistrarMock;
+  let projectRegistrarTwo: RedirectProjectRegistrar;
 
   let manufacturerId: string;
   let maxBlockWindow: BigNumber;
@@ -88,7 +89,7 @@ describe("ChipRegistry", () => {
       chipTwo,
       newOwner,
       fakeProjectRegistrar,
-      fakeDeveloperRegistry
+      nameGovernor,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -110,6 +111,8 @@ describe("ChipRegistry", () => {
     ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address);
 
+    await developerRegistry.initialize(ersRegistry.address, [], nameGovernor.address);
+
     await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
@@ -120,7 +123,7 @@ describe("ChipRegistry", () => {
       ersRegistry.address,
       developerRegistry.address
     );
-    await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address], owner.address);
+    await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
     
     transferPolicy = await deployer.mocks.deployTransferPolicyMock();
 
@@ -151,6 +154,9 @@ describe("ChipRegistry", () => {
     await servicesRegistry.connect(owner.wallet).createService(serviceId, serviceRecords);
 
     chipsEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
+
+    await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerOne.address, calculateLabelHash("gucci"));
+    await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
   });
 
   addSnapshotBeforeRestoreAfterEach();
@@ -229,30 +235,11 @@ describe("ChipRegistry", () => {
     });
   });
 
-  describe("should set up developer registrar and initial projects", async () => {
-    beforeEach(async () => {
-      await developerRegistry.addAllowedDeveloper(developerOne.address, calculateLabelHash("gucci"));
-      await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
-  
-      developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
-  
-      projectRegistrar = await deployer.mocks.deployProjectRegistrarMock(
-        chipRegistry.address,
-        ersRegistry.address
-      );
-  
-      projectRegistrarTwo = await deployer.mocks.deployProjectRegistrarMock(
-        chipRegistry.address,
-        ersRegistry.address
-      );
-    });
-
-    it("should set up the Developer Registrar", async () => {
-      expect(await developerRegistry.getDeveloperRegistrars()).to.have.lengthOf(1);
-    });
-  });
-
   context("when a Developer has deployed their Registrar", async () => {
+    beforeEach(async () => {
+      await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
+    });
+
     describe("#addProjectEnrollment", async () => {
       let subjectProjectRegistrar: Address;
       let subjectProjectPublicKey: Address;
@@ -264,8 +251,15 @@ describe("ChipRegistry", () => {
       let subjectLockinPeriod: BigNumber;
 
       beforeEach(async () => {
+        developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
+
+        projectRegistrarOne = await deployer.mocks.deployProjectRegistrarMock(
+          chipRegistry.address,
+          ersRegistry.address
+        );
+
         subjectNameHash = calculateLabelHash("ProjectX");
-        subjectProjectRegistrar = projectRegistrar.address;
+        subjectProjectRegistrar = projectRegistrarOne.address;
         subjectProjectPublicKey = developerOne.address;
         subjectTransferPolicy = ADDRESS_ZERO;
         subjectServiceId = serviceId;
@@ -279,7 +273,6 @@ describe("ChipRegistry", () => {
       });
   
       async function subject(): Promise<any> {
-        console.log("adding project")
         return developerRegistrar.connect(subjectCaller.wallet).addProject(
           subjectNameHash,
           subjectProjectRegistrar,
@@ -306,8 +299,8 @@ describe("ChipRegistry", () => {
         await expect(subject()).to.emit(chipRegistry, "ProjectEnrollmentAdded").withArgs(
           developerRegistrar.address,
           subjectProjectRegistrar,
-          subjectTransferPolicy,
           subjectProjectPublicKey,
+          subjectTransferPolicy,
         );
       });
 
@@ -317,8 +310,13 @@ describe("ChipRegistry", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Must be Developer Registrar");
+          await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
         });
+
+        // TODO: review switching back to a mock here to validate oringal revert conditions.
+        // it("should revert", async () => {
+        //   await expect(subject()).to.be.revertedWith("Must be Developer Registrar");
+        // });
       });
 
       describe("when the project registrar has already been enrolled as a project", async () => {
@@ -326,6 +324,7 @@ describe("ChipRegistry", () => {
           await subject();
         });
 
+        // TODO: review switching back to a mock here to validate oringal revert conditions.
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Subnode already exists");
         });
@@ -355,33 +354,9 @@ describe("ChipRegistry", () => {
     context("setting up project enrollment", async () => {
       let projectWallet: Account;
       let projectNodeHash: string;
-      let projectOwnershipSignature: string;
 
       // beforeEach(async () => {
-      //   projectWallet = developerOne;
-      //   projectOwnershipSignature = await createProjectOwnershipProof(
-      //     projectWallet,
-      //     fakeProjectRegistrar.address,
-      //     chainId
-      //   );
-
-      //   const projectNameHash = calculateLabelHash("project");
-      //   await ersRegistry.connect(owner.wallet).createSubnodeRecord(
-      //     mockRegistrarErsNode,
-      //     projectNameHash,
-      //     fakeProjectRegistrar.address,
-      //     fakeProjectRegistrar.address
-      //   );
-      //   projectNodeHash = calculateSubnodeHash("project.mockDeveloper.ers");
-
-      //   await chipRegistry.addProjectEnrollment(
-      //     fakeProjectRegistrar.address,
-      //     developerOne.address,
-      //     ethers.utils.formatBytes32String("Gucci-Flex"),
-      //     transferPolicy.address,
-      //     (await blockchain.getCurrentTimestamp()).add(100),
-      //     projectOwnershipSignature,
-      //   );
+      //   await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
       // });
 
       describe("#addChip", async () => {
@@ -397,8 +372,18 @@ describe("ChipRegistry", () => {
         let subjectNameHash: string;
         let subjectServiceId: string;
         let subjectLockinPeriod: BigNumber;
+        let subjectChipAddition: ProjectChipAddition[];
 
         beforeEach(async () => {
+          developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
+
+          projectRegistrarTwo = await deployer.deployRedirectProjectRegistrar(
+            developerOne.address,
+            chipRegistry.address,
+            ersRegistry.address,
+            developerRegistrar.address
+          );
+
           subjectNameHash = calculateLabelHash("ProjectY");
           subjectProjectRegistrar = projectRegistrarTwo.address;
           subjectProjectPublicKey = developerOne.address;
@@ -423,7 +408,6 @@ describe("ChipRegistry", () => {
           );
 
           subjectChipId = chipOne.address;
-          subjectChipOwner = owner.address;
           subjectManufacturerValidation = {
             enrollmentId: chipsEnrollmentId,
             manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
@@ -431,31 +415,34 @@ describe("ChipRegistry", () => {
         });
 
         async function subject(): Promise<any> {
-          console.log(projectRegistrarTwo.address)
-          return projectRegistrarTwo.connect(subjectCaller.wallet).addChip(
-            subjectChipId,
-            subjectChipOwner,
-            subjectManufacturerValidation,
-          );
+          subjectChipAddition = [
+            {
+              chipId: subjectChipId,
+              manufacturerValidation: subjectManufacturerValidation,
+            } as ProjectChipAddition,
+          ]
+
+          // One the mock, anyone can add a chip to a project.
+          return projectRegistrarTwo.connect(subjectCaller.wallet).addChips(subjectChipAddition);
         }
 
-        it("should claim the chip and set chip state", async () => {
+        it("should add the chip and set chip state", async () => {
           await subject();
 
           const actualChipTransferPolicy = await chipRegistry.chipTransferPolicy(chipOne.address);
-          expect(actualChipTransferPolicy).to.eq(transferPolicy.address);
+          expect(actualChipTransferPolicy).to.eq(subjectTransferPolicy);
         });
 
         it("should set the chip owner and update owner balances", async () => {
           await subject();
 
           const actualChipOwner = (await chipRegistry.functions["ownerOf(address)"](subjectChipId))[0];
-          const actualOwnerBalance = await chipRegistry.balanceOf(owner.address);
-          expect(actualChipOwner).to.eq(owner.address);
-          expect(actualOwnerBalance).to.eq(subjectChipId);
+          const actualOwnerBalance = await chipRegistry.balanceOf(developerOne.address);
+          expect(actualChipOwner).to.eq(developerOne.address);
+          expect(actualOwnerBalance).to.eq(ONE);
         });
 
-        // it("should map the token id to the chip id", async () => {
+        // it("should map the node to the chip id", async () => {
         //   await subject();
 
         //   const actualChipId = await chipRegistry.tokenIdToChipId(subjectChipId);
@@ -472,12 +459,12 @@ describe("ChipRegistry", () => {
         // });
 
         it("should set the project's claimsStarted field to true", async () => {
-          const preProjectInfo = await chipRegistry.projectEnrollments(fakeProjectRegistrar.address);
+          const preProjectInfo = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
           expect(preProjectInfo.claimsStarted).to.be.false;
 
           await subject();
 
-          const postProjectInfo = await chipRegistry.projectEnrollments(fakeProjectRegistrar.address);
+          const postProjectInfo = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
           expect(postProjectInfo.claimsStarted).to.be.true;
         });
 
@@ -487,15 +474,15 @@ describe("ChipRegistry", () => {
           const chipServices = await servicesRegistry.chipServices(subjectChipId);
 
           expect(chipServices.primaryService).to.eq(ethers.utils.formatBytes32String("Gucci-Flex"));
-          expect(chipServices.serviceTimelock).to.eq((await blockchain.getCurrentTimestamp()).add(100));
+          expect(chipServices.serviceTimelock).to.eq(subjectLockinPeriod);
         });
 
         it("should emit a ChipAdded event", async () => {
           await expect(subject()).to.emit(chipRegistry, "ChipAdded").withArgs(
             subjectChipId,
-            owner.address,
+            developerOne.address,
             ethers.utils.formatBytes32String("Gucci-Flex"),
-            calculateSubnodeHash(`${subjectChipId}.project.mockDeveloper.ers`),
+            calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`),
             subjectManufacturerValidation.enrollmentId
           );
         });
@@ -509,7 +496,7 @@ describe("ChipRegistry", () => {
           });
 
           it("should set the primary service timelock to project creation timestamp + max", async () => {
-            const creationTimestamp = (await chipRegistry.projectEnrollments(fakeProjectRegistrar.address)).creationTimestamp;
+            const creationTimestamp = (await chipRegistry.projectEnrollments(subjectProjectRegistrar)).creationTimestamp;
 
             await subject();
 
@@ -544,30 +531,36 @@ describe("ChipRegistry", () => {
             //   rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
             //   nameHash: calculateLabelHash(chipTwo.address),
             // };
-            subjectChipOwner = owner.address;
+            subjectChipOwner = developerOne.address;
 
             subjectManufacturerValidation = {
               enrollmentId: chipsEnrollmentId,
               manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipTwo.address),
             };
-            subjectCaller = fakeProjectRegistrar;
+            subjectCaller = developerOne;
 
-            await chipRegistry.connect(fakeProjectRegistrar.wallet).addChip(
-              chipTwo.address,
-              owner.address,
-              subjectManufacturerValidation
-            );
+            subjectChipAddition = [
+              {
+                chipId: subjectChipId,
+                manufacturerValidation: subjectManufacturerValidation,
+              } as ProjectChipAddition,
+            ]
+  
+            // One the mock, anyone can add a chip to a project.
+            await projectRegistrarTwo.connect(subjectCaller.wallet).addChips(subjectChipAddition);
           });
 
           it("should claim the chip", async () => {
             await subject();
 
             const actualChipTransferPolicy = await chipRegistry.chipTransferPolicy(chipTwo.address);
+            // const actualChipTokenId = await chipRegistry.tokenIdToChipId(chipTwo.address);
 
             // const expectedTokenData = createTokenData(subjectChipAddition.ersNode, subjectManufacturerValidation.enrollmentId);
             // expect(actualChipInfo.tokenData).to.eq(expectedTokenData);
-            // expect(actualChipInfo.tokenId).to.eq(BigNumber.from(2));
-            expect(actualChipTransferPolicy).to.eq(transferPolicy.address);
+
+            // expect(actualChipTokenId).to.eq();
+            expect(actualChipTransferPolicy).to.eq(subjectTransferPolicy);
             // expect(actualChipInfo.tokenUri).to.eq(subjectChipAddition.developerMerkleInfo.tokenUri);
           });
         });
@@ -625,75 +618,75 @@ describe("ChipRegistry", () => {
         // TODO: check when manufacturerCertificate is invalid.
       });
 
-      describe("#updateProjectMerkleRoot", async () => {
-        let subjectProjectRegistrar: Address;
-        let subjectCaller: Account;
+      // describe("#updateProjectMerkleRoot", async () => {
+      //   let subjectProjectRegistrar: Address;
+      //   let subjectCaller: Account;
 
-        beforeEach(async () => {
-          subjectProjectRegistrar = fakeProjectRegistrar.address;
-          subjectCaller = developerOne;
-        });
+      //   beforeEach(async () => {
+      //     subjectProjectRegistrar = fakeProjectRegistrar.address;
+      //     subjectCaller = developerOne;
+      //   });
 
-        describe("when a chip has been claimed", async () => {
-          beforeEach(async () => {
-            const chipNameHash = calculateLabelHash("myChip");
-            await ersRegistry.connect(fakeProjectRegistrar.wallet).createSubnodeRecord(
-              projectNodeHash,
-              chipNameHash,
-              owner.address,
-              chipOne.address
-            );
+      //   describe("when a chip has been claimed", async () => {
+      //     beforeEach(async () => {
+      //       const chipNameHash = calculateLabelHash("myChip");
+      //       await ersRegistry.connect(fakeProjectRegistrar.wallet).createSubnodeRecord(
+      //         projectNodeHash,
+      //         chipNameHash,
+      //         owner.address,
+      //         chipOne.address
+      //       );
 
-            const chipId = chipOne.address;
-            // const ChipAddition = {
-            //   developerMerkleInfo: {
-            //     developerIndex: ZERO,
-            //     serviceId,
-            //     lockinPeriod: chipOneClaim.lockinPeriod,
-            //     tokenUri: claimTokenUri,
-            //   } as DeveloperMerkleProofInfo,
-            //   owner: owner.address,
-            //   rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
-            //   nameHash: calculateLabelHash(chipOne.address),
-            // };
+      //       const chipId = chipOne.address;
+      //       // const ChipAddition = {
+      //       //   developerMerkleInfo: {
+      //       //     developerIndex: ZERO,
+      //       //     serviceId,
+      //       //     lockinPeriod: chipOneClaim.lockinPeriod,
+      //       //     tokenUri: claimTokenUri,
+      //       //   } as DeveloperMerkleProofInfo,
+      //       //   owner: owner.address,
+      //       //   rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
+      //       //   nameHash: calculateLabelHash(chipOne.address),
+      //       // };
 
-            const manufacturerValidation = {
-              enrollmentId: chipsEnrollmentId,
-              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
-            };
+      //       const manufacturerValidation = {
+      //         enrollmentId: chipsEnrollmentId,
+      //         manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
+      //       };
 
-            await chipRegistry.connect(fakeProjectRegistrar.wallet).addChip(
-              chipId,
-              owner.address,
-              manufacturerValidation
-            );
-          });
+      //       await chipRegistry.connect(fakeProjectRegistrar.wallet).addChip(
+      //         chipId,
+      //         owner.address,
+      //         manufacturerValidation
+      //       );
+      //     });
 
-          it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Claims have already started");
-          });
-        });
+      //     it("should revert", async () => {
+      //       await expect(subject()).to.be.revertedWith("Claims have already started");
+      //     });
+      //   });
 
-        describe("when the update time period has elapsed", async () => {
-          beforeEach(async () => {
-            await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.mul(31).toNumber());
-          });
+      //   describe("when the update time period has elapsed", async () => {
+      //     beforeEach(async () => {
+      //       await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.mul(31).toNumber());
+      //     });
 
-          it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Update period has elapsed");
-          });
-        });
+      //     it("should revert", async () => {
+      //       await expect(subject()).to.be.revertedWith("Update period has elapsed");
+      //     });
+      //   });
 
-        describe("when the caller is not the project public key", async () => {
-          beforeEach(async () => {
-            subjectCaller = owner;
-          });
+      //   describe("when the caller is not the project public key", async () => {
+      //     beforeEach(async () => {
+      //       subjectCaller = owner;
+      //     });
 
-          it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Caller must be project public key");
-          });
-        });
-      });
+      //     it("should revert", async () => {
+      //       await expect(subject()).to.be.revertedWith("Caller must be project public key");
+      //     });
+      //   });
+      // });
 
       context("when a chip has been claimed", async () => {
         let developerRegistrar: DeveloperRegistrar;

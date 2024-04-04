@@ -89,6 +89,10 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
     ) 
         internal
     {
+
+        // Create the chip subnode record in the ERS
+        ers.createSubnodeRecord(rootNode, keccak256(abi.encodePacked(_chipId)), _chipOwner, _chipId);
+        
         // Registrar calls the claimChip function on the ChipRegistry
         chipRegistry.addChip(_chipId, _chipOwner, _manufacturerValidation);
     }

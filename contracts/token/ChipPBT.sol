@@ -67,6 +67,7 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     string public baseURI;                         // Base URI for token metadata
     mapping(address=>ITransferPolicy) public chipTransferPolicy;        // Maps a chipId to a ChipInfo struct
 
+    // TODO: we might want tokenIdToChipId as a function on ChipRegistry
     // mapping(uint256=>address) public tokenIdToChipId;   // Maps an ERC-721 token ID to a chipId
     // uint256 public tokenIdCounter;                      // Counter for ERC-721 token IDs
 

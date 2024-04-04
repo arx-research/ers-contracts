@@ -142,9 +142,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         external
     {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
-
         // TODO: evaluate if this is already covered by the ers node check
-        // require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
+        require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
         // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
         // with a project enrollment during claim
         require(_projectPublicKey != address(0), "Invalid project public key");
@@ -152,9 +151,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // TODO: Cameron wondering if we need this; we could probably skip of projectPublicKey == projectRegistrar.owner...
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
         bytes32 messageHash = abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash();
-        console.log("about to verify");
         require(_projectPublicKey.isValidSignatureNow(messageHash, _projectOwnershipProof), "Invalid signature");
-        console.log("verified");
+        
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({
             projectPublicKey: _projectPublicKey,
@@ -205,23 +203,19 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // Verify that the chip doesn't exist yet based on tokenId in ChipPBT
         require(!_exists(tokenIdFor(_chipId)), "Chip already added");
         require(_chipOwner != address(0), "Invalid chip owner");
-        
-        //TODO: is there more we are loading onto projectInfo that we want to write?
-        
-        // Validate that chip state has been set correctly in ERS
-        // console.logBytes32(_chipAddition.ersNode);
 
-        // _validateCertificates(_chipId, projectInfo.projectPublicKey, _developerInclusionProof, _developerCustodyProof);
+        // Validate the manufacturer certificate
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = projectRegistrar.rootNode();
-
-        // Create the chips ERS node; this is the source of truth for the chip's ownership
-        bytes32 ersNode = ers.createSubnodeRecord(rootNode, keccak256(abi.encodePacked(_chipId)), _chipOwner, _chipId);
+        
+        // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
+        bytes32 ersNode = keccak256(abi.encodePacked(rootNode, keccak256(abi.encodePacked(_chipId))));
         require(ers.recordExists(ersNode), "Inconsistent state in ERS");
         chipNode[_chipId] = ersNode;
 
+        // TODO: consider if we want to store a lookup against manufacturer enrollmentIds
         // chipManufacturerEnrollments[_chipId] = _manufacturerValidation.enrollmentId;
 
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
@@ -236,14 +230,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
             lockinPeriod
         );
 
-        // ChipInfo memory chipInfo = ChipInfo({
-        //     tokenId: 0,     // temporary value, will be set in _mint
-        //     transferPolicy: projectInfo.transferPolicy,
-        //     tokenUri: _chipAddition.developerMerkleInfo.tokenUri,
-        //     tokenData: _encodeTokenData(_chipAddition.ersNode, _manufacturerValidation.enrollmentId)
-        // });
-        // Mint a PBT this function fills out the ownership mapping, maps tokenId to chipId, fills out
-        // the chip table and increments the tokenIdCounter
+        // Mint the ChipPBT token
         ChipPBT._mint(_chipOwner, _chipId, projectInfo.transferPolicy);
 
         if (!projectInfo.claimsStarted) {
