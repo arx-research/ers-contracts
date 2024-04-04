@@ -86,7 +86,9 @@ contract DeveloperRegistrar is Ownable {
      * @param _nameHash                     Namehash of the project
      * @param _projectRegistrar             ProjectRegistrar contract
      * @param _projectPublicKey             Public key of the project
+     * @param _serviceId                    Service ID of the project
      * @param _transferPolicy               Transfer policy of the project
+     * @param _lockinPeriod                 Lockup period of the project
      * @param _projectOwnershipProof        Proof of ownership of the project
      */
 
@@ -94,13 +96,14 @@ contract DeveloperRegistrar is Ownable {
         bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
+        bytes32 _serviceId,
         ITransferPolicy _transferPolicy,
+        uint256 _lockinPeriod,
         bytes calldata _projectOwnershipProof
     )
         external
         onlyOwner()
     {
-        // require(_merkleRoot != bytes32(0), "Invalid merkle root");
         require(_projectPublicKey != address(0), "Invalid project public key");
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
@@ -119,7 +122,9 @@ contract DeveloperRegistrar is Ownable {
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
             _projectPublicKey,
+            _serviceId,
             _transferPolicy,
+            _lockinPeriod,
             _projectOwnershipProof
         );
 

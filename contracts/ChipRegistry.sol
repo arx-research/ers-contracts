@@ -20,7 +20,6 @@ import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
 
 import "hardhat/console.sol";
 
-
 /**
  * @title ChipRegistry
  * @author Arx
@@ -69,7 +68,9 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     // Do we need an identifier to replace the merkle root? nodehash?
     struct ProjectInfo {
         address projectPublicKey;
+        bytes32 serviceId;
         ITransferPolicy transferPolicy;
+        uint256 lockinPeriod;
         uint256 creationTimestamp;
         bool claimsStarted;
     }
@@ -85,10 +86,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     IDeveloperRegistry public developerRegistry;
     bool public initialized;
 
-    mapping(IProjectRegistrar=>ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
+    mapping(IProjectRegistrar => ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
     mapping(address => bytes32) public chipNode;                      // Maps chipId to node in ERS
-    mapping(address => IProjectRegistrar) public chipProjectEnrollments; // Maps chipId to ProjectRegistrar
-    mapping(address => bytes32) public chipManufacturerEnrollments; // Maps chipId to ManufacturerRegistry
     uint256 public maxLockinPeriod;                                     // Max amount of time chips can be locked into a service after a
                                                                         // project's creation timestamp
 
@@ -135,13 +134,17 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
+        bytes32 serviceId,
         ITransferPolicy _transferPolicy,
+        uint256 lockinPeriod,
         bytes calldata _projectOwnershipProof
     )
         external
     {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
-        require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
+
+        // TODO: evaluate if this is already covered by the ers node check
+        // require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
         // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
         // with a project enrollment during claim
         require(_projectPublicKey != address(0), "Invalid project public key");
@@ -149,11 +152,15 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // TODO: Cameron wondering if we need this; we could probably skip of projectPublicKey == projectRegistrar.owner...
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
         bytes32 messageHash = abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash();
+        console.log("about to verify");
         require(_projectPublicKey.isValidSignatureNow(messageHash, _projectOwnershipProof), "Invalid signature");
+        console.log("verified");
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({
             projectPublicKey: _projectPublicKey,
+            serviceId: serviceId,
             transferPolicy: _transferPolicy,
+            lockinPeriod: lockinPeriod,
             creationTimestamp: block.timestamp,
             claimsStarted: false
         });
@@ -176,7 +183,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
      * claims tied to an account contract.
      *
      * @param _chipId                       Chip ID (address)
-     * @param _chipAddition                    Struct containing information for validating merkle proof, chip owner, and chip's ERS node
+     * @param _chipOwner                    Struct containing information for validating merkle proof, chip owner, and chip's ERS node
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
      */
     
@@ -184,46 +191,48 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
 
     function addChip(
         address _chipId,
-        ChipAddition calldata _chipAddition,
+        address _chipOwner,
         ManufacturerValidation memory _manufacturerValidation
     )
         external virtual
     {
-        ProjectInfo memory projectInfo = projectEnrollments[IProjectRegistrar(msg.sender)];
-        // chipProjectEnrollments[_chipId] = IProjectRegistrar(msg.sender);
+        IProjectRegistrar projectRegistrar = IProjectRegistrar(msg.sender);
+        ProjectInfo memory projectInfo = projectEnrollments[projectRegistrar];
         
-        // TODO: is this check sufficient
         // Verify the chip is being added by an enrolled project
         require(projectInfo.projectPublicKey != address(0), "Project not enrolled");
 
         // Verify that the chip doesn't exist yet based on tokenId in ChipPBT
         require(!_exists(tokenIdFor(_chipId)), "Chip already added");
-        require(_chipAddition.owner != address(0), "Invalid chip owner");
+        require(_chipOwner != address(0), "Invalid chip owner");
         
         //TODO: is there more we are loading onto projectInfo that we want to write?
         
         // Validate that chip state has been set correctly in ERS
         // console.logBytes32(_chipAddition.ersNode);
-        // require(ers.isValidChipState(_chipAddition.ersNode, _chipId), "Inconsistent state in ERS");
 
         // _validateCertificates(_chipId, projectInfo.projectPublicKey, _developerInclusionProof, _developerCustodyProof);
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
+        // Get the project's root node which is used in the creation of the subnode
+        bytes32 rootNode = projectRegistrar.rootNode();
+
         // Create the chips ERS node; this is the source of truth for the chip's ownership
-        bytes32 ersNode = ers.createSubnodeRecord(_chipAddition.rootNode, _chipAddition.nameHash, _chipAddition.owner, _chipId);
+        bytes32 ersNode = ers.createSubnodeRecord(rootNode, keccak256(abi.encodePacked(_chipId)), _chipOwner, _chipId);
+        require(ers.recordExists(ersNode), "Inconsistent state in ERS");
         chipNode[_chipId] = ersNode;
 
         // chipManufacturerEnrollments[_chipId] = _manufacturerValidation.enrollmentId;
 
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
-        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > _chipAddition.developerMerkleInfo.lockinPeriod ?
-            _chipAddition.developerMerkleInfo.lockinPeriod :
+        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.lockinPeriod ?
+            projectInfo.lockinPeriod :
             projectInfo.creationTimestamp + maxLockinPeriod;
         
         // Set primaryService on ServicesRegistry
         servicesRegistry.setInitialService(
             _chipId,
-            _chipAddition.developerMerkleInfo.serviceId,
+            projectInfo.serviceId,
             lockinPeriod
         );
 
@@ -235,16 +244,16 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // });
         // Mint a PBT this function fills out the ownership mapping, maps tokenId to chipId, fills out
         // the chip table and increments the tokenIdCounter
-        ChipPBT._mint(_chipAddition.owner, _chipId, projectInfo.transferPolicy);
+        ChipPBT._mint(_chipOwner, _chipId, projectInfo.transferPolicy);
 
         if (!projectInfo.claimsStarted) {
-            projectEnrollments[IProjectRegistrar(msg.sender)].claimsStarted = true;
+            projectEnrollments[projectRegistrar].claimsStarted = true;
         }
 
         emit ChipAdded(
             _chipId,
-            _chipAddition.owner,
-            _chipAddition.developerMerkleInfo.serviceId,
+            _chipOwner,
+            projectInfo.serviceId,
             ersNode,
             _manufacturerValidation.enrollmentId
         );

@@ -22,8 +22,6 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
     /* ============ Structs ============ */
     struct ProjectChipAddition {
         address chipId;
-        bytes32 chipNameHash;
-        IChipRegistry.DeveloperMerkleInfo developerMerkleInfo;
         IChipRegistry.ManufacturerValidation manufacturerValidation;
     }
 
@@ -55,21 +53,19 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
      * gives managers to ability to maintain ownership over the chips (and thus the primaryService) for as long
      * as they want.
      * 
-     * @param _claimData    Array of information needed for claiming chips
+     * @param _chipData    Array of information needed for claiming chips
      */
-    function claimChips(
-        ProjectChipAddition[] calldata _claimData
+    function addChips(
+        ProjectChipAddition[] calldata _chipData
     ) 
         external
         onlyOwner()
     {
-        for (uint256 i = 0; i < _claimData.length; i++) {
-            ProjectChipAddition memory claim = _claimData[i];
+        for (uint256 i = 0; i < _chipData.length; i++) {
+            ProjectChipAddition memory claim = _chipData[i];
             _createSubnodeAndAddChip(
                 claim.chipId,
-                claim.chipNameHash,
                 msg.sender,
-                claim.developerMerkleInfo,
                 claim.manufacturerValidation
             );
         }

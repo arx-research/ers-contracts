@@ -175,8 +175,8 @@ export default class DeployHelper {
     return projectRegistrar;
   }
 
-  public async getAuthenticityProjectRegistrar(registrarAddress: Address): Promise<AuthenticityProjectRegistrar> {
-    return new AuthenticityProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
+  public async getRedirectProjectRegistrar(registrarAddress: Address): Promise<AuthenticityProjectRegistrar> {
+    return new RedirectProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
   }
 
   public async deployArxProjectEnrollmentManager(

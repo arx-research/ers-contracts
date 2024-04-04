@@ -13,7 +13,9 @@ interface IDeveloperRegistrar {
         bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
+        bytes32 _serviceId,
         ITransferPolicy _transferPolicy,
+        uint256 _lockinPeriod,
         bytes calldata _ownershipProof
     )
         external;

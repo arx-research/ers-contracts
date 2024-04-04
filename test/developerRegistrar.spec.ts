@@ -1,6 +1,7 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
+import { BigNumber } from "ethers";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
@@ -10,7 +11,8 @@ import {
   ProjectRegistrarMock,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
-  DeveloperRegistry
+  DeveloperRegistry,
+  ServicesRegistry
 } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
@@ -35,9 +37,11 @@ describe("DeveloperRegistrar", () => {
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let fakeDeveloperRegistry: Account;
   let manufacturerRegistry: Account;
-  let servicesRegistry: Account;
+  let servicesRegistry: ServicesRegistry;
   let projectRegistrar: ProjectRegistrarMock;
   let deployer: DeployHelper;
+  let exampleServiceId: string;
+  let exampleServiceRecords: any[];
 
   const blockchain = new Blockchain(ethers.provider);
 
@@ -46,14 +50,16 @@ describe("DeveloperRegistrar", () => {
       owner,
       developerOne,
       manufacturerRegistry,
-      servicesRegistry,
       fakeDeveloperRegistry,
     ] = await getAccounts();
+
+    const maxBlockWindow = BigNumber.from(5);
 
     deployer = new DeployHelper(owner.wallet);
 
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
     chipRegistry = await deployer.deployChipRegistry(manufacturerRegistry.address);
+    servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address, maxBlockWindow);
     ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
@@ -70,6 +76,22 @@ describe("DeveloperRegistrar", () => {
       chipRegistry.address,
       ersRegistry.address
     );
+
+    exampleServiceId = ethers.utils.formatBytes32String("Gucci-Flex");
+    exampleServiceRecords = [
+      {
+        recordType: ethers.utils.formatBytes32String("tokenUri"),
+        content: ethers.utils.hexlify(Buffer.from("api.gucci.com/tokens/1/")),
+        appendId: true,
+      },
+      {
+        recordType: ethers.utils.formatBytes32String("redirectUrl"),
+        content: ethers.utils.hexlify(Buffer.from("flex.gucci.com")),
+        appendId: false,
+      },
+    ];
+
+    await servicesRegistry.connect(owner.wallet).createService(exampleServiceId, exampleServiceRecords);
 
     await developerRegistry.addAllowedDeveloper(developerOne.address, calculateLabelHash("gucci"));
     await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
@@ -172,27 +194,25 @@ describe("DeveloperRegistrar", () => {
   describe("#addProject", async () => {
     let subjectNameHash: string;
     let subjectProjectRegistrar: Address;
-    let subjectMerkleRoot: string;
     let subjectProjectPublicKey: Address;
     let subjectTransferPolicy: Address;
     let subjectProjectOwnershipProof: string;
-    let subjectProjectClaimDataUri: string;
     let subjectCaller: Account;
+    let subjectServiceId: string;
 
     beforeEach(async () => {
       developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
       subjectNameHash = calculateLabelHash("ProjectX");
       subjectProjectRegistrar = projectRegistrar.address;
-      subjectMerkleRoot = ethers.utils.formatBytes32String("MerkleRoot");
       subjectProjectPublicKey = developerOne.address;
       subjectTransferPolicy = ADDRESS_ZERO;
+      subjectServiceId = exampleServiceId;
       subjectProjectOwnershipProof = await createProjectOwnershipProof(
         developerOne,
         subjectProjectRegistrar,
         await blockchain.getChainId()
       );
-      subjectProjectClaimDataUri = "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm";
       subjectCaller = developerOne;
     });
 
@@ -200,11 +220,11 @@ describe("DeveloperRegistrar", () => {
       return developerRegistrar.connect(subjectCaller.wallet).addProject(
         subjectNameHash,
         subjectProjectRegistrar,
-        subjectMerkleRoot,
         subjectProjectPublicKey,
+        subjectServiceId,
         subjectTransferPolicy,
+        (await blockchain.getCurrentTimestamp()).add(100),
         subjectProjectOwnershipProof,
-        subjectProjectClaimDataUri
       );
     }
 
@@ -213,10 +233,8 @@ describe("DeveloperRegistrar", () => {
 
       const actualProject = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
 
-      expect(actualProject.merkleRoot).to.eq(subjectMerkleRoot);
       expect(actualProject.projectPublicKey).to.eq(subjectProjectPublicKey);
       expect(actualProject.transferPolicy).to.eq(subjectTransferPolicy);
-      expect(actualProject.projectClaimDataUri).to.eq(subjectProjectClaimDataUri);
     });
 
     it("should set the correct node state on the ERSRegistry", async () => {
@@ -241,21 +259,9 @@ describe("DeveloperRegistrar", () => {
       await expect(subject()).to.emit(developerRegistrar, "ProjectAdded").withArgs(
         subjectProjectRegistrar,
         calculateSubnodeHash("ProjectX.gucci.ers"),
-        subjectMerkleRoot,
         subjectProjectPublicKey,
-        subjectTransferPolicy,
-        subjectProjectClaimDataUri
+        subjectTransferPolicy
       );
-    });
-
-    describe("when the merkle root is bytes32(0)", async () => {
-      beforeEach(async () => {
-        subjectMerkleRoot = NULL_NODE;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid merkle root");
-      });
     });
 
     describe("when the project public key is the zero address", async () => {

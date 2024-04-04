@@ -79,35 +79,18 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
      * Will revert if chip is msg.sender since it cannot own itself.
      * 
      * @param _chipId                   Address of the chip being claimed
-     * @param _nameHash                 Keccak256 hash of the human-readable name for the chip being claimed
      * @param _chipOwner                Intended owner of the chip being claimed
-     * @param _claimData                Struct containing chip info
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
      */
     function _createSubnodeAndAddChip(
         address _chipId,
-        bytes32 _nameHash,
         address _chipOwner,
-        IChipRegistry.DeveloperMerkleInfo memory _claimData,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     ) 
         internal
     {
-        // TODO: we probably should validate the manufacturer before creating the ers subnode?
-
-        // Call createSubnodeRecord from the ERS Registry to create a subnode with the chip as the resolver
-        // and the caller as the owner.
-        bytes32 ersNode = ers.createSubnodeRecord(rootNode, _nameHash, _chipOwner, _chipId);
-
-        IChipRegistry.ChipAddition memory chipAddition = IChipRegistry.ChipAddition({
-            owner: _chipOwner,
-            rootNode: rootNode,
-            nameHash: _nameHash,
-            developerMerkleInfo: _claimData
-        });
-
         // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.addChip(_chipId, chipAddition, _manufacturerValidation);
+        chipRegistry.addChip(_chipId, _chipOwner, _manufacturerValidation);
     }
 }
 

@@ -20,12 +20,6 @@ interface IERS {
         address _owner
     ) external;
 
-    function getOwner(
-        bytes32 _node
-    ) external 
-      view 
-      returns(address);
-
     function isValidChipState(
         bytes32 _node,
         address _chipId
@@ -46,4 +40,11 @@ interface IERS {
         external
         view
         returns (address);
+
+    function recordExists(
+        bytes32 _node
+    )
+        external
+        view
+        returns (bool);
 }

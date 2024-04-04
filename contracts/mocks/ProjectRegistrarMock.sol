@@ -5,6 +5,8 @@ pragma solidity ^0.8.17;
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
 
+import "hardhat/console.sol";
+
 contract ProjectRegistrarMock {
     
     IChipRegistry public immutable chipRegistry;
@@ -25,33 +27,20 @@ contract ProjectRegistrarMock {
         rootNode = _rootNode;
     }
 
-    function claimChip(
-        bytes32 _nameHash,
+    function addChip(
+        address chipId,
         address chipOwner,
-        IChipRegistry.DeveloperMerkleInfo calldata _claimData,
         IChipRegistry.ManufacturerValidation calldata _manufacturerValidation
     )
         external
     {
         // NOTE: Don't use in prod. We are passing in the "label" in the ChipAddition struct then over-writing for
         // testing convenience.
-        bytes32 chipErsNode = ers.createSubnodeRecord(
-            rootNode,
-            _nameHash,
-            chipOwner,
-            msg.sender
-        );
-
-        IChipRegistry.ChipAddition memory ChipAddition = IChipRegistry.ChipAddition({
-            owner: chipOwner,
-            rootNode: rootNode,
-            nameHash: _nameHash,
-            developerMerkleInfo: _claimData
-        });
+        console.log("mock called add chip");
 
         chipRegistry.addChip(
-            msg.sender,
-            ChipAddition,
+            chipId,
+            chipOwner,
             _manufacturerValidation
         );
     }

@@ -14,7 +14,8 @@ export default class DeployTokens {
   public async deployChipPBT(
     name: string,
     symbol: string,
-    maxBlockWindow: BigNumber
+    maxBlockWindow: BigNumber,
+    baseTokenURI: string
   ): Promise<ChipPBT> {
     const ChipPBT = await new ChipPBT__factory(this._deployerSigner).deploy(
       name,

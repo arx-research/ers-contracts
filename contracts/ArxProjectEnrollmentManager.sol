@@ -12,7 +12,9 @@ import { IManufacturerRegistry } from "./interfaces/IManufacturerRegistry.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
 import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
-import { AuthenticityProjectRegistrar } from "./project-registrars/AuthenticityProjectRegistrar.sol";
+import { BaseProjectRegistrar } from "./project-registrars/BaseProjectRegistrar.sol";
+
+import "hardhat/console.sol";
 
 /**
  * @title ArxProjectEnrollmentManager
@@ -88,6 +90,8 @@ contract ArxProjectEnrollmentManager is Ownable {
         address _projectManager,
         bytes32 _nameHash,
         address _projectPublicKey,
+        bytes32 _serviceId,
+        uint256 _lockinPeriod,
         address _provingChip,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
         bytes memory _projectOwnershipProof
@@ -106,6 +110,8 @@ contract ArxProjectEnrollmentManager is Ownable {
             _projectManager,
             _nameHash,
             _projectPublicKey,
+            _serviceId,
+            _lockinPeriod,
             _projectOwnershipProof
         );
     }
@@ -180,6 +186,8 @@ contract ArxProjectEnrollmentManager is Ownable {
         address _projectManager,
         bytes32 _nameHash,
         address _projectPublicKey,
+        bytes32 _serviceId,
+        uint256 _lockinPeriod,
         bytes memory _projectOwnershipProof
 
     )
@@ -187,12 +195,11 @@ contract ArxProjectEnrollmentManager is Ownable {
     {
         // TODO: what salt should we use instead of the merkle root? _projectPublicKey isn't great since this can be reused.
         // Deploy new AuthenticityProjectRegistrar with Create2
-        AuthenticityProjectRegistrar newProjectRegistrar = new AuthenticityProjectRegistrar{salt: _nameHash}(
+        BaseProjectRegistrar newProjectRegistrar = new BaseProjectRegistrar{salt: _nameHash}(
             _projectManager, 
             chipRegistry, 
             ers, 
-            developerRegistrar, 
-            maxBlockWindow
+            developerRegistrar
         );
 
         // Register new Project Registrar to Developer Registrar
@@ -200,7 +207,9 @@ contract ArxProjectEnrollmentManager is Ownable {
             _nameHash, 
             newProjectRegistrar, 
             _projectPublicKey, 
+            _serviceId,
             transferPolicy,
+            _lockinPeriod,
             _projectOwnershipProof
         );
 

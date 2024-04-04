@@ -21,7 +21,7 @@ import {
   DeveloperRegistry,
   ChipRegistry
 } from "@utils/contracts";
-import { calculateAuthenticityProjectRegistrarAddress } from "@utils/create2";
+import { calculateRedirectProjectRegistrarAddress } from "@utils/create2";
 import {
   calculateEnrollmentId,
   calculateLabelHash,
@@ -255,7 +255,7 @@ describe("ArxProjectEnrollmentManager", () => {
     projectNameHash = calculateLabelHash("ProjectX");
 
     // Create expected Project Registrar address to sign
-    expectedProjectRegistrarAddress = calculateAuthenticityProjectRegistrarAddress(
+    expectedProjectRegistrarAddress = calculateRedirectProjectRegistrarAddress(
       arxProjectEnrollmentManager.address,
       projectNameHash,
       [
@@ -263,7 +263,6 @@ describe("ArxProjectEnrollmentManager", () => {
         chipRegistry.address,
         ersRegistry.address,
         developerRegistrar.address,
-        maxBlockWindow,
       ]
     );
 
@@ -299,15 +298,15 @@ describe("ArxProjectEnrollmentManager", () => {
     });
   });
 
-  describe("#addProject", async() => {
+  describe.only("#addProject", async() => {
     let subjectProjectManager: Address;
     let subjectProjectClaimDataUri: string;
     let subjectNameHash: string;
     let subjectProjectPublicKey: string;
+    let subjectServiceId: string;
+    let subjectLockinPeriod: BigNumber;
     let subjectProvingChipId: Address;
-    let subjectDeveloperMerkleInfo: DeveloperMerkleProofInfo;
     let subjectManufacturerValidation: ManufacturerValidationInfo;
-    let subjectChipOwnershipProof: string;
     let subjectProjectOwnershipProof: string;
     let subjectCaller: Account;
 
@@ -316,27 +315,27 @@ describe("ArxProjectEnrollmentManager", () => {
       subjectProjectClaimDataUri = developerClaimDataUri;
       subjectNameHash = projectNameHash;
       subjectProvingChipId = chipOne.address;
-      subjectDeveloperMerkleInfo = {
-        developerIndex: ZERO,
-        serviceId: chipOneClaim.primaryServiceId,
-        lockinPeriod: chipOneClaim.lockinPeriod,
-        tokenUri: chipOneClaim.tokenUri,
-      } as DeveloperMerkleProofInfo;
+      subjectServiceId = chipOneClaim.primaryServiceId;
+      subjectLockinPeriod = chipOneClaim.lockinPeriod;
       subjectManufacturerValidation = {
         enrollmentId: developerChipsEnrollmentId,
         manufacturerCertificate: chipOneManufacturerCertificate,
       } as ManufacturerValidationInfo;
-      subjectChipOwnershipProof = await createProvingChipOwnershipProof(chipOne, developerOne.address, chainId);
       subjectProjectPublicKey = projectOwnerPublicKey;
       subjectProjectOwnershipProof = projectOwnershipProof;
       subjectCaller = developerOne;
     });
+
+    console.log("projectRegistrar", projectRegistrar.address);
+    console.log("expectedProjectRegistrarAddress", expectedProjectRegistrarAddress);
 
     async function subject(): Promise<ContractTransaction> {
       return await arxProjectEnrollmentManager.connect(subjectCaller.wallet).addProject(
         subjectProjectManager,
         subjectNameHash,
         subjectProjectPublicKey,
+        subjectServiceId,
+        subjectLockinPeriod,
         subjectProvingChipId,
         subjectManufacturerValidation,
         subjectProjectOwnershipProof
@@ -346,7 +345,7 @@ describe("ArxProjectEnrollmentManager", () => {
     it("should set the state correctly on ProjectRegistrar", async () => {
       await subject();
 
-      projectRegistrar = await deployer.getAuthenticityProjectRegistrar(expectedProjectRegistrarAddress);
+      projectRegistrar = await deployer.getRedirectProjectRegistrar(expectedProjectRegistrarAddress);
 
       const actualOwner = await projectRegistrar.owner();
       const actualChipRegistry = await projectRegistrar.chipRegistry();

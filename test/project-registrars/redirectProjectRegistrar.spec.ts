@@ -260,8 +260,10 @@ describe("RedirectProjectRegistrar", () => {
         projectNameHash,
         projectRegistrar.address,
         projectOwnerPublicKey,
+        serviceId,
         transferPolicy.address,
-        projectOwnershipProof,
+        100,
+        projectOwnershipProof
       );
 
   });
@@ -318,12 +320,10 @@ describe("RedirectProjectRegistrar", () => {
       subjectClaimData = [
         {
           chipId: chipIdOne,
-          chipNameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
-          chipNameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
         } as ProjectChipAddition,
       ];
@@ -331,7 +331,7 @@ describe("RedirectProjectRegistrar", () => {
     });
 
     async function subject(): Promise<any> {
-      return projectRegistrar.connect(subjectCaller.wallet).claimChips(subjectClaimData);
+      return projectRegistrar.connect(subjectCaller.wallet).addChips(subjectClaimData);
     }
 
     it("should claim chips", async() => {

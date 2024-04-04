@@ -22,7 +22,7 @@ contract ChipRegistryMock is ChipRegistry {
 
     function addChip(
         address _chipId,
-        IChipRegistry.ChipAddition calldata /*_ChipAddition*/,
+        address _owner,
         IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
     ) external override {
         chipIds[_chipId] = true;
