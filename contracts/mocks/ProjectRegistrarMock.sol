@@ -30,6 +30,7 @@ contract ProjectRegistrarMock {
     function addChip(
         address chipId,
         address chipOwner,
+        bytes32 nodeLabel,
         IChipRegistry.ManufacturerValidation calldata _manufacturerValidation
     )
         external
@@ -41,6 +42,7 @@ contract ProjectRegistrarMock {
         chipRegistry.addChip(
             chipId,
             chipOwner,
+            nodeLabel,
             _manufacturerValidation
         );
     }

@@ -37,6 +37,7 @@ interface IChipRegistry is IPBT {
     function addChip(
         address _chipId,
         address _owner,
+        bytes32 _nodeLabel,
         ManufacturerValidation calldata _manufacturerValidation
     )
         external;        

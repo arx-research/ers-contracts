@@ -182,6 +182,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
      *
      * @param _chipId                       Chip ID (address)
      * @param _chipOwner                    Struct containing information for validating merkle proof, chip owner, and chip's ERS node
+     * @param _nameHash                    Label of the node in the ERS tree
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
      */
     
@@ -190,6 +191,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     function addChip(
         address _chipId,
         address _chipOwner,
+        bytes32 _nameHash,
         ManufacturerValidation memory _manufacturerValidation
     )
         external virtual
@@ -211,9 +213,15 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         bytes32 rootNode = projectRegistrar.rootNode();
         
         // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
-        bytes32 ersNode = keccak256(abi.encodePacked(rootNode, keccak256(abi.encodePacked(_chipId))));
+        bytes32 ersNode = keccak256(abi.encodePacked(rootNode, _nameHash));
         require(ers.recordExists(ersNode), "Inconsistent state in ERS");
         chipNode[_chipId] = ersNode;
+
+        // console.logBytes32(rootNode);
+        // console.logAddress(_chipId);
+        // console.logBytes32(_nameHash);
+        // console.logBytes32(ers.getSubnodeHash(rootNode, _nameHash));
+        // console.logBytes32(ersNode);
 
         // TODO: consider if we want to store a lookup against manufacturer enrollmentIds
         // chipManufacturerEnrollments[_chipId] = _manufacturerValidation.enrollmentId;

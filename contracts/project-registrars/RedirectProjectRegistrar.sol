@@ -22,6 +22,7 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
     /* ============ Structs ============ */
     struct ProjectChipAddition {
         address chipId;
+        bytes32 nameHash; // A label used to identify the chip; in a PBT imlementation, this might match the tokenId
         IChipRegistry.ManufacturerValidation manufacturerValidation;
     }
 
@@ -53,20 +54,21 @@ contract RedirectProjectRegistrar is BaseProjectRegistrar {
      * gives managers to ability to maintain ownership over the chips (and thus the primaryService) for as long
      * as they want.
      * 
-     * @param _chipData    Array of information needed for claiming chips
+     * @param _chips    Array of information needed for claiming chips
      */
     function addChips(
-        ProjectChipAddition[] calldata _chipData
+        ProjectChipAddition[] calldata _chips
     ) 
         external
         onlyOwner()
     {
-        for (uint256 i = 0; i < _chipData.length; i++) {
-            ProjectChipAddition memory claim = _chipData[i];
+        for (uint256 i = 0; i < _chips.length; i++) {
+            ProjectChipAddition memory chip = _chips[i];
             _createSubnodeAndAddChip(
-                claim.chipId,
+                chip.chipId,
                 msg.sender,
-                claim.manufacturerValidation
+                chip.nameHash,
+                chip.manufacturerValidation
             );
         }
     }

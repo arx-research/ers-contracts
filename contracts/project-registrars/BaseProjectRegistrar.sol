@@ -10,6 +10,8 @@ import { IERS } from "../interfaces/IERS.sol";
 import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title BaseProjectRegistrar
  * @author Arx Research
@@ -85,16 +87,16 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
     function _createSubnodeAndAddChip(
         address _chipId,
         address _chipOwner,
+        bytes32 _nameHash,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     ) 
         internal
     {
-
         // Create the chip subnode record in the ERS
-        ers.createSubnodeRecord(rootNode, keccak256(abi.encodePacked(_chipId)), _chipOwner, _chipId);
+        ers.createSubnodeRecord(rootNode, _nameHash, _chipOwner, _chipId);
         
         // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.addChip(_chipId, _chipOwner, _manufacturerValidation);
+        chipRegistry.addChip(_chipId, _chipOwner, _nameHash, _manufacturerValidation);
     }
 }
 
