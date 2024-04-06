@@ -87,9 +87,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     bool public initialized;
 
     mapping(IProjectRegistrar => ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
-    mapping(address => bytes32) public chipNode;                      // Maps chipId to node in ERS
-    uint256 public maxLockinPeriod;                                     // Max amount of time chips can be locked into a service after a
-                                                                        // project's creation timestamp
+    uint256 public maxLockinPeriod;                                       // Max amount of time chips can be locked into a service after a
+                                                                          // project's creation timestamp
 
     /* ============ Constructor ============ */
 
@@ -182,12 +181,11 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
      *
      * @param _chipId                       Chip ID (address)
      * @param _chipOwner                    Struct containing information for validating merkle proof, chip owner, and chip's ERS node
-     * @param _nameHash                    Label of the node in the ERS tree
+     * @param _nameHash                     Label of the node in the ERS tree; typically the chipId unless the project wishes to use 
+     *                                      another unique identifier. The full ersNode will be used as the tokenId for the issued PBT.
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
      */
     
-    // TODO: retain claimChip name?
-
     function addChip(
         address _chipId,
         address _chipOwner,
@@ -203,7 +201,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         require(projectInfo.projectPublicKey != address(0), "Project not enrolled");
 
         // Verify that the chip doesn't exist yet based on tokenId in ChipPBT
-        require(!_exists(tokenIdFor(_chipId)), "Chip already added");
+        require(!ChipPBT._exists(_chipId), "Chip already added");
         require(_chipOwner != address(0), "Invalid chip owner");
 
         // Validate the manufacturer certificate
@@ -215,16 +213,6 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
         bytes32 ersNode = keccak256(abi.encodePacked(rootNode, _nameHash));
         require(ers.recordExists(ersNode), "Inconsistent state in ERS");
-        chipNode[_chipId] = ersNode;
-
-        // console.logBytes32(rootNode);
-        // console.logAddress(_chipId);
-        // console.logBytes32(_nameHash);
-        // console.logBytes32(ers.getSubnodeHash(rootNode, _nameHash));
-        // console.logBytes32(ersNode);
-
-        // TODO: consider if we want to store a lookup against manufacturer enrollmentIds
-        // chipManufacturerEnrollments[_chipId] = _manufacturerValidation.enrollmentId;
 
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
         uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.lockinPeriod ?
@@ -239,7 +227,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         );
 
         // Mint the ChipPBT token
-        ChipPBT._mint(_chipOwner, _chipId, projectInfo.transferPolicy);
+        ChipPBT._mint(_chipOwner, _chipId, ersNode, projectInfo.transferPolicy);
 
         if (!projectInfo.claimsStarted) {
             projectEnrollments[projectRegistrar].claimsStarted = true;
@@ -403,7 +391,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     function _setERSOwnerForChip(address _chipId, address _newOwner) internal {
         // TODO: is there a way to get chipErsNode without decoding tokenData?
         // (bytes32 chipErsNode, ) = _decodeTokenData(chipTable[_chipId].tokenData);
-        bytes32 chipErsNode = chipNode[_chipId];
+        bytes32 chipErsNode = bytes32(ChipPBT.tokenIdFor(_chipId));
         ers.setNodeOwner(chipErsNode, _newOwner);
     }
 

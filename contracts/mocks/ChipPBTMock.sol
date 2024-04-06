@@ -14,8 +14,9 @@ contract ChipPBTMock is ChipPBT {
     function testMint(
         address _to,
         address _chipId,
+        bytes32 _ersNode,
         ITransferPolicy _transferPolicy
     ) external {
-        _mint(_to, _chipId, _transferPolicy);
+        _mint(_to, _chipId, _ersNode, _transferPolicy);
     }
 }

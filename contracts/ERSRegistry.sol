@@ -75,6 +75,14 @@ contract ERSRegistry {
      * @param _resolver The address of the resolver.
      * @return The newly created subnode hash
      */
+
+    // TODO: verify manufacturer validation and add as a node between chip and project?
+    // We need a special variant of this function that checks the mfg reg and to restrict
+    // subnode creation only to the developer registry and developer registrar.
+
+    // One approach is to check the deverloper registry and/or registrar for this function
+    // and the project enrollments for the other.
+    // e.g isDeveloperRegistrar and IDeveloperRegistry
     function createSubnodeRecord(
         bytes32 _node,
         bytes32 _nameHash,
@@ -86,6 +94,8 @@ contract ERSRegistry {
         authorised(_node)
         returns(bytes32)
     {
+        // require(msg.sender == address(developerRegistry) || developerRegistry.isDeveloperRegistrar(msg.sender), "Caller must be DeveloperRegistry or a DeveloperRegistrar");
+        
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         require(_owner != address(0), "New owner cannot be null address");
         require(!recordExists(subnode), "Subnode already exists");

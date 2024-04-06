@@ -29,8 +29,8 @@ contract ChipRegistryMock is ChipRegistry {
         chipIds[_chipId] = true;
     }
 
-    function mockAddChip(address _chipId, address _owner) external {
-        ChipPBT._mint(_owner, _chipId, ITransferPolicy(address(0)));
+    function mockAddChip(address _chipId, bytes32 _ersNode, address _owner) external {
+        ChipPBT._mint(_owner, _chipId, _ersNode, ITransferPolicy(address(0)));
     }
 
     function setInitialService(address _chipId, bytes32 _serviceId, uint256 _timelock) external {

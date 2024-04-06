@@ -63,9 +63,10 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     }
     
     /* ============ State Variables ============ */
-    uint256 public immutable maxBlockWindow;            // Amount of blocks from commitBlock after which chip signatures are expired
-    string public baseURI;                         // Base URI for token metadata
-    mapping(address=>ITransferPolicy) public chipTransferPolicy;        // Maps a chipId to a ChipInfo struct
+    uint256 public immutable maxBlockWindow;                       // Amount of blocks from commitBlock after which chip signatures are expired
+    string public baseURI;                                         // Base URI for token metadata
+    mapping(address=>uint256) public chipIdToTokenId;              // Maps chipId to tokenId (tokenId is the node in ERS)
+    mapping(address=>ITransferPolicy) public chipTransferPolicy;   // Maps a chipId to a ChipInfo struct
 
     // TODO: we might want tokenIdToChipId as a function on ChipRegistry
     // mapping(uint256=>address) public tokenIdToChipId;   // Maps an ERC-721 token ID to a chipId
@@ -293,9 +294,9 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
      * @param _chipId       The chipId to get the tokenId for
      * @return tokenId      The tokenId for the given chipId
      */
-    function tokenIdFor(address _chipId) public pure returns (uint256 tokenId) {
-        tokenId = uint256(uint160(_chipId));
-        require(tokenId != 0, "Chip must be claimed");
+    function tokenIdFor(address _chipId) public view returns (uint256 tokenId) {
+        require(chipIdToTokenId[_chipId] != 0, "Chip must be minted");
+        return chipIdToTokenId[_chipId];
     }
 
     /**
@@ -332,15 +333,18 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     function _mint(
         address _to,
         address _chipId,
+        bytes32 _ersNode,
         ITransferPolicy _transferPolicy
     )
         internal
         virtual
         returns(uint256)
     {
-        uint256 tokenId = uint256(uint160(_chipId));
+        uint256 tokenId = uint256(_ersNode);
         chipTransferPolicy[_chipId] = _transferPolicy;
         super._mint(_to, tokenId);
+
+        chipIdToTokenId[_chipId] = tokenId;
 
         emit PBTMint(tokenId, _chipId);
         return tokenId;
@@ -385,6 +389,6 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
      */
     function _exists(address _chipId) internal view returns (bool) {
         // TODO: review this logic closely; ERC721.sol will revert if the tokenId doen't exist
-        return ownerOf(tokenIdFor(_chipId)) != address(0);
+        return chipIdToTokenId[_chipId] != 0;
     }
 }

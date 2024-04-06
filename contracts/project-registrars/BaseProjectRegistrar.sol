@@ -41,6 +41,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
 
     /* ============ Constructor ============ */
     /**
+     // TODO: _projectManager seems to replace the function of projectPublicKey since there is no longer a merkle to update...
      * @param _projectManager           The address that will be set as the owner
      * @param _chipRegistry             The chip registry of the ERS system being used
      * @param _ers                      The ERS registry of the ERS system being used
@@ -91,7 +92,10 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     ) 
         internal
+        onlyOwner()
     {
+        // TODO: verify manufacturer validation and add as a node between chip and project?
+        
         // Create the chip subnode record in the ERS
         ers.createSubnodeRecord(rootNode, _nameHash, _chipOwner, _chipId);
         
