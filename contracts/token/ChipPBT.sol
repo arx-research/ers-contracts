@@ -284,8 +284,7 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
      * @return string       The tokenURI for the given tokenId
      */
     function tokenURI(address _chipId) public view virtual onlyMintedChip(_chipId) returns (string memory) {
-        // return string.concat(baseTokenURI, Strings.toHexString(uint256(uint160(_chipId)), 32));
-        return bytes(baseURI).length > 0 ? string.concat(baseURI, Strings.toHexString(uint256(uint160(_chipId)), 32)) : "";
+        return bytes(baseURI).length > 0 ? string.concat(baseURI, chipIdToTokenId[_chipId].toString()) : "";
     }
 
     /**

@@ -948,7 +948,7 @@ describe.only("ChipRegistry", () => {
           it("should return the primary service's tokenUri content", async () => {
             const tokenURI = await subject();
 
-            expect(tokenURI).to.eq("api.gucci.com/tokens/1/".concat(chip.address.toString().toLowerCase()));
+            expect(tokenURI).to.eq(baseTokenUri.concat(BigNumber.from(chipNode).toString()));
           });
 
           describe("when the service doesn't have a tokenURI", async () => {
@@ -961,7 +961,7 @@ describe.only("ChipRegistry", () => {
 
             it("should return the correct token URI", async () => {
               const tokenURI = await subject();
-              expect(tokenURI).to.eq(baseTokenUri + chip.address.toString().toLowerCase());
+              expect(tokenURI).to.eq(baseTokenUri.concat(BigNumber.from(chipNode).toString()));
             });
           });
 
@@ -1003,7 +1003,7 @@ describe.only("ChipRegistry", () => {
 
             it("should return the correct token URI", async () => {
               const tokenURI = await subject();
-              expect(tokenURI).to.eq(baseTokenUri + chip.address.toString().toLowerCase());
+              expect(tokenURI).to.eq(baseTokenUri.concat(BigNumber.from(chipNode).toString()));
             });
           });
 
@@ -1013,7 +1013,7 @@ describe.only("ChipRegistry", () => {
             });
 
             it("should revert", async () => {
-              await expect(subject()).to.be.revertedWith("Chip must be claimed");
+              await expect(subject()).to.be.revertedWith("Chip must be minted");
             });
           });
         });
