@@ -858,7 +858,7 @@ describe.only("ChipRegistry", () => {
           let subjectCaller: Account;
 
           beforeEach(async () => {
-            subjectChipId = chipTwo.address;
+            subjectChipId = chip.address;
             subjectNewOwner = newOwner.address;
             subjectCommitBlock = await blockchain.getLatestBlockNumber();
 
