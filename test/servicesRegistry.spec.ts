@@ -21,12 +21,15 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
+import {
+  calculateSubnodeHash
+} from "@utils/protocolUtils";
 
 import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe("ServicesRegistry", () => {
+describe.only("ServicesRegistry", () => {
   let deployAccount: Account;
   let owner: Account;
   let chip: Account;
@@ -49,7 +52,7 @@ describe("ServicesRegistry", () => {
 
     deployer = new DeployHelper(deployAccount.wallet);
 
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(owner.address, []);
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(owner.address);
 
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address, maxBlockWindow);
 
@@ -722,14 +725,16 @@ describe("ServicesRegistry", () => {
       let subjectCommitBlock: BigNumber;
       let subjectSignature: string;
       let subjectCaller: Account;
+      let mockChipNode: string;
 
       let packedMsg: string;
 
       beforeEach(async () => {
         const primaryService = serviceOneId;
         const initialTimestamp = (await blockchain.getCurrentTimestamp()).add(100);
+        mockChipNode = calculateSubnodeHash(`${chip.address}.ProjectY.gucci.ers`);
 
-        await chipRegistry.mockClaimChip(chip.address, owner.address);
+        await chipRegistry.mockAddChip(chip.address, mockChipNode, owner.address);
         await chipRegistry.setInitialService(
           chip.address,
           primaryService,
@@ -853,6 +858,7 @@ describe("ServicesRegistry", () => {
       let subjectSignature: string;
       let subjectCaller: Account;
 
+      let mockChipNode: string;
       let packedMsg: string;
 
       before(async () => {
@@ -861,10 +867,14 @@ describe("ServicesRegistry", () => {
       });
 
       beforeEach(async () => {
+        subjectChipId = chip.address;
+        subjectCaller = owner;
         if (makeClaim) {
           const primaryService = serviceOneId;
           const initialTimestamp = (await blockchain.getCurrentTimestamp()).add(100);
-          await chipRegistry.mockClaimChip(chip.address, owner.address);
+          mockChipNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
+
+          await chipRegistry.mockAddChip(subjectChipId, mockChipNode, subjectCaller.address);
           await chipRegistry.setInitialService(
             chip.address,
             primaryService,
@@ -884,8 +894,6 @@ describe("ServicesRegistry", () => {
           [subjectCommitBlock, subjectServiceId, subjectNewTimelock]
         );
         subjectSignature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-        subjectChipId = chip.address;
-        subjectCaller = owner;
       });
 
       async function subject(): Promise<any> {
@@ -1022,7 +1030,7 @@ describe("ServicesRegistry", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Chip must be claimed");
+          await expect(subject()).to.be.revertedWith("Chip must be minted");
         });
       });
     });
@@ -1034,6 +1042,7 @@ describe("ServicesRegistry", () => {
       let subjectSignature: string;
       let subjectCaller: Account;
 
+      let mockChipNode: string;
       let packedMsg: string;
 
       beforeEach(async () => {
@@ -1042,7 +1051,9 @@ describe("ServicesRegistry", () => {
 
         const primaryService = serviceOneId;
         const initialTimestamp = (await blockchain.getCurrentTimestamp()).add(100);
-        await chipRegistry.mockClaimChip(subjectChipId, owner.address);
+        mockChipNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
+
+        await chipRegistry.mockAddChip(subjectChipId, mockChipNode, owner.address);
         await chipRegistry.setInitialService(
           subjectChipId,
           primaryService,
@@ -1224,13 +1235,15 @@ describe("ServicesRegistry", () => {
 
     describe("#getPrimaryServiceRecords", async () => {
       let subjectChipId: Address;
+      let mockChipNode: string;
 
       beforeEach(async() => {
         subjectChipId = chip.address;
 
         const serviceTimelock = (await blockchain.getCurrentTimestamp()).add(100);
+        mockChipNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
 
-        await chipRegistry.mockClaimChip(chip.address, owner.address);
+        await chipRegistry.mockAddChip(chip.address, mockChipNode, owner.address);
         await chipRegistry.setInitialService(
           subjectChipId,
           serviceOneId,
@@ -1257,13 +1270,15 @@ describe("ServicesRegistry", () => {
       let subjectChipId: Address;
 
       let serviceTimelock: BigNumber;
+      let mockChipNode: string;
 
       beforeEach(async() => {
         subjectChipId = chip.address;
 
         serviceTimelock = (await blockchain.getCurrentTimestamp()).add(100);
+        mockChipNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
 
-        await chipRegistry.mockClaimChip(chip.address, owner.address);
+        await chipRegistry.mockAddChip(chip.address, mockChipNode, owner.address);
         await chipRegistry.setInitialService(
           subjectChipId,
           serviceOneId,
