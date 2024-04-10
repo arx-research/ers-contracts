@@ -214,9 +214,7 @@ contract ManufacturerRegistry is Ownable {
     {
         // TODO: we might want block.chainid in sig
         bytes32 msgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
-        require(enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate), "Invalid manufacturer certificate");
-        // TODO: is require the right practice here?
-        return true;
+        return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate);
     }
 
     function getManufacturerInfo(bytes32 _manufacturerId) external view returns (ManufacturerInfo memory) {

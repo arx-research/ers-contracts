@@ -46,7 +46,7 @@ import { namehash } from "ethers/lib/utils";
 
 const expect = getWaffleExpect();
 
-describe.only("ChipRegistry", () => {
+describe("ChipRegistry", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
@@ -934,6 +934,7 @@ describe.only("ChipRegistry", () => {
           });
         });
 
+        // TODO: test with a custom nameHash and/or tokenId added by a PBT registrar
         describe("#tokenURI(uint256)", async () => {
           let subjectTokenId: BigNumber;
 

@@ -14,11 +14,12 @@ import {
   getAccounts
 } from "@utils/test/index";
 
-import { calculateEnrollmentId, ManufacturerTree } from "@utils/index";
+import { createManufacturerCertificate } from "@utils/protocolUtils";
+import { calculateEnrollmentId } from "@utils/index";
 
 const expect = getWaffleExpect();
 
-describe("ManufacturerRegistry", () => {
+describe.only("ManufacturerRegistry", () => {
   let governance: Account;
   let manufacturerOne: Account;
   let manufacturerTwo: Account;
@@ -26,6 +27,7 @@ describe("ManufacturerRegistry", () => {
   let manufacturerRegistry: ManufacturerRegistry;
   let chipOne: Account;
   let chipTwo: Account;
+  let invalidChip: Account;
   let deployer: DeployHelper;
 
   beforeEach(async () => {
@@ -36,6 +38,7 @@ describe("ManufacturerRegistry", () => {
       authModel,
       chipOne,
       chipTwo,
+      invalidChip
     ] = await getAccounts();
 
     deployer = new DeployHelper(governance.wallet);
@@ -148,7 +151,6 @@ describe("ManufacturerRegistry", () => {
     async function subject(): Promise<any> {
       return await manufacturerRegistry.connect(subjectCaller.wallet).addChipEnrollment(
         subjectManufacturerId,
-        subjectMerkleRoot,
         subjectCertSigner,
         subjectAuthModel,
         subjectChipValidationDataUri,
@@ -163,7 +165,6 @@ describe("ManufacturerRegistry", () => {
       const eInfo = await manufacturerRegistry.getEnrollmentInfo(expectedEnrollmentId);
 
       expect(eInfo.manufacturerId).to.eq(subjectManufacturerId);
-      expect(eInfo.merkleRoot).to.eq(subjectMerkleRoot);
       expect(eInfo.manufacturerCertSigner).to.eq(subjectCertSigner);
       expect(eInfo.authModel).to.eq(subjectAuthModel);
       expect(eInfo.bootloaderApp).to.eq(subjectBootloaderApp);
@@ -194,7 +195,6 @@ describe("ManufacturerRegistry", () => {
       await expect(subject()).to.emit(manufacturerRegistry, "EnrollmentAdded").withArgs(
         subjectManufacturerId,
         expectedEnrollmentId,
-        subjectMerkleRoot,
         subjectCertSigner,
         subjectAuthModel,
         subjectChipValidationDataUri,
@@ -337,20 +337,14 @@ describe("ManufacturerRegistry", () => {
 
   describe("#isEnrolledChip", async () => {
     let subjectEnrollmentId: string;
-    let subjectIndex: number;
     let subjectChipId: Address;
-    let subjectMerkleProof: string[];
-
-    let merkleTree: ManufacturerTree;
+    let subjectManufacturerCertificate: string;
 
     beforeEach(async () => {
       const manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
 
       await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
 
-      merkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-
-      const merkleRoot = merkleTree.getRoot();
       const certSigner = manufacturerOne.address;
       const chipAuthModel = authModel.address;
       const chipValidationDataUri = "ipfs://ipfsHash";
@@ -359,7 +353,6 @@ describe("ManufacturerRegistry", () => {
 
       await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
         manufacturerId,
-        merkleRoot,
         certSigner,
         chipAuthModel,
         chipValidationDataUri,
@@ -367,18 +360,16 @@ describe("ManufacturerRegistry", () => {
         chipModel
       );
 
+      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chipOne.address),
       subjectEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
-      subjectIndex = 0;
       subjectChipId = chipOne.address;
-      subjectMerkleProof = merkleTree.getProof(subjectIndex);
     });
 
     async function subject(): Promise<any> {
       return await manufacturerRegistry.isEnrolledChip(
         subjectEnrollmentId,
-        subjectIndex,
         subjectChipId,
-        subjectMerkleProof
+        subjectManufacturerCertificate
       );
     }
 
@@ -388,9 +379,9 @@ describe("ManufacturerRegistry", () => {
       expect(isChip).to.be.true;
     });
 
-    describe("when proof is invalid", () => {
+    describe("when certificate is invalid", () => {
       beforeEach(async () => {
-        subjectMerkleProof = merkleTree.getProof(1);
+        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, invalidChip.address)
       });
 
       it("should return false", async () => {
