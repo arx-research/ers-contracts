@@ -29,7 +29,7 @@ import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe.only("ServicesRegistry", () => {
+describe("ServicesRegistry", () => {
   let deployAccount: Account;
   let owner: Account;
   let chip: Account;

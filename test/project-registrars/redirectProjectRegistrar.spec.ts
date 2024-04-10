@@ -40,7 +40,7 @@ import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe("RedirectProjectRegistrar", () => {
+describe.only("RedirectProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let manufacturerOne: Account;
@@ -282,20 +282,13 @@ describe("RedirectProjectRegistrar", () => {
     });
   });
 
-  describe("#claimChip", async() => {
-    let subjectClaimData: ProjectChipAddition[];
+  describe("#addChip", async() => {
+    let subjectAdditionData: ProjectChipAddition[];
     let subjectCaller: Account;
 
     beforeEach(async () => {
       const chipIdOne = chipOne.address;
       const nameHashOne = calculateLabelHash("chip1");
-      const ChipAdditionOne = {
-        developerIndex: ZERO,
-        serviceId,
-        lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
-        tokenUri: developerClaimTokenURI,
-        developerProof: projectMerkleTree.getProof(0),
-      } as DeveloperMerkleProofInfo;
 
       const manufacturerValidationOne = {
         enrollmentId: developerChipsEnrollmentId,
@@ -304,26 +297,21 @@ describe("RedirectProjectRegistrar", () => {
 
       const chipIdTwo = chipTwo.address;
       const nameHashTwo = calculateLabelHash("chip2");
-      const ChipAdditionTwo = {
-        developerIndex: ONE,
-        serviceId,
-        lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
-        tokenUri: developerClaimTokenURI,
-        developerProof: projectMerkleTree.getProof(1),
-      } as DeveloperMerkleProofInfo;
 
       const manufacturerValidationTwo = {
         enrollmentId: developerChipsEnrollmentId,
         manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipTwo.address),
       } as ManufacturerValidationInfo;
 
-      subjectClaimData = [
+      subjectAdditionData = [
         {
           chipId: chipIdOne,
+          nameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
+          nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
         } as ProjectChipAddition,
       ];
@@ -331,27 +319,27 @@ describe("RedirectProjectRegistrar", () => {
     });
 
     async function subject(): Promise<any> {
-      return projectRegistrar.connect(subjectCaller.wallet).addChips(subjectClaimData);
+      return projectRegistrar.connect(subjectCaller.wallet).addChips(subjectAdditionData);
     }
 
-    it("should claim chips", async() => {
+    it("should add chips", async() => {
       await subject();
       // Recreate node which hash(subjectNameHash,node(projectName))
       const recreatedNodeOne = calculateSubnodeHash("chip1.ProjectX.Gucci.ers");
       const recreatedNodeTwo = calculateSubnodeHash("chip2.ProjectX.Gucci.ers");
 
       expect(await ersRegistry.getOwner(recreatedNodeOne)).to.be.equal(projectManager.address);
-      expect(await ersRegistry.getResolver(recreatedNodeOne)).to.be.equal(subjectClaimData[0].chipId);
+      expect(await ersRegistry.getResolver(recreatedNodeOne)).to.be.equal(subjectAdditionData[0].chipId);
       expect(await ersRegistry.getOwner(recreatedNodeTwo)).to.be.equal(projectManager.address);
-      expect(await ersRegistry.getResolver(recreatedNodeTwo)).to.be.equal(subjectClaimData[1].chipId);
+      expect(await ersRegistry.getResolver(recreatedNodeTwo)).to.be.equal(subjectAdditionData[1].chipId);
     });
 
 
-    it("should pass the expected valued to chipRegistry.claimChip", async() => {
+    it("should pass the expected valued to chipRegistry.addChip", async() => {
       await subject();
 
-      expect(await chipRegistry.chipIds(subjectClaimData[0].chipId)).to.be.true;
-      expect(await chipRegistry.chipIds(subjectClaimData[1].chipId)).to.be.true;
+      expect(await chipRegistry.chipIds(subjectAdditionData[0].chipId)).to.be.true;
+      expect(await chipRegistry.chipIds(subjectAdditionData[1].chipId)).to.be.true;
     });
 
     describe("when the caller is not the contract owner", async () => {
