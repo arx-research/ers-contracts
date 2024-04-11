@@ -72,7 +72,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         ITransferPolicy transferPolicy;
         uint256 lockinPeriod;
         uint256 creationTimestamp;
-        bool claimsStarted;
+        bool chipsAdded;
     }
     
     /* ============ Constants ============ */
@@ -124,7 +124,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
      * revert if the project is already enrolled. See documentation for more instructions on how to create a project merkle root.
      *
      * @param _projectRegistrar          Address of the ProjectRegistrar contract
-     * @param _projectPublicKey          Public key of the project (used to sign chip certificates and create _signature)
+     * @param _projectPublicKey          Public key of the project used to sign _projectOwnershipProof
      * @param _transferPolicy            Address of the transfer policy contract governing chip transfers
      * @param _projectOwnershipProof     Signature of the _projectRegistrar address signed by the _projectPublicKey. Proves ownership over the
      *                                   key that signed the chip custodyProofs and developerInclusionProofs   
@@ -147,7 +147,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // with a project enrollment during claim
         require(_projectPublicKey != address(0), "Invalid project public key");
 
-        // TODO: Cameron wondering if we need this; we could probably skip of projectPublicKey == projectRegistrar.owner...
+        // TODO: Cameron wondering if we need this; we could probably skip if projectPublicKey == projectRegistrar.owner...
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
         bytes32 messageHash = abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash();
         require(_projectPublicKey.isValidSignatureNow(messageHash, _projectOwnershipProof), "Invalid signature");
@@ -159,7 +159,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
             transferPolicy: _transferPolicy,
             lockinPeriod: lockinPeriod,
             creationTimestamp: block.timestamp,
-            claimsStarted: false
+            chipsAdded: false
         });
 
         emit ProjectEnrollmentAdded(
@@ -205,6 +205,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         require(_chipOwner != address(0), "Invalid chip owner");
 
         // Validate the manufacturer certificate
+        // TODO: store mapping of chipId to manufacturer enrollmentId -- here or in manufacturerRegistry?
+        // TODO: move this to ERSRegistry since we will validate the certificate prior to creation of the chip subnode.
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Get the project's root node which is used in the creation of the subnode
@@ -229,8 +231,8 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         // Mint the ChipPBT token
         ChipPBT._mint(_chipOwner, _chipId, ersNode, projectInfo.transferPolicy);
 
-        if (!projectInfo.claimsStarted) {
-            projectEnrollments[projectRegistrar].claimsStarted = true;
+        if (!projectInfo.chipsAdded) {
+            projectEnrollments[projectRegistrar].chipsAdded = true;
         }
 
         emit ChipAdded(

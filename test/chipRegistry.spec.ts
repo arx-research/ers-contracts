@@ -36,12 +36,9 @@ import {
   calculateLabelHash,
   calculateSubnodeHash,
   createManufacturerCertificate,
-  createDeveloperCustodyProof,
-  createDeveloperInclusionProof,
-  createProjectOwnershipProof,
-  createTokenData
+  createProjectOwnershipProof
 } from "@utils/protocolUtils";
-import { Blockchain, ManufacturerTree, DeveloperTree } from "@utils/common";
+import { Blockchain } from "@utils/common";
 import { namehash } from "ethers/lib/utils";
 
 const expect = getWaffleExpect();
@@ -295,7 +292,7 @@ describe("ChipRegistry", () => {
         expect(actualProjectInfo.projectPublicKey).to.eq(subjectProjectPublicKey);
         expect(actualProjectInfo.transferPolicy).to.eq(subjectTransferPolicy);
         expect(actualProjectInfo.creationTimestamp).to.eq(await blockchain.getCurrentTimestamp());
-        expect(actualProjectInfo.claimsStarted).to.be.false;
+        expect(actualProjectInfo.chipsAdded).to.be.false;
       });
 
       it("should emit the correct ProjectEnrollmentAdded event", async () => {
@@ -445,22 +442,21 @@ describe("ChipRegistry", () => {
           expect(actualOwnerBalance).to.eq(ONE);
         });
 
-        // TODO: check node <> chipId mapping.
-        // it("should map the node to the chip id", async () => {
-        //   await subject();
+        it("should map chip id to the node", async () => {
+          await subject();
 
-        //   const actualChipId = await chipRegistry.tokenIdToChipId(subjectChipId);
-        //   expect(actualChipId).to.eq(subjectChipId);
-        // });
+          const actualTokenId = await chipRegistry.chipIdToTokenId(subjectChipIdOne);
+          expect(actualTokenId).to.eq(calculateSubnodeHash(`${subjectChipIdOne}.ProjectY.gucci.ers`));
+        });
 
-        it("should set the project's claimsStarted field to true", async () => {
+        it("should set the project's chipsAdded field to true", async () => {
           const preProjectInfo = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
-          expect(preProjectInfo.claimsStarted).to.be.false;
+          expect(preProjectInfo.chipsAdded).to.be.false;
 
           await subject();
 
           const postProjectInfo = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
-          expect(postProjectInfo.claimsStarted).to.be.true;
+          expect(postProjectInfo.chipsAdded).to.be.true;
         });
 
         it("should update state on the ServicesRegistry", async () => {
@@ -529,8 +525,8 @@ describe("ChipRegistry", () => {
 
             const actualChipTransferPolicy = await chipRegistry.chipTransferPolicy(chipTwo.address);
             // TODO: verify token id mapping.
-            // const actualChipTokenId = await chipRegistry.tokenIdToChipId(chipTwo.address);
-            // expect(actualChipTokenId).to.eq();
+            const actualChipTokenId = await chipRegistry.chipIdToTokenId(chipTwo.address);
+            expect(actualChipTokenId).to.eq(calculateSubnodeHash(`${subjectChipIdTwo}.ProjectY.gucci.ers`));
             expect(actualChipTransferPolicy).to.eq(subjectTransferPolicy);
           });
         });
@@ -590,76 +586,6 @@ describe("ChipRegistry", () => {
 
         // TODO: check when manufacturerCertificate is invalid.
       });
-
-      // describe("#updateProjectMerkleRoot", async () => {
-      //   let subjectProjectRegistrar: Address;
-      //   let subjectCaller: Account;
-
-      //   beforeEach(async () => {
-      //     subjectProjectRegistrar = fakeProjectRegistrar.address;
-      //     subjectCaller = developerOne;
-      //   });
-
-      //   describe("when a chip has been claimed", async () => {
-      //     beforeEach(async () => {
-      //       const chipNameHash = calculateLabelHash("myChip");
-      //       await ersRegistry.connect(fakeProjectRegistrar.wallet).createSubnodeRecord(
-      //         projectNodeHash,
-      //         chipNameHash,
-      //         owner.address,
-      //         chipOne.address
-      //       );
-
-      //       const chipId = chipOne.address;
-      //       // const ChipAddition = {
-      //       //   developerMerkleInfo: {
-      //       //     developerIndex: ZERO,
-      //       //     serviceId,
-      //       //     lockinPeriod: chipOneClaim.lockinPeriod,
-      //       //     tokenUri: claimTokenUri,
-      //       //   } as DeveloperMerkleProofInfo,
-      //       //   owner: owner.address,
-      //       //   rootNode: calculateSubnodeHash("project.mockDeveloper.ers"),
-      //       //   nameHash: calculateLabelHash(chipOne.address),
-      //       // };
-
-      //       const manufacturerValidation = {
-      //         enrollmentId: chipsEnrollmentId,
-      //         manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
-      //       };
-
-      //       await chipRegistry.connect(fakeProjectRegistrar.wallet).addChip(
-      //         chipId,
-      //         owner.address,
-      //         manufacturerValidation
-      //       );
-      //     });
-
-      //     it("should revert", async () => {
-      //       await expect(subject()).to.be.revertedWith("Claims have already started");
-      //     });
-      //   });
-
-      //   describe("when the update time period has elapsed", async () => {
-      //     beforeEach(async () => {
-      //       await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.mul(31).toNumber());
-      //     });
-
-      //     it("should revert", async () => {
-      //       await expect(subject()).to.be.revertedWith("Update period has elapsed");
-      //     });
-      //   });
-
-      //   describe("when the caller is not the project public key", async () => {
-      //     beforeEach(async () => {
-      //       subjectCaller = owner;
-      //     });
-
-      //     it("should revert", async () => {
-      //       await expect(subject()).to.be.revertedWith("Caller must be project public key");
-      //     });
-      //   });
-      // });
 
       context("when a chip is transferred", async () => {
         let chipNode: string;

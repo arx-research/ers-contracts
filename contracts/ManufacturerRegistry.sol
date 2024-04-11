@@ -212,7 +212,7 @@ contract ManufacturerRegistry is Ownable {
         view
         returns (bool)
     {
-        // TODO: we might want block.chainid in sig
+        // TODO: we probably need block.chainid in sig
         bytes32 msgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
         return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate);
     }

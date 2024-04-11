@@ -70,7 +70,6 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
 
     // TODO: we might want tokenIdToChipId as a function on ChipRegistry
     // mapping(uint256=>address) public tokenIdToChipId;   // Maps an ERC-721 token ID to a chipId
-    // uint256 public tokenIdCounter;                      // Counter for ERC-721 token IDs
 
     /* ============ Constructor ============ */
 
@@ -136,7 +135,7 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
         // ChipInfo memory chipInfo = chipTable[chipId];
         address chipOwner = ownerOf(tokenIdFor(chipId));
         
-        // TODO: check the transfer policy from the project enrollment?
+        // Check the transfer policy from the project enrollment?
         require(chipTransferPolicy[chipId] != ITransferPolicy(address(0)), "Transfer policy must be set");
 
         // Check that the signature is valid, create own scope to prevent stack-too-deep error
@@ -261,8 +260,6 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
      * @param _tokenId      The tokenId to get the tokenURI for
      * @return string       The tokenURI for the given tokenId
      */
-
-    // TODO: verify that with _baseURI() we can use this function
     function tokenURI(
         uint256 _tokenId
     )
