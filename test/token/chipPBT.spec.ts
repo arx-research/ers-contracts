@@ -23,6 +23,9 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
+import {
+  calculateSubnodeHash
+} from "@utils/protocolUtils";
 
 const expect = getWaffleExpect();
 
@@ -31,6 +34,7 @@ describe("ChipPBT", () => {
   let newOwner: Account;
   let chipOne: Account;
   let chipTwo: Account;
+  let chipThree: Account;
   let transferPolicy: TransferPolicyMock;
   let transferPolicyTwo: Account;
   let accountMock: AccountMock;
@@ -51,6 +55,7 @@ describe("ChipPBT", () => {
       newOwner,
       chipOne,
       chipTwo,
+      chipThree,
       transferPolicyTwo,
     ] = await getAccounts();
 
@@ -72,11 +77,6 @@ describe("ChipPBT", () => {
       const actualSymbol = await ChipPBT.symbol();
       expect(actualSymbol).to.eq(symbol);
     });
-
-    // it("should set the tokenId counter to 1", async () => {
-    //   const actualTokenIdCounter = await ChipPBT.tokenIdCounter();
-    //   expect(actualTokenIdCounter).to.eq(ONE);
-    // });
   });
 
   describe("#isChipSignatureForToken", async () => {
@@ -295,64 +295,52 @@ describe("ChipPBT", () => {
   describe("#_mint", async () => {
     let subjectTo: Address;
     let subjectChipId: Address;
+    let subjectErsNode: string;
+    let subjectTokenId: string;
     // let subjectChipInfo: ChipPBTChipInfo;
 
     beforeEach(async () => {
       subjectTo = owner.address;
       subjectChipId = chipOne.address;
-      // subjectChipInfo = {
-      //   tokenId: ONE,
-      //   transferPolicy: transferPolicy.address,
-      //   tokenUri: "https://www.ethereumrealityservice.com",
-      //   tokenData: ethers.utils.solidityPack(['uint256'], [ONE]),
-      // };
+      subjectErsNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
+      subjectTokenId = BigNumber.from(subjectErsNode).toString();
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).testMint(subjectTo, subjectChipId, transferPolicy.address);
+      return ChipPBT.connect(owner.wallet).testMint(subjectTo, subjectChipId, subjectErsNode, transferPolicy.address);
     }
 
-    // it("should claim the chip and set chip table state", async () => {
-    //   const tokenIdCounter = await ChipPBT.tokenIdCounter();
+    it("should claim the chip and set chip state", async () => {
+      await subject();
 
-    //   await subject();
+      const actualChipTokenId = await ChipPBT.chipIdToTokenId(subjectChipId);
+      const actualChipTransferPolicy = await ChipPBT.chipTransferPolicy(subjectChipId);
+      const actualChipTokenUri = (await ChipPBT.functions["tokenURI(uint256)"](subjectTokenId))[0];
 
-    //   const actualChipInfo = await ChipPBT.chipTable(chipOne.address);
-
-    //   expect(actualChipInfo.tokenData).to.eq(subjectChipInfo.tokenData);
-    //   expect(actualChipInfo.tokenId).to.eq(tokenIdCounter);
-    //   expect(actualChipInfo.transferPolicy).to.eq(subjectChipInfo.transferPolicy);
-    //   expect(actualChipInfo.tokenUri).to.eq(subjectChipInfo.tokenUri);
-    // });
+      expect(actualChipTokenId).to.eq(subjectTokenId);
+      expect(actualChipTransferPolicy).to.eq(transferPolicy.address);
+      expect(actualChipTokenUri).to.eq(baseTokenURI.concat(BigNumber.from(subjectErsNode).toString()));
+    });
 
     it("should mint the token to the correct address and update owner balances", async () => {
       await subject();
 
-      const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectChipId))[0];
+      const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectTokenId))[0];
       const actualOwnerBalance = await ChipPBT.balanceOf(subjectTo);
       expect(actualOwner).to.eq(subjectTo);
-      expect(actualOwnerBalance).to.eq(subjectChipId);
+      expect(actualOwnerBalance).to.eq(ONE);
     });
 
-    // it("should map the token id to the chip id", async () => {
-    //   await subject();
+    it("should map the chip id to the token id", async () => {
+      await subject();
 
-    //   const actualChipId = await ChipPBT.tokenIdToChipId(ONE);
-    //   expect(actualChipId).to.eq(subjectChipId);
-    // });
-
-    // it("should increment the token id counter", async () => {
-    //   const initialTokenIdCounter = await ChipPBT.tokenIdCounter();
-
-    //   await subject();
-
-    //   const newTokenIdCounter = await ChipPBT.tokenIdCounter();
-    //   expect(newTokenIdCounter).to.eq(initialTokenIdCounter.add(ONE));
-    // });
+      const actualTokenId = await ChipPBT.chipIdToTokenId(subjectChipId);
+      expect(actualTokenId).to.eq(subjectTokenId);
+    });
 
     it("should emit the correct PBTMint event", async () => {
       await expect(subject()).to.emit(ChipPBT, "PBTMint").withArgs(
-        subjectChipId,
+        subjectTokenId,
         subjectChipId
       );
     });
@@ -362,30 +350,20 @@ describe("ChipPBT", () => {
     let ownerAddress: Address;
     let chip: Account;
     let chipAccount: AccountMock;
-    let chipInfo: ChipPBTChipInfo;
+    let chipErsNode: string;
+    let chipErsNodeAccount: string;
     // let chipAccountInfo: ChipPBTChipInfo;
 
     beforeEach(async () => {
       ownerAddress = owner.address;
-      // chipInfo = {
-      //   tokenId: ONE,
-      //   transferPolicy: transferPolicy.address,
-      //   tokenUri: "https://www.ethereumrealityservice.com",
-      //   tokenData: ethers.utils.solidityPack(['uint256'], [ONE]),
-      // };
 
-      // chipAccountInfo = {
-      //   tokenId: BigNumber.from(2),
-      //   transferPolicy: transferPolicy.address,
-      //   tokenUri: "https://www.ethereumrealityservice.com",
-      //   tokenData: ethers.utils.solidityPack(['uint256'], [ONE]),
-      // };
-
-      chip = chipOne;
+      chip = chipThree;
       chipAccount = await deployer.mocks.deployAccountMock(chip.address, ChipPBT.address);
+      chipErsNode = calculateSubnodeHash(`${chip.address}.ProjectY.gucci.ers`);
+      chipErsNodeAccount = calculateSubnodeHash(`${chipAccount.address}.ProjectY.gucci.ers`);
 
-      await ChipPBT.testMint(ownerAddress, chip.address, transferPolicy.address);
-      await ChipPBT.testMint(ownerAddress, chipAccount.address, transferPolicy.address);
+      await ChipPBT.testMint(ownerAddress, chip.address, chipErsNode, transferPolicy.address);
+      await ChipPBT.testMint(ownerAddress, chipAccount.address, chipErsNodeAccount, transferPolicy.address);
     });
 
     describe("#transferTokenWithChip", async () => {
@@ -627,7 +605,7 @@ describe("ChipPBT", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Chip must be claimed");
+          await expect(subject()).to.be.revertedWith("Chip must be minted");
         });
       });
     });
@@ -638,11 +616,16 @@ describe("ChipPBT", () => {
       let subjectCommitBlock: BigNumber;
       let subjectSignature: string;
       let subjectCaller: Account;
+      let subjectErsNode: string;
+      let subjectTokenId: string;
 
       beforeEach(async () => {
         subjectChipId = chip.address;
         subjectNewOwner = newOwner.address;
         subjectCommitBlock = await blockchain.getLatestBlockNumber();
+
+        subjectErsNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
+        subjectTokenId = BigNumber.from(subjectErsNode).toString();
 
         const packedMsg = ethers.utils.solidityPack(
           ["uint256", "address"],
@@ -664,7 +647,7 @@ describe("ChipPBT", () => {
       it("should update the owner of the token", async () => {
         await subject();
 
-        const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](chip.address))[0];
+        const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectTokenId))[0];
         expect(actualOwner).to.eq(subjectNewOwner);
       });
 
@@ -685,7 +668,7 @@ describe("ChipPBT", () => {
         await expect(subject()).to.emit(ChipPBT, "Transfer").withArgs(
           owner.address,
           subjectNewOwner,
-          chip.address
+          subjectTokenId
         );
       });
 
@@ -693,22 +676,24 @@ describe("ChipPBT", () => {
 
         beforeEach(async () => {
           subjectChipId = chipAccount.address;
+          subjectErsNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
+          subjectTokenId = BigNumber.from(subjectErsNode).toString();
         });
 
         it("should update the owner of the token", async () => {
           await subject();
 
-          const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectChipId))[0];
+          const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectTokenId))[0];
           expect(actualOwner).to.eq(subjectNewOwner);
         });
 
         it("should update the owner and new owner balances", async () => {
-          const preOwnerBalance = await ChipPBT.balanceOf(owner.address);
+          const preOwnerBalance = await ChipPBT.balanceOf(subjectCaller.address);
           const preNewOwnerBalance = await ChipPBT.balanceOf(subjectNewOwner);
 
           await subject();
 
-          const postOwnerBalance = await ChipPBT.balanceOf(owner.address);
+          const postOwnerBalance = await ChipPBT.balanceOf(subjectCaller.address);
           const postNewOwnerBalance = await ChipPBT.balanceOf(subjectNewOwner);
 
           expect(postOwnerBalance).to.eq(preOwnerBalance.sub(1));
@@ -863,20 +848,21 @@ describe("ChipPBT", () => {
 
     describe("#tokenUri(uint256)", async() => {
       let subjectTokenId: BigNumber;
+      let subjectErsNode: string;
 
       beforeEach(async () => {
-        subjectTokenId = chipInfo.tokenId;
+        subjectErsNode = calculateSubnodeHash(`${chip.address}.ProjectY.gucci.ers`);
+        subjectTokenId = BigNumber.from(subjectErsNode);
       });
 
       async function subject(): Promise<any> {
         return (await ChipPBT.functions["tokenURI(uint256)"](subjectTokenId))[0];
       }
 
-      // TODO: check baseURI
-      // it("should return the correct token URI", async () => {
-      //   const actualTokenURI = await subject();
-      //   expect(actualTokenURI).to.eq(chipInfo.tokenUri);
-      // });
+      it("should return the correct token URI", async () => {
+        const actualTokenURI = await subject();
+        expect(actualTokenURI).to.eq(baseTokenURI.concat(BigNumber.from(subjectErsNode).toString()));
+      });
 
       describe("when the token ID doesn't exist", async () => {
         beforeEach(async () => {
@@ -891,9 +877,13 @@ describe("ChipPBT", () => {
 
     describe("#tokenUri(address)", async() => {
       let subjectChipId: Address;
+      let subjectTokenId: BigNumber;
+      let subjectErsNode: string;      
 
       beforeEach(async () => {
         subjectChipId = chip.address;
+        subjectErsNode = calculateSubnodeHash(`${chip.address}.ProjectY.gucci.ers`);
+        subjectTokenId = BigNumber.from(subjectErsNode);
       });
 
       async function subject(): Promise<any> {
@@ -902,7 +892,7 @@ describe("ChipPBT", () => {
 
       it("should return the correct token URI", async () => {
         const actualTokenURI = await subject();
-        expect(actualTokenURI).to.eq(chipInfo.tokenUri);
+        expect(actualTokenURI).to.eq(baseTokenURI.concat(BigNumber.from(subjectErsNode).toString()));
       });
 
       describe("when the token ID doesn't exist", async () => {
@@ -911,7 +901,7 @@ describe("ChipPBT", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Chip must be claimed");
+          await expect(subject()).to.be.revertedWith("Chip must be minted");
         });
       });
     });

@@ -3,8 +3,6 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 
 import {
-  DeveloperClaimTreeInfo,
-  DeveloperMerkleProofInfo,
   ManufacturerValidationInfo,
   ProjectChipAddition,
   ServiceRecord
@@ -40,7 +38,7 @@ import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe.only("RedirectProjectRegistrar", () => {
+describe("RedirectProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let manufacturerOne: Account;
@@ -64,14 +62,11 @@ describe.only("RedirectProjectRegistrar", () => {
 
 
   let manufacturerId: string;
-  let chipRegistryGatewayURLs: string[];
   let serviceId: string;
   let serviceRecords: ServiceRecord[];
   let projectNameHash: string;
   let manufacturerEnrollmentMerkleTree: ManufacturerTree;
   let deployer: DeployHelper;
-  let chipOneClaim: DeveloperClaimTreeInfo;
-  let chipTwoClaim: DeveloperClaimTreeInfo;
 
   // Developer Data
   let developerChipsEnrollmentId: string;
@@ -79,7 +74,6 @@ describe.only("RedirectProjectRegistrar", () => {
   let developerNameHash: string;
 
   // Manufacturer Chip Enrollment Data
-  let manufacturerMerkleRoot: string;
   let manufacturerCertSigner: string;
   let manufacturerChipAuthModel: string;
   let manufacturerValidationUri: string;
@@ -87,10 +81,8 @@ describe.only("RedirectProjectRegistrar", () => {
   let manufacturerChipModel: string;
 
   // Project Chip Enrollment Data
-  let projectMerkleTree: DeveloperTree;
   let projectOwnerPublicKey: string;
   let projectOwnershipProof: string;
-  let projectClaimDataUri: string;
 
   let chainId: number;
 
@@ -128,8 +120,6 @@ describe.only("RedirectProjectRegistrar", () => {
 
     // 3. Enroll chips to Manufacturer Registry under example manufacturer
     // Example Manufacturer Chip Enrollment Data
-    manufacturerEnrollmentMerkleTree =  new ManufacturerTree([{ chipId: chipOne.address}, { chipId: chipTwo.address}]);
-    manufacturerMerkleRoot = manufacturerEnrollmentMerkleTree.getRoot();
     manufacturerCertSigner = manufacturerOne.address;
     manufacturerChipAuthModel = authModel.address;
     manufacturerValidationUri = "ipfs://bafy";
@@ -228,30 +218,12 @@ describe.only("RedirectProjectRegistrar", () => {
     // Register service
     await servicesRegistry.createService(serviceId, serviceRecords);
 
-    // 15. Add Project to ERS System
-
-    // Create Merkle tree for project-relevant chips
-    chipOneClaim = {
-      chipId: chipOne.address,
-      enrollmentId: developerChipsEnrollmentId,
-      lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
-      primaryServiceId: serviceId,
-      tokenUri: developerClaimTokenURI,
-    };
-    chipTwoClaim = {
-      chipId: chipTwo.address,
-      enrollmentId: developerChipsEnrollmentId,
-      lockinPeriod: (await blockchain.getCurrentTimestamp()).add(100),
-      primaryServiceId: serviceId,
-      tokenUri: developerClaimTokenURI,
-    };
-    projectMerkleTree = new DeveloperTree([chipOneClaim, chipTwoClaim]);
+    // 16. Add Project to ERS System
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
     projectOwnerPublicKey = developerOne.address;
     projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chainId);
-    projectClaimDataUri = "https://ipfs.io/ipfs/bafybeiezeds576kygarlq672cnjtimbsrspx5b3tr3gct2lhqud6abjgiu";
 
     // Call Developer Registrar to add project
     await developerRegistrar

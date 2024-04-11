@@ -33,6 +33,10 @@ contract ChipRegistryMock is ChipRegistry {
         ChipPBT._mint(_owner, _chipId, _ersNode, ITransferPolicy(address(0)));
     }
 
+    // function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+    //     return ChipPBT.tokenURI(_tokenId);
+    // }
+
     function setInitialService(address _chipId, bytes32 _serviceId, uint256 _timelock) external {
         servicesRegistry.setInitialService(_chipId, _serviceId, _timelock);
     }
