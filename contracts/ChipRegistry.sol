@@ -16,20 +16,19 @@ import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
+import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
-
-import "hardhat/console.sol";
 
 /**
  * @title ChipRegistry
  * @author Arx
  *
- * @notice Entrypoint for resolving chips added to Arx Protocol. Developers can enroll new projects into this registry by specifying a
- * ProjectRegistrar to manage chip claims. Chip claims are forwarded from ProjectRegistrars at which point a ERC-721
- * compliant "token" of the chip is minted to the claimant and other metadata associated with the chip is set. Any project
- * looking to integrate ERS chips should get resolution information about chips from this address. Because chips are
- * represented as tokens any physical chip transfers should also be completed on-chain in order to get full functionality
- * for the chip.
+ * @notice Entrypoint for resolving chips added to ERS Protocol. Developers can enroll new projects into this registry by 
+ * specifying a ProjectRegistrar to manage chip additions. Chip additions are forwarded from ProjectRegistrars at which point 
+ * a ERC-721 compliant "token" of the chip is minted to the claimant and other metadata associated with the chip is set. 
+ * Any project looking to integrate ERS chips should get resolution information about chips from this address. Because 
+ * chips are represented as tokens any physical chip transfers should also be completed on-chain in order to get full 
+ * functionality for the chip.
  */
 contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
 
@@ -133,6 +132,7 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
+        bytes32 _nameHash,
         bytes32 serviceId,
         ITransferPolicy _transferPolicy,
         uint256 lockinPeriod,
@@ -141,17 +141,29 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
         external
     {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
-        // TODO: evaluate if this is already covered by the ers node check
+        IDeveloperRegistrar developerRegistrar = IDeveloperRegistrar(msg.sender);
+
+        // Verify that the project isn't already enrolled
         require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
+        
         // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
         // with a project enrollment during claim
         require(_projectPublicKey != address(0), "Invalid project public key");
 
         // TODO: Cameron wondering if we need this; we could probably skip if projectPublicKey == projectRegistrar.owner...
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
-        bytes32 messageHash = abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash();
-        require(_projectPublicKey.isValidSignatureNow(messageHash, _projectOwnershipProof), "Invalid signature");
+        require(_projectPublicKey.isValidSignatureNow(abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash(), _projectOwnershipProof), "Invalid signature");
         
+        // Get the project's root node which is used in the creation of the subnode
+        bytes32 rootNode = developerRegistrar.rootNode();
+
+        // Create the chip subnode record in the ERS
+        ers.createChipRegistrySubnodeRecord(
+            rootNode,
+            _nameHash,
+            address(_projectRegistrar),
+            address(_projectRegistrar)
+        );
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({
             projectPublicKey: _projectPublicKey,
@@ -206,16 +218,23 @@ contract ChipRegistry is IChipRegistry, ChipPBT, Ownable {
 
         // Validate the manufacturer certificate
         // TODO: store mapping of chipId to manufacturer enrollmentId -- here or in manufacturerRegistry?
-        // TODO: move this to ERSRegistry since we will validate the certificate prior to creation of the chip subnode.
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = projectRegistrar.rootNode();
-        
+
+        // Create the chip subnode record in the ERS
+        ers.createChipRegistrySubnodeRecord(
+            rootNode, 
+            _nameHash, 
+            _chipOwner, 
+            address(servicesRegistry)
+        );
+
+        // TODO: remove, redundant with createChipRegistrySubnodeRecord.
         // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
         bytes32 ersNode = keccak256(abi.encodePacked(rootNode, _nameHash));
-        require(ers.recordExists(ersNode), "Inconsistent state in ERS");
-
+       
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
         uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.lockinPeriod ?
             projectInfo.lockinPeriod :

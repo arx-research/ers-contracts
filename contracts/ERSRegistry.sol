@@ -67,22 +67,45 @@ contract ERSRegistry {
     // TODO: consider letting owners set their own resolvers; change default resolver to services registry
 
     /**
-     * @dev Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
+     * @dev ONLY Chip REGISTRY: Sets the record for a new subnode. Note that ChipRegistry is note the node owner.
      *
      * @param _node     The parent node.
      * @param _nameHash The hash of the nameHash specifying the subnode.
      * @param _owner    The address of the new owner.
-     * @param _resolver The address of the resolver.
+     * @param _resolver The address that the new nameHash resolves to.
      * @return The newly created subnode hash
      */
+    function createChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash,
+        address _owner,
+        address _resolver
+    )
+        external
+        virtual
+        returns(bytes32)
+    {
+        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
+        bytes32 subnode = _calculateSubnode(_node, _nameHash);
+        require(_owner != address(0), "New owner cannot be null address");
+        require(!recordExists(subnode), "Subnode already exists");
 
-    // TODO: verify manufacturer validation and add as a node between chip and project?
-    // We need a special variant of this function that checks the mfg reg and to restrict
-    // subnode creation only to the developer registry and developer registrar.
+        _setOwner(subnode, _owner);
+        _setResolver(subnode, _resolver);
 
-    // One approach is to check the deverloper registry and/or registrar for this function
-    // and the project enrollments for the other.
-    // e.g isDeveloperRegistrar and IDeveloperRegistry
+        emit NewOwner(_node, subnode, _nameHash, _owner);
+        return subnode;
+    }
+
+    /**
+     * @dev ONLY DEPLOYER or Developer REGISTRY: Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
+     *
+     * @param _node     The parent node.
+     * @param _nameHash The hash of the nameHash specifying the subnode.
+     * @param _owner    The address of the new owner.
+     * @param _resolver The address that the new nameHash resolves to.
+     * @return The newly created subnode hash
+     */
     function createSubnodeRecord(
         bytes32 _node,
         bytes32 _nameHash,
@@ -94,7 +117,10 @@ contract ERSRegistry {
         authorised(_node)
         returns(bytes32)
     {
-        // require(msg.sender == address(developerRegistry) || developerRegistry.isDeveloperRegistrar(msg.sender), "Caller must be DeveloperRegistry or a DeveloperRegistrar");
+        address deployerCaller = records[0x0].owner;
+
+        // Check to see if the address that deployed ERS is calling or DeveloperRegistry
+        require(msg.sender == deployerCaller || msg.sender == address(developerRegistry), "Caller must be Deployer or DeveloperRegistry");
         
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         require(_owner != address(0), "New owner cannot be null address");

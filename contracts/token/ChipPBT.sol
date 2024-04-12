@@ -14,9 +14,6 @@ import { ERC721ReadOnly } from "./ERC721ReadOnly.sol";
 import { IPBT } from "./IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
-import "hardhat/console.sol";
-
-
 /**
  * @title ChipPBT
  * @author Arx

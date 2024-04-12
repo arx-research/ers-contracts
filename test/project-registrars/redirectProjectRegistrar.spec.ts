@@ -300,18 +300,10 @@ describe("RedirectProjectRegistrar", () => {
       const recreatedNodeOne = calculateSubnodeHash("chip1.ProjectX.Gucci.ers");
       const recreatedNodeTwo = calculateSubnodeHash("chip2.ProjectX.Gucci.ers");
 
-      expect(await ersRegistry.getOwner(recreatedNodeOne)).to.be.equal(projectManager.address);
-      expect(await ersRegistry.getResolver(recreatedNodeOne)).to.be.equal(subjectAdditionData[0].chipId);
-      expect(await ersRegistry.getOwner(recreatedNodeTwo)).to.be.equal(projectManager.address);
-      expect(await ersRegistry.getResolver(recreatedNodeTwo)).to.be.equal(subjectAdditionData[1].chipId);
-    });
-
-
-    it("should pass the expected valued to chipRegistry.addChip", async() => {
-      await subject();
-
-      expect(await chipRegistry.chipIds(subjectAdditionData[0].chipId)).to.be.true;
-      expect(await chipRegistry.chipIds(subjectAdditionData[1].chipId)).to.be.true;
+      expect(await ersRegistry.getOwner(recreatedNodeOne)).to.be.equal(subjectCaller.address);
+      expect(await ersRegistry.getResolver(recreatedNodeOne)).to.be.equal(servicesRegistry.address);
+      expect(await ersRegistry.getOwner(recreatedNodeTwo)).to.be.equal(subjectCaller.address);
+      expect(await ersRegistry.getResolver(recreatedNodeTwo)).to.be.equal(servicesRegistry.address);
     });
 
     describe("when the caller is not the contract owner", async () => {

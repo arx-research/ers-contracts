@@ -20,14 +20,14 @@ contract ChipRegistryMock is ChipRegistry {
         ChipRegistry(_manufacturerRegistry, _maxBlockWindow, _maxLockinPeriod, _baseTokenUri)
     {}
 
-    function addChip(
-        address _chipId,
-        address _owner,
-        bytes32 _nameHash,
-        IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
-    ) external override {
-        chipIds[_chipId] = true;
-    }
+    // function addChip(
+    //     address _chipId,
+    //     address _owner,
+    //     bytes32 _nameHash,
+    //     IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
+    // ) external override {
+    //     chipIds[_chipId] = true;
+    // }
 
     function mockAddChip(address _chipId, bytes32 _ersNode, address _owner) external {
         ChipPBT._mint(_owner, _chipId, _ersNode, ITransferPolicy(address(0)));

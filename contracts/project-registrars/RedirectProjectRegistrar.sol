@@ -13,7 +13,7 @@ import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
  * @author Arx Research
  * 
  * @notice Entry point to claim chips for projects that only want to use the protocol for chip URL redirects and verification of
- * manufacturing by a trusted party. Chip claims can only be performed by the project manager. This registrar should be used by
+ * manufacturing by a trusted party. Chip additions can only be performed by the project manager. This registrar should be used by
  * projects that do not care about tracking the full chain of custody of their chips via ERSRegistry.
  */
 contract RedirectProjectRegistrar is BaseProjectRegistrar {

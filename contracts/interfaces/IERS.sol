@@ -2,7 +2,16 @@
 
 pragma solidity ^0.8.17;
 
+
 interface IERS {
+
+    function createChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash,
+        address _owner,
+        address _resolver
+    ) external returns(bytes32);
+
     function createSubnodeRecord(
         bytes32 _node,
         bytes32 _nameHash,

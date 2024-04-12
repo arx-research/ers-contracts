@@ -290,7 +290,7 @@ describe("DeveloperRegistrar", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Subnode already exists");
+        await expect(subject()).to.be.revertedWith("Project already enrolled");
       });
     });
 

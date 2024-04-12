@@ -324,9 +324,8 @@ describe("ChipRegistry", () => {
           await subject();
         });
 
-        // TODO: review switching back to a mock here to validate original revert conditions.
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Subnode already exists");
+          await expect(subject()).to.be.revertedWith("Project already enrolled");
         });
       });
 
@@ -538,7 +537,7 @@ describe("ChipRegistry", () => {
 
           it("should revert", async () => {
             // TODO: better mock test here to check for "Chip already added"
-            await expect(subject()).to.be.revertedWith("Subnode already exists");
+            await expect(subject()).to.be.revertedWith("Chip already added");
           });
         });
 

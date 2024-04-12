@@ -14,8 +14,6 @@ import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
 import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
 import { BaseProjectRegistrar } from "./project-registrars/BaseProjectRegistrar.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title ArxProjectEnrollmentManager
  * @author Arx
@@ -193,7 +191,7 @@ contract ArxProjectEnrollmentManager is Ownable {
     )
         internal
     {
-        // TODO: what salt should we use instead of the merkle root? _projectPublicKey isn't great since this can be reused.
+        // TODO: verify nameHash works as a salt
         // Deploy new AuthenticityProjectRegistrar with Create2
         BaseProjectRegistrar newProjectRegistrar = new BaseProjectRegistrar{salt: _nameHash}(
             _projectManager, 

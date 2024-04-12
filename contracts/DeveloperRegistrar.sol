@@ -108,25 +108,28 @@ contract DeveloperRegistrar is Ownable {
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
         // Create subnode in ENS registry; if _nameHash has already been used it will revert here
-        bytes32 projectNode = ers.createSubnodeRecord(
-            rootNode,
-            _nameHash,
-            address(_projectRegistrar),
-            address(_projectRegistrar)
-        );
+        // bytes32 projectNode = ers.createSubnodeRecord(
+        //     rootNode,
+        //     _nameHash,
+        //     address(_projectRegistrar),
+        //     address(_projectRegistrar)
+        // );
 
         // Call project registrar to set root node (this is an untrusted contract!)
-        _projectRegistrar.setRootNode(projectNode);
-        projects.push(address(_projectRegistrar));
+        bytes32 projectNode = keccak256(abi.encodePacked(rootNode, _nameHash));
 
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
             _projectPublicKey,
+            _nameHash,
             _serviceId,
             _transferPolicy,
             _lockinPeriod,
             _projectOwnershipProof
         );
+
+        _projectRegistrar.setRootNode(projectNode);
+        projects.push(address(_projectRegistrar));
 
         emit ProjectAdded(
             address(_projectRegistrar),

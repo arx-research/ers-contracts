@@ -8,17 +8,6 @@ import { ITransferPolicy } from "./ITransferPolicy.sol";
 
 interface IChipRegistry is IPBT {
 
-    // struct DeveloperMerkleInfo {
-    //     uint256 developerIndex;
-
-    //     string tokenUri;
-    // }
-
-    // struct ChipAddition {
-    //     address owner;
-    //     DeveloperMerkleInfo developerMerkleInfo;
-    // }
-
     struct ManufacturerValidation {
         bytes32 enrollmentId;
         bytes manufacturerCertificate;
@@ -27,9 +16,10 @@ interface IChipRegistry is IPBT {
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
-        bytes32 serviceId,
+        bytes32 _nameHash,
+        bytes32 _serviceId,
         ITransferPolicy _transferPolicy,
-        uint256 lockinPeriod,
+        uint256 _lockinPeriod,
         bytes calldata _signature
     )
         external;
