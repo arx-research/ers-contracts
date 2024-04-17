@@ -68,7 +68,6 @@ describe("ArxProjectEnrollmentManager", () => {
   let serviceId: string;
   let serviceRecords: ServiceRecord[];
   let projectNameHash: string;
-  let manufacturerEnrollmentMerkleTree: ManufacturerTree;
   let deployer: DeployHelper;
   let chipOneClaim: DeveloperClaimTreeInfo;
   let chipTwoClaim: DeveloperClaimTreeInfo;
@@ -80,7 +79,6 @@ describe("ArxProjectEnrollmentManager", () => {
   let developerClaimDataUri: string;
 
   // Manufacturer Chip Enrollment Data
-  let manufacturerMerkleRoot: string;
   let manufacturerCertSigner: string;
   let manufacturerChipAuthModel: string;
   let manufacturerValidationUri: string;

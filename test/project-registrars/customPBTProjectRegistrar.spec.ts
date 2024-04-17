@@ -9,7 +9,7 @@ import {
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
-  RedirectProjectRegistrar,
+  CustomPBTProjectRegistrar,
   ERSRegistry,
   ManufacturerRegistry,
   ServicesRegistry,
@@ -32,13 +32,12 @@ import {
   createManufacturerCertificate,
   createProjectOwnershipProof
 } from "@utils/protocolUtils";
-import { ManufacturerTree, DeveloperTree } from "@utils/common";
 
 import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe("RedirectProjectRegistrar", () => {
+describe("CustomPBTProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let manufacturerOne: Account;
@@ -48,7 +47,7 @@ describe("RedirectProjectRegistrar", () => {
   let authModel: Account;
   let fakeDeveloperRegistrar: Account;
 
-  let projectRegistrar: RedirectProjectRegistrar;
+  let projectRegistrar: CustomPBTProjectRegistrar;
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
@@ -84,6 +83,7 @@ describe("RedirectProjectRegistrar", () => {
   let projectOwnershipProof: string;
 
   let chainId: number;
+  let maxBlockWindow = BigNumber.from(5);
 
   const blockchain = new Blockchain(ethers.provider);
 
@@ -195,6 +195,10 @@ describe("RedirectProjectRegistrar", () => {
       chipRegistry.address,
       ersRegistry.address,
       developerRegistrar.address
+      "CustomPBT",
+      "CPBT",
+      maxBlockWindow,
+      "https://api.com/tokens/"
     );
 
     // 15. Create example service for project
@@ -323,7 +327,7 @@ describe("RedirectProjectRegistrar", () => {
     beforeEach(async () => {
       // Deploy new project registrar with the fake Developer Registrar as the set Developer Registrar
       // This is done so we can call setRootNode externally
-      projectRegistrar = await deployer.deployRedirectProjectRegistrar(
+      projectRegistrar = await deployer.deployCustomPBTProjectRegistrar(
         projectManager.address,
         chipRegistry.address,
         ersRegistry.address,

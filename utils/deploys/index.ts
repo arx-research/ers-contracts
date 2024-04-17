@@ -15,14 +15,14 @@ import {
 } from "../../typechain/factories/contracts";
 
 import {
-  AuthenticityProjectRegistrar__factory,
-  RedirectProjectRegistrar__factory
+  RedirectProjectRegistrar__factory,
+  CustomPBTProjectRegistrar__factory
 } from "../../typechain/factories/contracts/project-registrars";
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
 import {
   ArxProjectEnrollmentManager,
-  AuthenticityProjectRegistrar,
+  CustomPBTProjectRegistrar,
   ChipRegistry,
   DeveloperNameGovernor,
   DeveloperRegistrar,
@@ -141,24 +141,6 @@ export default class DeployHelper {
     return servicesRegistry;
   }
 
-  public async deployAuthenticityProjectRegistrar(
-    projectManager: Address,
-    chipRegistry: Address,
-    ersRegistry: Address,
-    developerRegistrar: Address,
-    maxBlockWindow: BigNumber = BigNumber.from(5)
-  ): Promise<AuthenticityProjectRegistrar> {
-    const projectRegistrar = await new AuthenticityProjectRegistrar__factory(this._deployerSigner).deploy(
-      projectManager,
-      chipRegistry,
-      ersRegistry,
-      developerRegistrar,
-      maxBlockWindow
-    );
-
-    return projectRegistrar;
-  }
-
   public async deployRedirectProjectRegistrar(
     projectManager: Address,
     chipRegistry: Address,
@@ -175,7 +157,29 @@ export default class DeployHelper {
     return projectRegistrar;
   }
 
-  public async getRedirectProjectRegistrar(registrarAddress: Address): Promise<AuthenticityProjectRegistrar> {
+  public async deployCustomPBTProjectRegistrar(
+    projectManager: Address,
+    chipRegistry: Address,
+    ersRegistry: Address,
+    developerRegistrar: Address,
+    name: string,
+    symbol: string,
+    baseTokenURI: string,
+  ): Promise<CustomPBTProjectRegistrar> {
+    const projectRegistrar = await new CustomPBTProjectRegistrar__factory(this._deployerSigner).deploy(
+      projectManager,
+      chipRegistry,
+      ersRegistry,
+      developerRegistrar,
+      name,
+      symbol,
+      baseTokenURI
+    );
+
+    return projectRegistrar;
+  }
+
+  public async getRedirectProjectRegistrar(registrarAddress: Address): Promise<RedirectProjectRegistrar> {
     return new RedirectProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
   }
 

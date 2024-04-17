@@ -1,12 +1,12 @@
 export {
   AccountMock,
   ArxProjectEnrollmentManager,
-  AuthenticityProjectRegistrar,
   ChipRegistry,
   ChipRegistryMock,
   ChipValidationsMock,
   ChipPBT,
   ChipPBTMock,
+  CustomPBTProjectRegistrar,
   DeveloperNameGovernor,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
