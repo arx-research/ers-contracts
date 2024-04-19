@@ -3,5 +3,5 @@
 pragma solidity ^0.8.17;
 
 interface IDeveloperRegistrarFactory {
-    function deployRegistrar(address _owner) external returns(address);
+    function deployDeveloperRegistrar(address _owner) external returns(address);
 }

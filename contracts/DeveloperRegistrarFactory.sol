@@ -31,7 +31,7 @@ contract DeveloperRegistrarFactory {
     }
 
     /* ============ External Functions ============ */
-    function deployRegistrar(address _owner)
+    function deployDeveloperRegistrar(address _owner)
         external
         returns(address)
     {

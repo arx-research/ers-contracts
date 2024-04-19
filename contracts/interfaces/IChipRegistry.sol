@@ -31,12 +31,5 @@ interface IChipRegistry is IPBT {
         ManufacturerValidation calldata _manufacturerValidation
     )
         external;
-
-    function setTransferPolicy(
-        address _chipId,
-        ITransferPolicy _transferPolicy,
-        uint256 _commitBlock,
-        bytes calldata _signature
-    )
-        external;        
+               
 }

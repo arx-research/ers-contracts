@@ -134,7 +134,7 @@ contract CustomPBTProjectRegistrar is BaseProjectRegistrar, IPBT, ERC721ReadOnly
         bool /*useSafeTransfer*/
     )
         public
-        virtual
+        override
     {
         revert("Not implemented");
     }

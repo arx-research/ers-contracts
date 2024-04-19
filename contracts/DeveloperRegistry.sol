@@ -105,7 +105,7 @@ contract DeveloperRegistry is Ownable {
         delete pendingDevelopers[msg.sender];
 
         // Passing the owner of the new Registrar to the Factory. Caller is set as owner. This can be transferred to a multisig later.
-        address newRegistrar = IDeveloperRegistrarFactory(_factory).deployRegistrar(msg.sender);
+        address newRegistrar = IDeveloperRegistrarFactory(_factory).deployDeveloperRegistrar(msg.sender);
         bytes32 registrarRootNode = ersRegistry.createSubnodeRecord(ROOT_NODE, nameHash, newRegistrar, newRegistrar);
 
         // Registrar is a trusted contract that we initialize with a root node

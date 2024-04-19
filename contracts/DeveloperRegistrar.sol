@@ -105,6 +105,9 @@ contract DeveloperRegistrar is Ownable {
         onlyOwner()
     {
         require(_projectPublicKey != address(0), "Invalid project public key");
+
+        // TODO: deploy a project registrar from a factory
+        // TODO: verify that the project registrar factory is a valid one
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
         // Create subnode in ENS registry; if _nameHash has already been used it will revert here

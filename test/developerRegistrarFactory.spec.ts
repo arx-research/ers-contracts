@@ -52,7 +52,7 @@ describe("DeveloperRegistrarFactory", () => {
     });
   });
 
-  describe("#deployRegistrar", async () => {
+  describe("#deployDeveloperRegistrar", async () => {
     let subjectOwner: Address;
     let subjectCaller: Account;
 
@@ -62,11 +62,11 @@ describe("DeveloperRegistrarFactory", () => {
     });
 
     async function subject(): Promise<any> {
-      return await developerRegistrarFactory.connect(subjectCaller.wallet).deployRegistrar(subjectOwner);
+      return await developerRegistrarFactory.connect(subjectCaller.wallet).deployDeveloperRegistrar(subjectOwner);
     }
 
     async function subjectCall(): Promise<any> {
-      return await developerRegistrarFactory.connect(subjectCaller.wallet).callStatic.deployRegistrar(subjectOwner);
+      return await developerRegistrarFactory.connect(subjectCaller.wallet).callStatic.deployDeveloperRegistrar(subjectOwner);
     }
 
     it("should set the state correctly on the newly deployed DeveloperRegistrar", async () => {
