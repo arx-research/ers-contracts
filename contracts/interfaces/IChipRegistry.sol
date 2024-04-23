@@ -2,11 +2,9 @@
 
 pragma solidity ^0.8.17;
 
-import { IPBT } from "../token/IPBT.sol";
 import { IProjectRegistrar } from "./IProjectRegistrar.sol";
-import { ITransferPolicy } from "./ITransferPolicy.sol";
 
-interface IChipRegistry is IPBT {
+interface IChipRegistry {
 
     struct ManufacturerValidation {
         bytes32 enrollmentId;
@@ -18,7 +16,6 @@ interface IChipRegistry is IPBT {
         address _projectPublicKey,
         bytes32 _nameHash,
         bytes32 _serviceId,
-        ITransferPolicy _transferPolicy,
         uint256 _lockinPeriod,
         bytes calldata _signature
     )
@@ -31,5 +28,21 @@ interface IChipRegistry is IPBT {
         ManufacturerValidation calldata _manufacturerValidation
     )
         external;
-               
+
+    function setChipNodeOwner(
+        address _chipId,
+        address _newOwner
+    )
+        external;
+
+    function getChipNode(
+        address _chipId
+    )
+        external view returns (bytes32);
+
+    function ownerOf(
+        address _chipId
+    )
+        external view returns (address);
+
 }

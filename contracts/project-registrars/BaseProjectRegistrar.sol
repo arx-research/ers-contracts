@@ -53,7 +53,9 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
     ) 
         Ownable() 
     {
-        _transferOwnership(_projectManager);
+        if(_projectManager != msg.sender) {
+            transferOwnership(_projectManager);
+        }
         chipRegistry = _chipRegistry;
         ers = _ers;
         developerRegistrar = _developerRegistrar;
@@ -83,7 +85,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
      * @param _chipOwner                Intended owner of the chip being claimed
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
      */
-    function _createSubnodeAndAddChip(
+    function _addChip(
         address _chipId,
         address _chipOwner,
         bytes32 _nameHash,
@@ -96,6 +98,3 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         chipRegistry.addChip(_chipId, _chipOwner, _nameHash, _manufacturerValidation);
     }
 }
-
-
-

@@ -18,14 +18,12 @@ import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
  * @title ChipPBT
  * @author Arx
  *
- * @notice Implementation of PBT where tokenIds are assigned to chip addresses as the chips are added. Each chip has its own
- * transfer policy, which can be set by the chip owner and allows the owner to specify how the chip can be transferred to another party. This
- * enables more flexibility for secondary services to facilitate the transfer of chips. Additionally, chip owners can directly transfer their
- * chips by calling setOwner, this function is only callable by the chip owner whereas the transfer function is callable by anyone (assuming
- * transfer policy conditions have been met). Since there is often other metadata associated with a chip we provide a tokenData field that can
- * be written to by inheriting contracts.
+ * @notice Implementation of PBT where tokenIds are assigned to chip addresses as the chips are added. The contract has a
+ * transfer policy, which can be set by the chip owner and allows the owner to specify how the chip can be transferred to another party. 
+ * Additionally, chip owners can directly transfer their chips by calling setOwner, this function is only callable by the chip owner whereas 
+ * the transfer function is callable by anyone (assuming transfer policy conditions have been met).
  */
-contract ChipPBT is IPBT, ERC721ReadOnly {
+contract PBTSimple is IPBT, ERC721ReadOnly {
     using SignatureChecker for address;
     using ChipValidations for address;
     using ECDSA for bytes;
@@ -34,7 +32,7 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
 
     /* ============ Events ============ */
 
-    event TransferPolicyChanged(address indexed chipId, address transferPolicy);    // Emitted in setTransferPolicy
+    event TransferPolicyChanged(address transferPolicy);    // Emitted in setTransferPolicy
 
     /* ============ Modifiers ============ */
 
@@ -49,11 +47,9 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     }
     
     /* ============ State Variables ============ */
-    uint256 public immutable maxBlockWindow;                       // Amount of blocks from commitBlock after which chip signatures are expired
-    string public baseURI;                                         // Base URI for token metadata
-    mapping(address=>uint256) public chipIdToTokenId;              // Maps chipId to tokenId (tokenId is the node in ERS)
-    mapping(address=>ITransferPolicy) public chipTransferPolicy;   // Maps a chipId to a ChipInfo struct
-
+    uint256 public immutable maxBlockWindow;                     // Amount of blocks from commitBlock after which chip signatures are expired
+    ITransferPolicy transferPolicy;                              // Transfer policy for the PBT
+    mapping(address=>uint256) public chipIdToTokenId;            // Maps chipId to tokenId (tokenId is the node in ERS)
     /* ============ Constructor ============ */
 
     /**
@@ -66,13 +62,16 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     constructor(
         string memory _name,
         string memory _symbol,
+        string memory _baseURI,
         uint256 _maxBlockWindow,
-        string memory _baseTokenURI
+        ITransferPolicy _transferPolicy
     )
         ERC721ReadOnly(_name, _symbol)
     {
+        // _baseURI is inherited from ERC721Metadata
+        _baseURI = _baseURI;
         maxBlockWindow = _maxBlockWindow;
-        baseURI = _baseTokenURI;
+        transferPolicy = _transferPolicy;
     }
 
     /* ============ External Functions ============ */
@@ -117,9 +116,6 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     {
         // ChipInfo memory chipInfo = chipTable[chipId];
         address chipOwner = ownerOf(tokenIdFor(chipId));
-        
-        // Check the transfer policy from the project enrollment?
-        require(chipTransferPolicy[chipId] != ITransferPolicy(address(0)), "Transfer policy must be set");
 
         // Check that the signature is valid, create own scope to prevent stack-too-deep error
         {
@@ -131,48 +127,13 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
 
         // Validation of the payload beyond ensuring it was signed by the chip is left up to the TransferPolicy contract.
         //authorizeTransfer(address _chipId, address _sender, address _chipOwner, bytes _payload, bytes _signature)
-        chipTransferPolicy[chipId].authorizeTransfer(
+        transferPolicy.authorizeTransfer(
             chipId,
             msg.sender,
             chipOwner,
             payload,
             signatureFromChip
         );
-    }
-
-    /**
-     * @dev ONLY CHIP OWNER: Sets the transfer policy for a chip. Chip owner must submit transaction along with
-     * a signature from the chipId commiting to a block the signature was generated. This is to prevent any
-     * replay attacks. If the transaction isn't submitted within the MAX_BLOCK_WINDOW from the commited block
-     * this function will revert.
-     *
-     * @param _chipId           The chipId to set the transfer policy for
-     * @param _newPolicy        The address of the new transfer policy. We allow the zero address in case owner doesn't want to allow xfers.
-     * @param _commitBlock      The block the signature is tied to (used to put a time limit on the signature)
-     * @param _signature        The signature generated by the chipId (should just be a signature of the commitBlock)
-     */
-    function setTransferPolicy(
-        address _chipId,
-        ITransferPolicy _newPolicy,
-        uint256 _commitBlock,
-        bytes calldata _signature
-    )
-        public
-        virtual
-        onlyChipOwner(_chipId)
-    {
-        // Check that the signature is valid for the payload
-        _chipId.validateSignatureAndExpiration(
-            _commitBlock,
-            maxBlockWindow,
-            abi.encodePacked(_commitBlock, _newPolicy),     // Formulate the payload
-            _signature
-        );
-
-        // Set the transfer policy
-        chipTransferPolicy[_chipId] = _newPolicy;
-
-        emit TransferPolicyChanged(_chipId, address(_newPolicy));
     }
 
     /**
@@ -228,34 +189,35 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
         return _chipId.isValidSignatureNow(_payloadHash, _signature);
     }
 
-    /**
-     * @dev Returns the base URI for the token metadata
-     *
-     * @return string       The base URI for the token metadata
-     */
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
+    // /**
+    //  * @dev Returns the base URI for the token metadata
+    //  *
+    //  * @return string       The base URI for the token metadata
+    //  */
+    // function _baseURI() internal view override returns (string memory) {
+    //     return baseURI;
+    // }
 
-    /**
-     * @dev Returns the tokenURI for a given tokenId. Token must have been minted / chip claimed.
-     *
-     * @param _tokenId      The tokenId to get the tokenURI for
-     * @return string       The tokenURI for the given tokenId
-     */
-    function tokenURI(
-        uint256 _tokenId
-    )
-        public
-        view
-        virtual
-        override(IERC721Metadata, ERC721)
-        returns (string memory)
-    {
-        _requireMinted(_tokenId);
+    // /**
+    //  * @dev Returns the tokenURI for a given tokenId. Token must have been minted / chip claimed.
+    //  *
+    //  * @param _tokenId      The tokenId to get the tokenURI for
+    //  * @return string       The tokenURI for the given tokenId
+    //  */
+    // function tokenURI(
+    //     uint256 _tokenId
+    // )
+    //     public
+    //     view
+    //     virtual
+    //     override(IERC721Metadata, ERC721)
+    //     returns (string memory)
+    // {
+    //     _requireMinted(_tokenId);
        
-        return bytes(baseURI).length > 0 ? string.concat(baseURI, _tokenId.toString()) : "";
-    }
+    //     // TODO: create an individual tokenURI<>tokenId map
+    //     return tokenIdtoTokenURI[_tokenId];
+    // }
 
     /**
      * @dev Returns the tokenURI for a given chipId. Chip must have been claimed / token minted.
@@ -264,7 +226,8 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
      * @return string       The tokenURI for the given tokenId
      */
     function tokenURI(address _chipId) public view virtual onlyMintedChip(_chipId) returns (string memory) {
-        return bytes(baseURI).length > 0 ? string.concat(baseURI, chipIdToTokenId[_chipId].toString()) : "";
+        uint256 _tokenId = tokenIdFor(_chipId);
+        return tokenURI(_tokenId);
     }
 
     /**
@@ -301,19 +264,33 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
     /* ============ Internal Functions ============ */
 
     /**
+     * @dev Sets the transfer policy for PBTSimple.
+     * @param _newPolicy    The address of the new transfer policy. We allow the zero address in case owner doesn't want to allow xfers.
+     */
+    function _setTransferPolicy(
+        ITransferPolicy _newPolicy
+    )
+        internal
+        virtual
+    {
+        // Set the transfer policy
+        transferPolicy = _newPolicy;
+
+        emit TransferPolicyChanged(address(_newPolicy));
+    }
+
+    /**
      * @dev Mints a new token and assigns it to the given address. Also adds the chipId to the tokenIdToChipId mapping,
      * adds the ChipInfo to the chipTable, and increments the tokenIdCounter.
      *
      * @param _to           The address to mint the token to
      * @param _chipId       The chipId to mint the token for
-     * @param _transferPolicy The transfer policy for the chip
      * @return uint256      The tokenId of the newly minted token
      */
     function _mint(
         address _to,
         address _chipId,
-        bytes32 _ersNode,
-        ITransferPolicy _transferPolicy
+        bytes32 _ersNode
     )
         internal
         virtual
@@ -322,7 +299,6 @@ contract ChipPBT is IPBT, ERC721ReadOnly {
         uint256 tokenId = uint256(_ersNode);
         super._mint(_to, tokenId);
 
-        chipTransferPolicy[_chipId] = _transferPolicy;
         chipIdToTokenId[_chipId] = tokenId;
 
         emit PBTMint(tokenId, _chipId);

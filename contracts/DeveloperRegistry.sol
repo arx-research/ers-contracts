@@ -175,7 +175,8 @@ contract DeveloperRegistry is Ownable {
     }
 
     /**
-     * @notice ONLY OWNER: Add a new DeveloperRegistrarFactory that can be used for creating new DeveloperRegistrars. 
+     * @notice ONLY OWNER: Add a new DeveloperRegistrarFactory that can be used for creating new DeveloperRegistrars; examples
+     * might include registrars with interspersed nodes (e.g. project.group.developer.ers) 
      *
      * @param _factory             Address of DeveloperRegistrarFactory to add
      */

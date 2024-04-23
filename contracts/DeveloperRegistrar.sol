@@ -7,7 +7,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
-import { ITransferPolicy } from "./interfaces/ITransferPolicy.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
 
 /**
@@ -23,8 +22,7 @@ contract DeveloperRegistrar is Ownable {
     event ProjectAdded(
         address indexed projectRegistrar,
         bytes32 projectRootNode,
-        address projectPublicKey,
-        address transferPolicy
+        address projectPublicKey
     );
     event RegistrarInitialized(bytes32 rootNode);
 
@@ -87,7 +85,6 @@ contract DeveloperRegistrar is Ownable {
      * @param _projectRegistrar             ProjectRegistrar contract
      * @param _projectPublicKey             Public key of the project
      * @param _serviceId                    Service ID of the project
-     * @param _transferPolicy               Transfer policy of the project
      * @param _lockinPeriod                 Lockup period of the project
      * @param _projectOwnershipProof        Proof of ownership of the project
      */
@@ -97,7 +94,6 @@ contract DeveloperRegistrar is Ownable {
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
         bytes32 _serviceId,
-        ITransferPolicy _transferPolicy,
         uint256 _lockinPeriod,
         bytes calldata _projectOwnershipProof
     )
@@ -126,7 +122,6 @@ contract DeveloperRegistrar is Ownable {
             _projectPublicKey,
             _nameHash,
             _serviceId,
-            _transferPolicy,
             _lockinPeriod,
             _projectOwnershipProof
         );
@@ -137,8 +132,7 @@ contract DeveloperRegistrar is Ownable {
         emit ProjectAdded(
             address(_projectRegistrar),
             projectNode,
-            _projectPublicKey,
-            address(_transferPolicy)
+            _projectPublicKey
         );
     }
 

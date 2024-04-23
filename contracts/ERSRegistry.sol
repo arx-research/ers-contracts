@@ -67,7 +67,7 @@ contract ERSRegistry {
     // TODO: consider letting owners set their own resolvers; change default resolver to services registry
 
     /**
-     * @dev ONLY Chip REGISTRY: Sets the record for a new subnode. Note that ChipRegistry is note the node owner.
+     * @dev ONLY CHIP REGISTRY: Sets the record on behalf of a new chip or project subnode. Note that ChipRegistry is not the node owner.
      *
      * @param _node     The parent node.
      * @param _nameHash The hash of the nameHash specifying the subnode.
@@ -98,7 +98,7 @@ contract ERSRegistry {
     }
 
     /**
-     * @dev ONLY DEPLOYER or Developer REGISTRY: Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
+     * @dev ONLY DEPLOYER, DEVELOPER REGISTRY or DEVELOPER REGISTRAR: Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
      *
      * @param _node     The parent node.
      * @param _nameHash The hash of the nameHash specifying the subnode.
@@ -119,8 +119,8 @@ contract ERSRegistry {
     {
         address deployerCaller = records[0x0].owner;
 
-        // Check to see if the address that deployed ERS is calling or DeveloperRegistry
-        require(msg.sender == deployerCaller || msg.sender == address(developerRegistry), "Caller must be Deployer or DeveloperRegistry");
+        // Check to see if caller is the ERS deployer, DeveloperRegistry or a DeveloperRegistrar
+        require(msg.sender == deployerCaller || msg.sender == address(developerRegistry) || developerRegistry.isDeveloperRegistrar(msg.sender), "Caller must be Deployer or DeveloperRegistry");
         
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         require(_owner != address(0), "New owner cannot be null address");

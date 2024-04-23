@@ -3,7 +3,6 @@
 pragma solidity ^0.8.17;
 
 import { IProjectRegistrar } from "./IProjectRegistrar.sol";
-import { ITransferPolicy } from "./ITransferPolicy.sol";
 
 interface IDeveloperRegistrar {
     function initialize(bytes32 _rootNode) external;
@@ -14,7 +13,6 @@ interface IDeveloperRegistrar {
         IProjectRegistrar _projectRegistrar,
         address _projectPublicKey,
         bytes32 _serviceId,
-        ITransferPolicy _transferPolicy,
         uint256 _lockinPeriod,
         bytes calldata _ownershipProof
     )

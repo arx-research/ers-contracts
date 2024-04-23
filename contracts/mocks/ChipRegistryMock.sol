@@ -3,21 +3,19 @@
 pragma solidity ^0.8.17;
 
 import { ChipRegistry } from "../ChipRegistry.sol";
-import { ChipPBT } from "../token/ChipPBT.sol";
+import { PBTSimple } from "../token/PBTSimple.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IManufacturerRegistry } from "../interfaces/IManufacturerRegistry.sol";
-import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
 contract ChipRegistryMock is ChipRegistry {
     mapping(address=>bool) public chipIds;
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
-        uint256 _maxBlockWindow,
         uint256 _maxLockinPeriod,
         string memory _baseTokenUri
     )
-        ChipRegistry(_manufacturerRegistry, _maxBlockWindow, _maxLockinPeriod, _baseTokenUri)
+        ChipRegistry(_manufacturerRegistry, _maxLockinPeriod)
     {}
 
     // function addChip(
@@ -30,12 +28,8 @@ contract ChipRegistryMock is ChipRegistry {
     // }
 
     function mockAddChip(address _chipId, bytes32 _ersNode, address _owner) external {
-        ChipPBT._mint(_owner, _chipId, _ersNode, ITransferPolicy(address(0)));
+        PBTSimple._mint(_owner, _chipId, _ersNode);
     }
-
-    // function tokenURI(uint256 _tokenId) public view override returns (string memory) {
-    //     return ChipPBT.tokenURI(_tokenId);
-    // }
 
     function setInitialService(address _chipId, bytes32 _serviceId, uint256 _timelock) external {
         servicesRegistry.setInitialService(_chipId, _serviceId, _timelock);
