@@ -9,7 +9,7 @@ import {
 } from "@utils/types";
 import {
   AccountMock,
-  ChipPBTMock,
+  PBTSimpleMock,
   TransferPolicyMock,
   InterfaceIdGetterMock
 } from "@utils/contracts";
@@ -29,7 +29,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("ChipPBT", () => {
+describe("PBTSimple", () => {
   let owner: Account;
   let newOwner: Account;
   let chipOne: Account;
@@ -38,7 +38,7 @@ describe("ChipPBT", () => {
   let transferPolicy: TransferPolicyMock;
   let transferPolicyTwo: Account;
   let accountMock: AccountMock;
-  let ChipPBT: ChipPBTMock;
+  let PBTSimple: PBTSimpleMock;
 
   let deployer: DeployHelper;
   let blockchain: Blockchain;

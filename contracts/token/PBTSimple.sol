@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
@@ -15,7 +15,7 @@ import { IPBT } from "./IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
 /**
- * @title ChipPBT
+ * @title PBTSimple
  * @author Arx
  *
  * @notice Implementation of PBT where tokenIds are assigned to chip addresses as the chips are added. The contract has a
@@ -188,36 +188,6 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         bytes32 _payloadHash = abi.encodePacked(_payload).toEthSignedMessageHash();
         return _chipId.isValidSignatureNow(_payloadHash, _signature);
     }
-
-    // /**
-    //  * @dev Returns the base URI for the token metadata
-    //  *
-    //  * @return string       The base URI for the token metadata
-    //  */
-    // function _baseURI() internal view override returns (string memory) {
-    //     return baseURI;
-    // }
-
-    // /**
-    //  * @dev Returns the tokenURI for a given tokenId. Token must have been minted / chip claimed.
-    //  *
-    //  * @param _tokenId      The tokenId to get the tokenURI for
-    //  * @return string       The tokenURI for the given tokenId
-    //  */
-    // function tokenURI(
-    //     uint256 _tokenId
-    // )
-    //     public
-    //     view
-    //     virtual
-    //     override(IERC721Metadata, ERC721)
-    //     returns (string memory)
-    // {
-    //     _requireMinted(_tokenId);
-       
-    //     // TODO: create an individual tokenURI<>tokenId map
-    //     return tokenIdtoTokenURI[_tokenId];
-    // }
 
     /**
      * @dev Returns the tokenURI for a given chipId. Chip must have been claimed / token minted.

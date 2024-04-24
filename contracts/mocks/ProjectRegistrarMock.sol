@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";

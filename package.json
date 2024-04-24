@@ -52,7 +52,7 @@
     "eslint": "^8.39.0",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.2",
-    "hardhat": "^2.12.6",
+    "hardhat": "^2.22.3",
     "husky": "^8.0.0",
     "lint-staged": "^13.2.2",
     "module-alias": "^2.2.2",

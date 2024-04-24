@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 interface IDeveloperRegistrarFactory {
     function deployDeveloperRegistrar(address _owner) external returns(address);

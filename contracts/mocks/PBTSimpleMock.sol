@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { PBTSimple } from "../token/PBTSimple.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";

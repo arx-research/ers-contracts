@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { IProjectRegistrar } from "./IProjectRegistrar.sol";
 
@@ -13,18 +13,16 @@ interface IChipRegistry {
 
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
-        address _projectPublicKey,
         bytes32 _nameHash,
         bytes32 _serviceId,
-        uint256 _lockinPeriod,
-        bytes calldata _signature
+        uint256 _lockinPeriod
     )
         external;
 
     function addChip(
         address _chipId,
         address _owner,
-        bytes32 _nodeLabel,
+        bytes32 _nameHash,
         ManufacturerValidation calldata _manufacturerValidation
     )
         external;

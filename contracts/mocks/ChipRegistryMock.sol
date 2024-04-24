@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { ChipRegistry } from "../ChipRegistry.sol";
 import { PBTSimple } from "../token/PBTSimple.sol";
@@ -12,8 +12,7 @@ contract ChipRegistryMock is ChipRegistry {
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
-        uint256 _maxLockinPeriod,
-        string memory _baseTokenUri
+        uint256 _maxLockinPeriod
     )
         ChipRegistry(_manufacturerRegistry, _maxLockinPeriod)
     {}
@@ -23,13 +22,13 @@ contract ChipRegistryMock is ChipRegistry {
     //     address _owner,
     //     bytes32 _nameHash,
     //     IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
-    // ) external override {
+    // ) external {
     //     chipIds[_chipId] = true;
     // }
 
-    function mockAddChip(address _chipId, bytes32 _ersNode, address _owner) external {
-        PBTSimple._mint(_owner, _chipId, _ersNode);
-    }
+    // function mockAddChip(address _chipId, bytes32 _ersNode, address _owner) external {
+    //     PBTSimple._mint(_owner, _chipId, _ersNode);
+    // }
 
     function setInitialService(address _chipId, bytes32 _serviceId, uint256 _timelock) external {
         servicesRegistry.setInitialService(_chipId, _serviceId, _timelock);

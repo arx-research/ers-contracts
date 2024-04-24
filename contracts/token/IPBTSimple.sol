@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { IPBT } from "./IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
@@ -19,5 +19,5 @@ interface IPBTSimple is IPBT {
         bytes calldata _signature
     ) 
         external;
-        
+
 }

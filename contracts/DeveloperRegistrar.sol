@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -21,8 +21,7 @@ contract DeveloperRegistrar is Ownable {
 
     event ProjectAdded(
         address indexed projectRegistrar,
-        bytes32 projectRootNode,
-        address projectPublicKey
+        bytes32 projectRootNode
     );
     event RegistrarInitialized(bytes32 rootNode);
 
@@ -83,47 +82,31 @@ contract DeveloperRegistrar is Ownable {
      *
      * @param _nameHash                     Namehash of the project
      * @param _projectRegistrar             ProjectRegistrar contract
-     * @param _projectPublicKey             Public key of the project
      * @param _serviceId                    Service ID of the project
      * @param _lockinPeriod                 Lockup period of the project
-     * @param _projectOwnershipProof        Proof of ownership of the project
      */
 
     function addProject(
         bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
-        address _projectPublicKey,
         bytes32 _serviceId,
-        uint256 _lockinPeriod,
-        bytes calldata _projectOwnershipProof
+        uint256 _lockinPeriod
     )
         external
         onlyOwner()
     {
-        require(_projectPublicKey != address(0), "Invalid project public key");
-
-        // TODO: deploy a project registrar from a factory
-        // TODO: verify that the project registrar factory is a valid one
+        // Verify the project registrar is not the zero address
+        // TODO: check interface signatures to ensure it matches IPBT and IProjectRegistrar
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
-
-        // Create subnode in ENS registry; if _nameHash has already been used it will revert here
-        // bytes32 projectNode = ers.createSubnodeRecord(
-        //     rootNode,
-        //     _nameHash,
-        //     address(_projectRegistrar),
-        //     address(_projectRegistrar)
-        // );
 
         // Call project registrar to set root node (this is an untrusted contract!)
         bytes32 projectNode = keccak256(abi.encodePacked(rootNode, _nameHash));
 
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
-            _projectPublicKey,
             _nameHash,
             _serviceId,
-            _lockinPeriod,
-            _projectOwnershipProof
+            _lockinPeriod
         );
 
         _projectRegistrar.setRootNode(projectNode);
@@ -131,8 +114,7 @@ contract DeveloperRegistrar is Ownable {
 
         emit ProjectAdded(
             address(_projectRegistrar),
-            projectNode,
-            _projectPublicKey
+            projectNode
         );
     }
 

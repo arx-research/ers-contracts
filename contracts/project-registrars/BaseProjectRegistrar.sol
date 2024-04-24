@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -39,23 +39,17 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
 
     /* ============ Constructor ============ */
     /**
-     // TODO: _projectManager seems to replace the function of projectPublicKey since there is no longer a merkle to update...
-     * @param _projectManager           The address that will be set as the owner
      * @param _chipRegistry             The chip registry of the ERS system being used
      * @param _ers                      The ERS registry of the ERS system being used
      * @param _developerRegistrar       The DeveloperRegistrar that made this project
      */
     constructor(
-        address _projectManager, 
         IChipRegistry _chipRegistry, 
         IERS _ers, 
         IDeveloperRegistrar _developerRegistrar
     ) 
         Ownable() 
     {
-        if(_projectManager != msg.sender) {
-            transferOwnership(_projectManager);
-        }
         chipRegistry = _chipRegistry;
         ers = _ers;
         developerRegistrar = _developerRegistrar;

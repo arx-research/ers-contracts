@@ -1,13 +1,12 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-// import { ChipPBT } from "./token/ChipPBT.sol";
-// import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
+import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
 import { IManufacturerRegistry } from "./interfaces/IManufacturerRegistry.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
@@ -22,8 +21,8 @@ import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
  * @author Arx
  *
  * @notice Entrypoint for resolving chips added to ERS Protocol. Developers can enroll new projects into this registry by 
- * specifying a ProjectRegistrar to manage chip additions. Chip additions are forwarded from ProjectRegistrars at which point 
- * a ERC-721 compliant "token" of the chip is minted to the claimant and other metadata associated with the chip is set. 
+ * specifying a ProjectRegistrar to manage chip additions. Chip additions are forwarded from ProjectRegistrars that typically 
+ * mint an ERC-721 compliant "token" of the chip to the claimant and other metadata associated with the chip is set. 
  * Any project looking to integrate ERS chips should get resolution information about chips from this address. Because 
  * chips are represented as tokens any physical chip transfers should also be completed on-chain in order to get full 
  * functionality for the chip.
@@ -37,8 +36,7 @@ contract ChipRegistry is Ownable {
 
     event ProjectEnrollmentAdded(                   // Emitted during addProjectEnrollment
         address indexed developerRegistrar,
-        address indexed projectRegistrar,
-        address projectPublicKey
+        address indexed projectRegistrar
     );
 
     event ChipAdded(                              // Emitted during claimChip
@@ -60,7 +58,6 @@ contract ChipRegistry is Ownable {
 
     // Do we need an identifier to replace the merkle root? nodehash?
     struct ProjectInfo {
-        address projectPublicKey;
         bytes32 nameHash;
         bytes32 serviceId;
         uint256 lockinPeriod;
@@ -112,8 +109,6 @@ contract ChipRegistry is Ownable {
 
     /* ============ External Functions ============ */
 
-    // TODO: add functions that govern the addition of project registrar factories. See developer registry.
-
     /**
      * @dev ONLY Developer REGISTRAR: Enroll new project in ChipRegistry. This function is only callable by DeveloperRegistrars. In order to use
      * this function the project must first sign a message of the _projectRegistrar address with the _projectPublicKey's matching
@@ -123,37 +118,29 @@ contract ChipRegistry is Ownable {
      * revert if the project is already enrolled. See documentation for more instructions on how to create a project merkle root.
      *
      * @param _projectRegistrar          Address of the ProjectRegistrar contract
-     * @param _projectPublicKey          Public key of the project used to sign _projectOwnershipProof
-     * @param _projectOwnershipProof     Signature of the _projectRegistrar address signed by the _projectPublicKey. Proves ownership over the
      *                                   key that signed the chip custodyProofs and developerInclusionProofs   
      */
 
-    // TODO: we should get the transfer policy from the project registrar during addition
-    // TODO: project public key should be the default projectManager (vice versa); we should get this from the project as well
+    // TODO: we may want to allow governance to remove projects with no chips added after a certain period of time
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
-        address _projectPublicKey,
         bytes32 _nameHash,
         bytes32 serviceId,
-        uint256 lockinPeriod,
-        bytes calldata _projectOwnershipProof
+        uint256 lockinPeriod
     )
         external
     {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
         IDeveloperRegistrar developerRegistrar = IDeveloperRegistrar(msg.sender);
 
+        // TODO: is this a sufficient check for existence?
         // Verify that the project isn't already enrolled
-        require(projectEnrollments[_projectRegistrar].projectPublicKey == address(0), "Project already enrolled");
+        require(projectEnrollments[_projectRegistrar].creationTimestamp == 0, "Project already enrolled");
         
-        // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
-        // with a project enrollment during claim
-        require(_projectPublicKey != address(0), "Invalid project public key");
+        // // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
+        // // with a project enrollment during claim
+        require(address(_projectRegistrar) != address(0), "Invalid project address");
 
-        // TODO: Cameron wondering if we need this; we could probably skip if projectPublicKey == projectRegistrar.owner...
-        // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
-        require(_projectPublicKey.isValidSignatureNow(abi.encodePacked(block.chainid, _projectRegistrar).toEthSignedMessageHash(), _projectOwnershipProof), "Invalid signature");
-        
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = developerRegistrar.rootNode();
 
@@ -167,7 +154,6 @@ contract ChipRegistry is Ownable {
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({
             nameHash: _nameHash,
-            projectPublicKey: _projectPublicKey,
             serviceId: serviceId,
             lockinPeriod: lockinPeriod,
             creationTimestamp: block.timestamp,
@@ -176,8 +162,7 @@ contract ChipRegistry is Ownable {
 
         emit ProjectEnrollmentAdded(
             msg.sender,
-            address(_projectRegistrar),
-            _projectPublicKey
+            address(_projectRegistrar)
         );
     }
 
@@ -197,8 +182,6 @@ contract ChipRegistry is Ownable {
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
      */
     
-
-    // TODO: removed virtual from this; verify that we don't want to addChip via override?
     function addChip(
         address _chipId,
         address _chipOwner,
@@ -215,7 +198,7 @@ contract ChipRegistry is Ownable {
         require(_chipId != address(0), "Invalid chip");
     
         // Verify the chip is being added by an enrolled project
-        require(projectInfo.projectPublicKey != address(0), "Project not enrolled");
+        require(projectInfo.creationTimestamp != 0, "Project not enrolled");
 
         // Verify that the chip doesn't exist yet
         require(!chipEnrollments[_chipId].chipAdded, "Chip already added");
@@ -275,49 +258,6 @@ contract ChipRegistry is Ownable {
         );
     }
 
-    // /**
-    //  * @notice Included for compliance with EIP-5791 standard but left unimplemented to ensure transfer policies can't be ignored.
-    //  */
-    // function transferTokenWithChip(
-    //     bytes calldata /*signatureFromChip*/,
-    //     uint256 /*blockNumberUsedInSig*/,
-    //     bool /*useSafeTransfer*/
-    // )
-    //     public
-    //     virtual
-    //     override(ChipPBT, IPBT)
-    // {
-    //     revert("Not implemented");
-    // }
-
-    // /**
-    //  * @notice Allow a user to transfer a chip to a new owner, new owner must submit transaction. Use ChipPBT logic which calls
-    //  * TransferPolicy to execute the transfer of the PBT and chip. Update chip's ERS node in order to keep data consistency. EIP-1271
-    //  * compatibility should be implemented in the chip's TransferPolicy contract.
-    //  *
-    //  * @param chipId                Chip ID (address) of chip being transferred
-    //  * @param signatureFromChip     Signature of keccak256(msg.sender, blockhash(blockNumberUsedInSig), _payload) signed by chip
-    //  *                              being transferred
-    //  * @param blockNumberUsedInSig  Block number used in signature
-    //  * @param useSafeTransferFrom   Indicates whether to use safeTransferFrom or transferFrom
-    //  * @param payload               Encoded payload containing data required to execute transfer. Data structure will be dependent
-    //  *                              on implementation of TransferPolicy
-    //  */
-    // function transferToken(
-    //     address chipId,
-    //     bytes calldata signatureFromChip,
-    //     uint256 blockNumberUsedInSig,
-    //     bool useSafeTransferFrom,
-    //     bytes calldata payload
-    // ) 
-    //     public
-    //     override(ChipPBT, IPBT)
-    // {
-    //     // Validations happen in ChipPBT / TransferPolicy
-    //     ChipPBT.transferToken(chipId,  signatureFromChip, blockNumberUsedInSig, useSafeTransferFrom, payload);
-    //     _setERSOwnerForChip(chipId, msg.sender);
-    // }
-
     /**
      * Get ERS node from tokenData and then sets the new Owner of the chip on the ERSRegistry.
      */
@@ -336,7 +276,7 @@ contract ChipRegistry is Ownable {
     {
         IProjectRegistrar projectRegistrar = IProjectRegistrar(msg.sender);
 
-        require(projectEnrollments[projectRegistrar].projectPublicKey != address(0), "Only enrolled projects can call.");
+        require(projectEnrollments[projectRegistrar].chipsAdded, "Only enrolled projects with chips can call.");
         require(chipEnrollments[_chipId].chipAdded, "Chip not added");
         require(chipEnrollments[_chipId].projectRegistrar == address(projectRegistrar), "ProjectRegistrar does not own chip");
 
@@ -381,12 +321,6 @@ contract ChipRegistry is Ownable {
 
     /* ============ View Functions ============ */
 
-    // TODO: replace resolveUnclaimedChip with a validateUnclaimedChip function; this would validate that a chip is in a specific manufacturer enrollment, e.g.
-    // function validateUnclaimedChip(
-        // Expects a chipId and enrollmentId
-    // )
-
-    // TODO: ERS lookup?
     /**
      * @notice Return the primary service content.
      *
@@ -422,30 +356,6 @@ contract ChipRegistry is Ownable {
 
         return projectRegistrar.ownerOf(_chipId);
     } 
-
-    // /**
-    //  * @notice Get tokenUri from tokenId. TokenURI associated with primary service takes precedence, if no tokenURI as
-    //  * part of primary service then fail over to tokenURI defined in ChipPBT.
-    //  *
-    //  * @param _tokenId          Chip's tokenId
-    //  * @return                  TokenUri
-    //  */
-    // function tokenURI(uint256 _tokenId) public view override(ChipPBT, IERC721Metadata) returns (string memory) {
-    //     string memory tokenUri = _getChipPrimaryServiceContentByRecordType(address(uint160(uint256(_tokenId))), URI_RECORDTYPE);
-    //     return bytes(tokenUri).length == 0 ? ChipPBT.tokenURI(_tokenId) : tokenUri;
-    // }
-
-    // /**
-    //  * @notice Get tokenUri from chip address. TokenURI associated with primary service takes precedence, if no tokenURI as
-    //  * part of primary service then fail over to tokenURI defined in ChipPBT.
-    //  *
-    //  * @param _chipId           Chip's address
-    //  * @return                  TokenUri
-    //  */
-    // function tokenURI(address _chipId) public view override returns (string memory) {
-    //     string memory tokenUri = _getChipPrimaryServiceContentByRecordType(_chipId, URI_RECORDTYPE);
-    //     return bytes(tokenUri).length == 0 ? ChipPBT.tokenURI(_chipId) : tokenUri;
-    // }
 
     /* ============ Internal Functions ============ */
 
@@ -483,21 +393,4 @@ contract ChipRegistry is Ownable {
         bytes memory content = servicesRegistry.getPrimaryServiceContentByRecordtype(_chipId, _recordType);
         return string(content);
     }
-
-    // /**
-    //  * ChipPBT has an unstructured "tokenData" field that for our implementation we will populate with the chip's
-    //  * ERS node and the manufacturer enrollmentId of the chip. This function structures that data.
-    //  */
-    // function _encodeTokenData(bytes32 _ersNode, bytes32 _enrollmentId) internal pure returns (bytes memory) {
-    //     // Since no addresses there's no difference between abi.encode and abi.encodePacked
-    //     return abi.encode(_ersNode, _enrollmentId);
-    // }
-
-    // /**
-    //  * ChipPBT has an unstructured "tokenData" field that for our implementation we will populate with the chip's
-    //  * ERS node and the manufacturer enrollmentId of the chip. This function interprets that data.
-    //  */
-    // function _decodeTokenData(bytes memory _tokenData) internal pure returns (bytes32, bytes32) {
-    //     return abi.decode(_tokenData, (bytes32, bytes32));
-    // }
 }

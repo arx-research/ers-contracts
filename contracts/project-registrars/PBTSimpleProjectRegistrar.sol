@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { BaseProjectRegistrar } from "./BaseProjectRegistrar.sol";
 import { ChipValidations } from "../lib/ChipValidations.sol";
@@ -29,18 +29,9 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
         bytes32 nameHash; // A label used to identify the chip; in a PBT imlementation, this might match the tokenId
         IChipRegistry.ManufacturerValidation manufacturerValidation;
     }
-
-    /* ============ Events ============ */
-
-
-    /* ============ Modifiers ============ */
-
-    /* ============ State Variables ============ */
-    ITransferPolicy public immutable transferPolicy;
     
     /* ============ Constructor ============ */
     /**
-     * @param _projectManager           The address that will be set as the owner
      * @param _chipRegistry             The chip registry of the ERS system being used
      * @param _ers                      The ERS registry of the ERS system being used
      * @param _developerRegistrar       The DeveloperRegistrar that made this project
@@ -48,7 +39,6 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
      * @param _symbol                   The symbol of the custom PBT token
      */
     constructor(
-        address _projectManager, 
         IChipRegistry _chipRegistry, 
         IERS _ers, 
         IDeveloperRegistrar _developerRegistrar,
@@ -60,14 +50,11 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
     ) 
         PBTSimple(_name, _symbol, _baseURI, _maxBlockWindow, _transferPolicy)
         BaseProjectRegistrar(
-            _projectManager,
             _chipRegistry,
             _ers,
             _developerRegistrar
         )
-    {
-        transferPolicy = _transferPolicy;
-    }
+    {}
 
     /* ============ External Admin Functions ============ */
 
@@ -150,7 +137,6 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
         override
     {   
         // Validations happen in PBTSimple, ERC721 doesn't allow transfers to the zero address
-        // TODO: look up the chip's project enrollment and call setOwner
         PBTSimple.setOwner(_chipId, _newOwner, _commitBlock, _signature);
         chipRegistry.setChipNodeOwner(_chipId, _newOwner);
     }
