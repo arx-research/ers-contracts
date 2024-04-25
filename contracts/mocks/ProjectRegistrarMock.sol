@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
-
-import "hardhat/console.sol";
+import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
+import { IPBT } from "../token/IPBT.sol";
 
 contract ProjectRegistrarMock {
     
@@ -37,7 +37,6 @@ contract ProjectRegistrarMock {
     {
         // NOTE: Don't use in prod. We are passing in the "label" in the ChipAddition struct then over-writing for
         // testing convenience.
-        console.log("mock called add chip");
 
         chipRegistry.addChip(
             chipId,
@@ -45,5 +44,19 @@ contract ProjectRegistrarMock {
             nodeLabel,
             _manufacturerValidation
         );
+    }
+
+     /**
+     * 
+     * @param _interfaceId The interface ID to check for
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        returns (bool)
+    {
+        return
+            _interfaceId == type(IProjectRegistrar).interfaceId ||
+            _interfaceId == type(IPBT).interfaceId;
     }
 }

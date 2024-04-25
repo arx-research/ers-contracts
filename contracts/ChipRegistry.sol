@@ -14,6 +14,8 @@ import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
 import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
 import { IPBT } from "./token/IPBT.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
 
 /**
@@ -127,6 +129,11 @@ contract ChipRegistry is Ownable {
     {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
         IDeveloperRegistrar developerRegistrar = IDeveloperRegistrar(msg.sender);
+
+        // Verify that the project registrar implements the necessary interfaces
+        IERC165 checker = IERC165(address(_projectRegistrar));
+        require(checker.supportsInterface(type(IPBT).interfaceId), "Does not implement IPBT");
+        require(checker.supportsInterface(type(IProjectRegistrar).interfaceId), "Does not implement IProjectRegistrar");
 
         // TODO: is this a sufficient check for existence?
         // Verify that the project isn't already enrolled
