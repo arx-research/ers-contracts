@@ -87,8 +87,8 @@ contract DeveloperRegistrar is Ownable {
      */
 
     function addProject(
-        bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
+        bytes32 _nameHash,
         bytes32 _serviceId,
         uint256 _lockinPeriod
     )

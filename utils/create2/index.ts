@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 
 import {
-  RedirectProjectRegistrar__factory
-} from "../../typechain/factories/contracts/project-registrars/RedirectProjectRegistrar__factory";
+  PBTSimpleProjectRegistrar__factory
+} from "../../typechain/factories/contracts/project-registrars/PBTSimpleProjectRegistrar__factory";
 
 export const encoder = (types: string[], values: string[]) => {
   const abiCoder = ethers.utils.defaultAbiCoder;
@@ -15,13 +15,13 @@ export const create2Address = (factoryAddress: string, saltHex: string, initCode
   return create2Addr;
 };
 
-export const calculateRedirectProjectRegistrarAddress = (
+export const calculatePBTSimpleProjectRegistrarAddress = (
   factoryAddress: string,
   saltHex: string,
   constructorArgs: any[]
 ): string => {
   // Create expected Project Registrar address to sign
-  const initCode = RedirectProjectRegistrar__factory.bytecode + encoder(
+  const initCode = PBTSimpleProjectRegistrar__factory.bytecode + encoder(
     [
       "address",
       "address",

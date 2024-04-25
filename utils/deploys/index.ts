@@ -4,7 +4,6 @@ import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 
 import {
-  ArxProjectEnrollmentManager__factory,
   ChipRegistry__factory,
   DeveloperRegistrar__factory,
   DeveloperRegistrarFactory__factory,
@@ -15,14 +14,11 @@ import {
 } from "../../typechain/factories/contracts";
 
 import {
-  RedirectProjectRegistrar__factory,
-  CustomPBTProjectRegistrar__factory
+  PBTSimpleProjectRegistrar__factory
 } from "../../typechain/factories/contracts/project-registrars";
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
 import {
-  ArxProjectEnrollmentManager,
-  CustomPBTProjectRegistrar,
   ChipRegistry,
   DeveloperNameGovernor,
   DeveloperRegistrar,
@@ -30,7 +26,7 @@ import {
   DeveloperRegistry,
   ERSRegistry,
   ManufacturerRegistry,
-  RedirectProjectRegistrar,
+  PBTSimpleProjectRegistrar,
   SECP256k1Model,
   ServicesRegistry
 } from "../contracts";
@@ -119,15 +115,11 @@ export default class DeployHelper {
 
   public async deployChipRegistry(
     manufacturerRegistry: Address,
-    maxBlockWindow: BigNumber = BigNumber.from(5),
-    maxLockinPeriod: BigNumber = BigNumber.from(1000),
-    baseTokenUri: string = "https://resolve.com/chips/"
+    maxLockinPeriod: BigNumber = BigNumber.from(1000)
   ): Promise<ChipRegistry> {
     const chipRegistry = await new ChipRegistry__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      maxBlockWindow,
       maxLockinPeriod,
-      baseTokenUri
     );
     return chipRegistry;
   }
@@ -141,66 +133,32 @@ export default class DeployHelper {
     return servicesRegistry;
   }
 
-  public async deployRedirectProjectRegistrar(
-    projectManager: Address,
-    chipRegistry: Address,
-    ersRegistry: Address,
-    developerRegistrar: Address
-  ): Promise<RedirectProjectRegistrar> {
-    const projectRegistrar = await new RedirectProjectRegistrar__factory(this._deployerSigner).deploy(
-      projectManager,
-      chipRegistry,
-      ersRegistry,
-      developerRegistrar
-    );
-
-    return projectRegistrar;
-  }
-
-  public async deployCustomPBTProjectRegistrar(
-    projectManager: Address,
+  public async deployPBTSimpleProjectRegistrar(
     chipRegistry: Address,
     ersRegistry: Address,
     developerRegistrar: Address,
     name: string,
     symbol: string,
-    baseTokenURI: string,
-  ): Promise<CustomPBTProjectRegistrar> {
-    const projectRegistrar = await new CustomPBTProjectRegistrar__factory(this._deployerSigner).deploy(
-      projectManager,
+    baseURI: string,
+    maxBlockWindow: BigNumber,
+    transferPolicy: Address
+  ): Promise<PBTSimpleProjectRegistrar> {
+    const projectRegistrar = await new PBTSimpleProjectRegistrar__factory(this._deployerSigner).deploy(
       chipRegistry,
       ersRegistry,
       developerRegistrar,
       name,
       symbol,
-      baseTokenURI
+      baseURI,
+      maxBlockWindow,
+      transferPolicy
     );
 
     return projectRegistrar;
   }
 
-  public async getRedirectProjectRegistrar(registrarAddress: Address): Promise<RedirectProjectRegistrar> {
-    return new RedirectProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
-  }
-
-  public async deployArxProjectEnrollmentManager(
-    chipRegistry: Address,
-    developerRegistrar: Address,
-    ers: Address,
-    manufacturerRegistry: Address,
-    transferPolicy: Address,
-    maxBlockWindow: BigNumber = BigNumber.from(5)
-  ): Promise<ArxProjectEnrollmentManager>{
-    const arxProjectEnrollmentManager = await new ArxProjectEnrollmentManager__factory(this._deployerSigner).deploy(
-      chipRegistry,
-      developerRegistrar,
-      ers,
-      manufacturerRegistry,
-      transferPolicy,
-      maxBlockWindow
-    );
-
-    return arxProjectEnrollmentManager;
+  public async getPBTSimpleProjectRegistrar(registrarAddress: Address): Promise<PBTSimpleProjectRegistrar> {
+    return new PBTSimpleProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
   }
 
   public async deployDeveloperNameGovernor(

@@ -9,7 +9,7 @@ import {
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
-  RedirectProjectRegistrar,
+  PBTSimpleProjectRegistrar,
   ERSRegistry,
   ManufacturerRegistry,
   ServicesRegistry,
@@ -35,10 +35,11 @@ import {
 import { ManufacturerTree, DeveloperTree } from "@utils/common";
 
 import { Blockchain } from "@utils/common";
+import { BigNumber } from "ethers";
 
 const expect = getWaffleExpect();
 
-describe("RedirectProjectRegistrar", () => {
+describe("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let manufacturerOne: Account;
@@ -48,7 +49,7 @@ describe("RedirectProjectRegistrar", () => {
   let authModel: Account;
   let fakeDeveloperRegistrar: Account;
 
-  let projectRegistrar: RedirectProjectRegistrar;
+  let projectRegistrar: PBTSimpleProjectRegistrar;
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
@@ -69,7 +70,6 @@ describe("RedirectProjectRegistrar", () => {
 
   // Developer Data
   let developerChipsEnrollmentId: string;
-  let developerClaimTokenURI: string;
   let developerNameHash: string;
 
   // Manufacturer Chip Enrollment Data
@@ -78,10 +78,6 @@ describe("RedirectProjectRegistrar", () => {
   let manufacturerValidationUri: string;
   let manufacturerBootloaderApp: string;
   let manufacturerChipModel: string;
-
-  // Project Chip Enrollment Data
-  let projectOwnerPublicKey: string;
-  let projectOwnershipProof: string;
 
   let chainId: number;
 
@@ -106,7 +102,6 @@ describe("RedirectProjectRegistrar", () => {
 
     // Example Developer Data
     developerNameHash = calculateLabelHash("Gucci");
-    developerClaimTokenURI = "https://tokenuri.com";
 
     // 1. Deploy example ERS system's Manufacturer Registry
     manufacturerRegistry = await deployer.deployManufacturerRegistry(owner.address);
@@ -136,7 +131,7 @@ describe("RedirectProjectRegistrar", () => {
     );
 
     // 4. Deploy chip registry
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address);
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, BigNumber.from(1000));
 
     // 5. Deploy Developer Registry
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
@@ -189,13 +184,19 @@ describe("RedirectProjectRegistrar", () => {
     // Create Developer Registrar object
     developerRegistrar = await deployer.getDeveloperRegistrar(expectedRegistrarAddress);
 
-    // 14. Deploy project registrar
-    projectRegistrar = await deployer.deployRedirectProjectRegistrar(
-      projectManager.address,
+    // 14. Deploy project registrar and transfer ownership to developer
+    projectRegistrar = await deployer.deployPBTSimpleProjectRegistrar(
       chipRegistry.address,
       ersRegistry.address,
-      developerRegistrar.address
+      developerRegistrar.address,
+      "ProjectY",
+      "PRY",
+      "https://api.projecty.com/",
+      BigNumber.from(5),
+      transferPolicy.address
     );
+  
+    projectRegistrar.connect(owner.wallet).transferOwnership(developerOne.address);
 
     // 15. Create example service for project
 
@@ -221,20 +222,15 @@ describe("RedirectProjectRegistrar", () => {
 
     // Example project data
     projectNameHash = calculateLabelHash("ProjectX");
-    projectOwnerPublicKey = developerOne.address;
-    projectOwnershipProof = await createProjectOwnershipProof(developerOne, projectRegistrar.address, chainId);
 
     // Call Developer Registrar to add project
     await developerRegistrar
       .connect(developerOne.wallet)
       .addProject(
-        projectNameHash,
         projectRegistrar.address,
-        projectOwnerPublicKey,
+        projectNameHash,
         serviceId,
-        transferPolicy.address,
         100,
-        projectOwnershipProof
       );
 
   });
@@ -246,7 +242,7 @@ describe("RedirectProjectRegistrar", () => {
       const actualERSRegistry = await projectRegistrar.ers();
       const actualDeveloperRegistrar = await projectRegistrar.developerRegistrar();
 
-      expect(actualOwner).to.eq(projectManager.address);
+      expect(actualOwner).to.eq(developerOne.address);
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualERSRegistry).to.eq(ersRegistry.address);
       expect(actualDeveloperRegistrar).to.eq(developerRegistrar.address);
@@ -277,16 +273,18 @@ describe("RedirectProjectRegistrar", () => {
       subjectAdditionData = [
         {
           chipId: chipIdOne,
+          chipOwner: developerOne.address,
           nameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
+          chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
         } as ProjectChipAddition,
       ];
-      subjectCaller = projectManager;
+      subjectCaller = developerOne;
     });
 
     async function subject(): Promise<any> {
@@ -307,7 +305,7 @@ describe("RedirectProjectRegistrar", () => {
 
     describe("when the caller is not the contract owner", async () => {
       beforeEach(async() => {
-        subjectCaller = developerOne;
+        subjectCaller = owner;
       });
 
       it("should revert", async() => {
@@ -323,11 +321,15 @@ describe("RedirectProjectRegistrar", () => {
     beforeEach(async () => {
       // Deploy new project registrar with the fake Developer Registrar as the set Developer Registrar
       // This is done so we can call setRootNode externally
-      projectRegistrar = await deployer.deployRedirectProjectRegistrar(
-        projectManager.address,
+      projectRegistrar = await deployer.deployPBTSimpleProjectRegistrar(
         chipRegistry.address,
         ersRegistry.address,
-        fakeDeveloperRegistrar.address
+        fakeDeveloperRegistrar.address,
+        "ProjectX",
+        "PRX",
+        "https://api.projectx.com/",
+        BigNumber.from(5),
+        transferPolicy.address
       );
       subjectCaller = fakeDeveloperRegistrar;
       subjectRootNode = ethers.utils.formatBytes32String("SomethingElse");

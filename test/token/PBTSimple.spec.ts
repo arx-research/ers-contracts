@@ -44,7 +44,7 @@ describe("PBTSimple", () => {
   let blockchain: Blockchain;
 
   const name = "Ethereum Reality Service PBT";
-  const symbol = "ERSPBT";
+  const symbol = "PBT";
   const maxBlockWindow = BigNumber.from(5);
   const baseTokenURI = "https://www.claim.com/";
   blockchain = new Blockchain(ethers.provider);
@@ -60,21 +60,21 @@ describe("PBTSimple", () => {
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
-
-    ChipPBT = await deployer.mocks.deployChipPBTMock(name, symbol, maxBlockWindow, baseTokenURI);
-
-    accountMock = await deployer.mocks.deployAccountMock(chipOne.address, ChipPBT.address);
     transferPolicy = await deployer.mocks.deployTransferPolicyMock();
+    PBTSimple = await deployer.mocks.deployPBTSimpleMock(name, symbol, baseTokenURI, maxBlockWindow, transferPolicy.address);
+
+    accountMock = await deployer.mocks.deployAccountMock(chipOne.address, PBTSimple.address);
+
   });
 
   describe("#constructor", async () => {
     it("should set the correct token name", async () => {
-      const actualName = await ChipPBT.name();
+      const actualName = await PBTSimple.name();
       expect(actualName).to.eq(name);
     });
 
     it("should set the correct token symbol", async () => {
-      const actualSymbol = await ChipPBT.symbol();
+      const actualSymbol = await PBTSimple.symbol();
       expect(actualSymbol).to.eq(symbol);
     });
   });
@@ -91,7 +91,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.isChipSignatureForToken(subjectChipId, subjectPayload, subjectChipSignature);
+      return PBTSimple.isChipSignatureForToken(subjectChipId, subjectPayload, subjectChipSignature);
     }
 
     it("should return true", async () => {
@@ -132,7 +132,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.supportsInterface(subjectInterfaceId);
+      return PBTSimple.supportsInterface(subjectInterfaceId);
     }
 
     it("should return true for ERC721 interface", async () => {
@@ -195,7 +195,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).approve(subjectTo, subjectTokenId);
+      return PBTSimple.connect(owner.wallet).approve(subjectTo, subjectTokenId);
     }
 
     it("should revert", async () => {
@@ -213,7 +213,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).setApprovalForAll(subjectOperator, subjectApproved);
+      return PBTSimple.connect(owner.wallet).setApprovalForAll(subjectOperator, subjectApproved);
     }
 
     it("should revert", async () => {
@@ -233,7 +233,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).transferFrom(subjectFrom, subjectTo, subjectTokenId);
+      return PBTSimple.connect(owner.wallet).transferFrom(subjectFrom, subjectTo, subjectTokenId);
     }
 
     it("should revert", async () => {
@@ -253,7 +253,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256)"](
+      return PBTSimple.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256)"](
         subjectFrom,
         subjectTo,
         subjectTokenId
@@ -279,7 +279,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256,bytes)"](
+      return PBTSimple.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256,bytes)"](
         subjectFrom,
         subjectTo,
         subjectTokenId,
@@ -297,7 +297,7 @@ describe("PBTSimple", () => {
     let subjectChipId: Address;
     let subjectErsNode: string;
     let subjectTokenId: string;
-    // let subjectChipInfo: ChipPBTChipInfo;
+    // let subjectChipInfo: PBTSimpleChipInfo;
 
     beforeEach(async () => {
       subjectTo = owner.address;
@@ -307,26 +307,25 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).testMint(subjectTo, subjectChipId, subjectErsNode, transferPolicy.address);
+      return PBTSimple.connect(owner.wallet).testMint(subjectTo, subjectChipId, subjectErsNode);
     }
 
     it("should claim the chip and set chip state", async () => {
       await subject();
 
-      const actualChipTokenId = await ChipPBT.chipIdToTokenId(subjectChipId);
-      const actualChipTransferPolicy = await ChipPBT.chipTransferPolicy(subjectChipId);
-      const actualChipTokenUri = (await ChipPBT.functions["tokenURI(uint256)"](subjectTokenId))[0];
+      const actualChipTokenId = await PBTSimple.chipIdToTokenId(subjectChipId);
+      const actualChipTokenUri = (await PBTSimple.functions["tokenURI(uint256)"](subjectTokenId))[0];
 
       expect(actualChipTokenId).to.eq(subjectTokenId);
-      expect(actualChipTransferPolicy).to.eq(transferPolicy.address);
       expect(actualChipTokenUri).to.eq(baseTokenURI.concat(BigNumber.from(subjectErsNode).toString()));
     });
 
     it("should mint the token to the correct address and update owner balances", async () => {
       await subject();
 
-      const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectTokenId))[0];
-      const actualOwnerBalance = await ChipPBT.balanceOf(subjectTo);
+      const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
+      console.log("actualOwner", actualOwner);
+      const actualOwnerBalance = await PBTSimple.balanceOf(subjectTo);
       expect(actualOwner).to.eq(subjectTo);
       expect(actualOwnerBalance).to.eq(ONE);
     });
@@ -334,12 +333,12 @@ describe("PBTSimple", () => {
     it("should map the chip id to the token id", async () => {
       await subject();
 
-      const actualTokenId = await ChipPBT.chipIdToTokenId(subjectChipId);
+      const actualTokenId = await PBTSimple.chipIdToTokenId(subjectChipId);
       expect(actualTokenId).to.eq(subjectTokenId);
     });
 
     it("should emit the correct PBTMint event", async () => {
-      await expect(subject()).to.emit(ChipPBT, "PBTMint").withArgs(
+      await expect(subject()).to.emit(PBTSimple, "PBTMint").withArgs(
         subjectTokenId,
         subjectChipId
       );
@@ -352,18 +351,18 @@ describe("PBTSimple", () => {
     let chipAccount: AccountMock;
     let chipErsNode: string;
     let chipErsNodeAccount: string;
-    // let chipAccountInfo: ChipPBTChipInfo;
+    // let chipAccountInfo: PBTSimpleChipInfo;
 
     beforeEach(async () => {
       ownerAddress = owner.address;
 
       chip = chipThree;
-      chipAccount = await deployer.mocks.deployAccountMock(chip.address, ChipPBT.address);
+      chipAccount = await deployer.mocks.deployAccountMock(chip.address, PBTSimple.address);
       chipErsNode = calculateSubnodeHash(`${chip.address}.ProjectY.gucci.ers`);
       chipErsNodeAccount = calculateSubnodeHash(`${chipAccount.address}.ProjectY.gucci.ers`);
 
-      await ChipPBT.testMint(ownerAddress, chip.address, chipErsNode, transferPolicy.address);
-      await ChipPBT.testMint(ownerAddress, chipAccount.address, chipErsNodeAccount, transferPolicy.address);
+      await PBTSimple.testMint(ownerAddress, chip.address, chipErsNode);
+      await PBTSimple.testMint(ownerAddress, chipAccount.address, chipErsNodeAccount);
     });
 
     describe("#transferTokenWithChip", async () => {
@@ -386,7 +385,7 @@ describe("PBTSimple", () => {
       });
 
       async function subject(): Promise<any> {
-        return ChipPBT.connect(subjectCaller.wallet).transferTokenWithChip(
+        return PBTSimple.connect(subjectCaller.wallet).transferTokenWithChip(
           subjectSignatureFromChip,
           subjectBlockNumberUsedInSig,
           subjectUseSafeTransfer
@@ -424,7 +423,7 @@ describe("PBTSimple", () => {
       });
 
       async function subject(): Promise<any> {
-        return await ChipPBT.connect(subjectCaller.wallet).transferToken(
+        return await PBTSimple.connect(subjectCaller.wallet).transferToken(
           subjectChipId,
           subjectSignatureFromChip,
           subjectBlockNumberUsedInSig,
@@ -437,18 +436,18 @@ describe("PBTSimple", () => {
         await subject();
 
         // Need to use this hacky way to access since the ownerOf function is overloaded
-        const actualOwner = (await ChipPBT.functions["ownerOf(address)"](chip.address))[0];
+        const actualOwner = (await PBTSimple.functions["ownerOf(address)"](chip.address))[0];
         expect(actualOwner).to.eq(newOwner.address);
       });
 
       it("should update the owner's balance", async () => {
-        const initialOwnerBalance = await ChipPBT.balanceOf(owner.address);
-        const initialNewOwnerBalance = await ChipPBT.balanceOf(newOwner.address);
+        const initialOwnerBalance = await PBTSimple.balanceOf(owner.address);
+        const initialNewOwnerBalance = await PBTSimple.balanceOf(newOwner.address);
 
         await subject();
 
-        const postOwnerBalance = await ChipPBT.balanceOf(owner.address);
-        const postNewOwnerBalance = await ChipPBT.balanceOf(newOwner.address);
+        const postOwnerBalance = await PBTSimple.balanceOf(owner.address);
+        const postNewOwnerBalance = await PBTSimple.balanceOf(newOwner.address);
         expect(postOwnerBalance).to.eq(initialOwnerBalance.sub(ONE));
         expect(postNewOwnerBalance).to.eq(initialNewOwnerBalance.add(ONE));
       });
@@ -466,8 +465,8 @@ describe("PBTSimple", () => {
       });
 
       it("should emit a Transfer event", async () => {
-        const chipTokenId = await ChipPBT.tokenIdFor(chip.address);
-        await expect(subject()).to.emit(ChipPBT, "Transfer").withArgs(owner.address, newOwner.address, chipTokenId);
+        const chipTokenId = await PBTSimple.tokenIdFor(chip.address);
+        await expect(subject()).to.emit(PBTSimple, "Transfer").withArgs(owner.address, newOwner.address, chipTokenId);
       });
 
       describe("when safeTransfer is used", async () => {
@@ -497,7 +496,7 @@ describe("PBTSimple", () => {
           await accountSubject();
 
           // Need to use this hacky way to access since the ownerOf function is overloaded
-          const actualOwner = (await ChipPBT.functions["ownerOf(address)"](chip.address))[0];
+          const actualOwner = (await PBTSimple.functions["ownerOf(address)"](chip.address))[0];
           expect(actualOwner).to.eq(accountMock.address);
         });
 
@@ -555,27 +554,20 @@ describe("PBTSimple", () => {
       });
 
       describe("when no transfer policy is set", async () => {
+        let newTransferPolicy: Address;
+        
         beforeEach(async () => {
-          const newTransferPolicy = ADDRESS_ZERO;
-          const commitBlock = await blockchain.getLatestBlockNumber();
+          newTransferPolicy = ADDRESS_ZERO;
   
-          const packedMsg = ethers.utils.solidityPack(
-            ["uint256", "address"],
-            [commitBlock, newTransferPolicy]
-          );
-          const signature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
           subjectCaller = owner;
-
-          await ChipPBT.connect(owner.wallet).setTransferPolicy(
-            chip.address,
-            ADDRESS_ZERO,
-            await blockchain.getLatestBlockNumber(),
-            signature
-          );
         });
 
+        async function subject(): Promise<any> {
+          return PBTSimple.connect(subjectCaller.wallet).setTransferPolicy(newTransferPolicy);
+        }
+
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Transfer policy must be set");
+          await expect(subject()).to.be.revertedWith("Transfer policy cannot be zero address");
         });
       });
 
@@ -636,7 +628,7 @@ describe("PBTSimple", () => {
       });
 
       async function subject(): Promise<any> {
-        return await ChipPBT.connect(subjectCaller.wallet).setOwner(
+        return await PBTSimple.connect(subjectCaller.wallet).setOwner(
           subjectChipId,
           subjectNewOwner,
           subjectCommitBlock,
@@ -647,25 +639,25 @@ describe("PBTSimple", () => {
       it("should update the owner of the token", async () => {
         await subject();
 
-        const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectTokenId))[0];
+        const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
         expect(actualOwner).to.eq(subjectNewOwner);
       });
 
       it("should update the owner and new owner balances", async () => {
-        const preOwnerBalance = await ChipPBT.balanceOf(owner.address);
-        const preNewOwnerBalance = await ChipPBT.balanceOf(subjectNewOwner);
+        const preOwnerBalance = await PBTSimple.balanceOf(owner.address);
+        const preNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
 
         await subject();
 
-        const postOwnerBalance = await ChipPBT.balanceOf(owner.address);
-        const postNewOwnerBalance = await ChipPBT.balanceOf(subjectNewOwner);
+        const postOwnerBalance = await PBTSimple.balanceOf(owner.address);
+        const postNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
 
         expect(postOwnerBalance).to.eq(preOwnerBalance.sub(1));
         expect(postNewOwnerBalance).to.eq(preNewOwnerBalance.add(1));
       });
 
       it("should emit a Transfer event", async () => {
-        await expect(subject()).to.emit(ChipPBT, "Transfer").withArgs(
+        await expect(subject()).to.emit(PBTSimple, "Transfer").withArgs(
           owner.address,
           subjectNewOwner,
           subjectTokenId
@@ -683,18 +675,18 @@ describe("PBTSimple", () => {
         it("should update the owner of the token", async () => {
           await subject();
 
-          const actualOwner = (await ChipPBT.functions["ownerOf(uint256)"](subjectTokenId))[0];
+          const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
           expect(actualOwner).to.eq(subjectNewOwner);
         });
 
         it("should update the owner and new owner balances", async () => {
-          const preOwnerBalance = await ChipPBT.balanceOf(subjectCaller.address);
-          const preNewOwnerBalance = await ChipPBT.balanceOf(subjectNewOwner);
+          const preOwnerBalance = await PBTSimple.balanceOf(subjectCaller.address);
+          const preNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
 
           await subject();
 
-          const postOwnerBalance = await ChipPBT.balanceOf(subjectCaller.address);
-          const postNewOwnerBalance = await ChipPBT.balanceOf(subjectNewOwner);
+          const postOwnerBalance = await PBTSimple.balanceOf(subjectCaller.address);
+          const postNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
 
           expect(postOwnerBalance).to.eq(preOwnerBalance.sub(1));
           expect(postNewOwnerBalance).to.eq(preNewOwnerBalance.add(1));
@@ -766,82 +758,29 @@ describe("PBTSimple", () => {
       });
 
       async function subject(): Promise<any> {
-        return ChipPBT.connect(subjectCaller.wallet).setTransferPolicy(
-          subjectChipId,
-          subjectNewTransferPolicy,
-          subjectCommitBlock,
-          subjectSignature
-        );
+        return PBTSimple.connect(subjectCaller.wallet).setTransferPolicy(subjectNewTransferPolicy);
       }
 
       it("should update the transfer policy of the token", async () => {
         await subject();
 
-        const actualTransferPolicy = (await ChipPBT.chipTransferPolicy(subjectChipId));
+        const actualTransferPolicy = (await PBTSimple.transferPolicy());
         expect(actualTransferPolicy).to.eq(subjectNewTransferPolicy);
       });
 
       it("should emit a TransferPolicyChanged event", async () => {
-        await expect(subject()).to.emit(ChipPBT, "TransferPolicyChanged").withArgs(
-          subjectChipId,
+        await expect(subject()).to.emit(PBTSimple, "TransferPolicyChanged").withArgs(
           subjectNewTransferPolicy
         );
       });
 
-      describe("when the chip is represented by an account contract", async () => {
-
-        beforeEach(async () => {
-          subjectChipId = chipAccount.address;
-        });
-
-        it("should update the owner of the token", async () => {
-          await subject();
-
-          const actualTransferPolicy = (await ChipPBT.chipTransferPolicy(subjectChipId));
-          expect(actualTransferPolicy).to.eq(subjectNewTransferPolicy);
-        });
-      });
-
-      describe("when the signature isn't valid", async () => {
-        beforeEach(async () => {
-          const packedMsg = ethers.utils.solidityPack(["uint256"], [subjectCommitBlock]);
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Invalid signature");
-        });
-      });
-
-      describe("when the signature isn't valid for an account contract", async () => {
-        beforeEach(async () => {
-          subjectChipId = chipAccount.address;
-          const packedMsg = ethers.utils.solidityPack(["uint256"], [subjectCommitBlock]);
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Invalid signature");
-        });
-      });
-
-      describe("when the signature has expired", async () => {
-        beforeEach(async () => {
-          await blockchain.waitBlocksAsync(6);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Signature expired");
-        });
-      });
-
-      describe("when the owner isn't the caller", async () => {
+      describe("when the owner isn't the project owner", async () => {
         beforeEach(async () => {
           subjectCaller = chip;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Caller must be chip owner");
+          await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
     });
@@ -856,7 +795,7 @@ describe("PBTSimple", () => {
       });
 
       async function subject(): Promise<any> {
-        return (await ChipPBT.functions["tokenURI(uint256)"](subjectTokenId))[0];
+        return (await PBTSimple.functions["tokenURI(uint256)"](subjectTokenId))[0];
       }
 
       it("should return the correct token URI", async () => {
@@ -887,7 +826,7 @@ describe("PBTSimple", () => {
       });
 
       async function subject(): Promise<any> {
-        return (await ChipPBT.functions["tokenURI(address)"](subjectChipId))[0];
+        return (await PBTSimple.functions["tokenURI(address)"](subjectChipId))[0];
       }
 
       it("should return the correct token URI", async () => {
@@ -919,7 +858,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).transferFrom(subjectFrom, subjectTo, subjectTokenId);
+      return PBTSimple.connect(owner.wallet).transferFrom(subjectFrom, subjectTo, subjectTokenId);
     }
 
     it("should revert", async () => {
@@ -939,7 +878,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256)"](
+      return PBTSimple.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256)"](
         subjectFrom,
         subjectTo,
         subjectTokenId
@@ -965,7 +904,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256,bytes)"](
+      return PBTSimple.connect(owner.wallet).functions["safeTransferFrom(address,address,uint256,bytes)"](
         subjectFrom,
         subjectTo,
         subjectTokenId,
@@ -988,7 +927,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).approve(subjectTo, subjectTokenId);
+      return PBTSimple.connect(owner.wallet).approve(subjectTo, subjectTokenId);
     }
 
     it("should revert", async () => {
@@ -1006,7 +945,7 @@ describe("PBTSimple", () => {
     });
 
     async function subject(): Promise<any> {
-      return ChipPBT.connect(owner.wallet).setApprovalForAll(subjectOperator, subjectApproved);
+      return PBTSimple.connect(owner.wallet).setApprovalForAll(subjectOperator, subjectApproved);
     }
 
     it("should revert", async () => {

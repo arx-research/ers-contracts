@@ -31,6 +31,7 @@ export interface ManufacturerValidationInfo {
 
 export interface ProjectChipAddition {
   chipId: Address;
+  chipOwner: Address;
   nameHash: string;
   manufacturerValidation: ManufacturerValidationInfo;
 }

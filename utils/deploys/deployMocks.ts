@@ -6,18 +6,18 @@ import {
   AccountMock__factory,
   ChipRegistryMock__factory,
   ChipValidationsMock__factory,
-  ChipPBTMock__factory,
   InterfaceIdGetterMock__factory,
   ProjectRegistrarMock__factory,
   TransferPolicyMock__factory,
-  DeveloperRegistryMock__factory
+  DeveloperRegistryMock__factory,
+  PBTSimpleMock__factory
 } from "../../typechain/factories/contracts/mocks";
 
 import {
   AccountMock,
   ChipRegistryMock,
   ChipValidationsMock,
-  ChipPBTMock,
+  PBTSimpleMock,
   InterfaceIdGetterMock,
   ProjectRegistrarMock,
   TransferPolicyMock,
@@ -38,19 +38,21 @@ export default class DeployMocks {
     return developerRegistry;
   }
 
-  public async deployChipPBTMock(
+  public async deployPBTSimpleMock(
     name: string,
     symbol: string,
+    baseURI: string,
     maxBlockWindow: BigNumber,
-    baseTokenURI: string
-  ): Promise<ChipPBTMock> {
-    const ChipPBTMock = await new ChipPBTMock__factory(this._deployerSigner).deploy(
+    transferPolicy: Address
+  ): Promise<PBTSimpleMock> {
+    const PBTSimpleMock = await new PBTSimpleMock__factory(this._deployerSigner).deploy(
       name,
       symbol,
+      baseURI,
       maxBlockWindow,
-      baseTokenURI
+      transferPolicy
     );
-    return ChipPBTMock;
+    return PBTSimpleMock;
   }
 
   public async deployAccountMock(
@@ -79,15 +81,11 @@ export default class DeployMocks {
 
   public async deployChipRegistryMock(
     manufacturerRegistry: Address,
-    maxBlockWindow: BigNumber = BigNumber.from(5),
-    maxLockinPeriod: BigNumber = BigNumber.from(1000),
-    baseTokenUri: string = "https://resolve.com/chips/"
+    maxLockinPeriod: BigNumber = BigNumber.from(1000)
   ): Promise<ChipRegistryMock>{
     const chipRegistryMock = await new ChipRegistryMock__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      maxBlockWindow,
-      maxLockinPeriod,
-      baseTokenUri
+      maxLockinPeriod
     );
     return chipRegistryMock;
   }

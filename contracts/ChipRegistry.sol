@@ -72,11 +72,6 @@ contract ChipRegistry is Ownable {
         bool chipAdded;
     }
 
-    struct ManufacturerValidation {
-        bytes32 enrollmentId;
-        bytes manufacturerCertificate;
-    }
-    
     /* ============ State Variables ============ */
     IManufacturerRegistry public immutable manufacturerRegistry;
     IERS public ers;
@@ -85,7 +80,7 @@ contract ChipRegistry is Ownable {
     bool public initialized;
 
     mapping(IProjectRegistrar => ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
-    mapping(address => ChipInfo) chipEnrollments;                         // Maps chipId to ChipInfo
+    mapping(address => ChipInfo) public chipEnrollments;                         // Maps chipId to ChipInfo
     uint256 public maxLockinPeriod;                                       // Max amount of time chips can be locked into a service after a
                                                                           // project's creation timestamp
 
@@ -139,7 +134,7 @@ contract ChipRegistry is Ownable {
         
         // // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
         // // with a project enrollment during claim
-        require(address(_projectRegistrar) != address(0), "Invalid project address");
+        require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = developerRegistrar.rootNode();
@@ -167,10 +162,10 @@ contract ChipRegistry is Ownable {
     }
 
     /**
-     * @notice Allow a user to claim a chip from a project enrollment. Enrollment allows the chip to resolve to the project's preferred
+     * @notice Allow a project to add chips. Enrollment allows the chip to resolve to the project's preferred
      * service. Additionally, claiming creates a Physically-Bound Token representation of the chip.
      *
-     * @dev This function will revert if the chip has already been claimed, if invalid certificate data is provided or if the chip is
+     * @dev This function will revert if the chip has already been added, if invalid certificate data is provided or if the chip is
      * not part of the project enrollment (not in the project merkle root). Addtionally, there are checks to ensure that the calling
      * ProjectRegistrar has implemented the correct ERS logic. This function is EIP-1271 compatible and can be used to verify chip
      * claims tied to an account contract.
@@ -186,7 +181,7 @@ contract ChipRegistry is Ownable {
         address _chipId,
         address _chipOwner,
         bytes32 _nameHash,
-        ManufacturerValidation memory _manufacturerValidation
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     )
         external
         virtual
@@ -361,7 +356,7 @@ contract ChipRegistry is Ownable {
 
     function _validateManufacturerCertificate(
         address chipId,
-        ManufacturerValidation memory _manufacturerValidation
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
     )
         internal
         view

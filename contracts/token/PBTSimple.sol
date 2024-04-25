@@ -14,6 +14,8 @@ import { ERC721ReadOnly } from "./ERC721ReadOnly.sol";
 import { IPBT } from "./IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title PBTSimple
  * @author Arx
@@ -47,8 +49,9 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
     }
     
     /* ============ State Variables ============ */
+    string public baseURI;                                           // Base URI for the token
     uint256 public immutable maxBlockWindow;                     // Amount of blocks from commitBlock after which chip signatures are expired
-    ITransferPolicy transferPolicy;                              // Transfer policy for the PBT
+    ITransferPolicy public transferPolicy;                              // Transfer policy for the PBT
     mapping(address=>uint256) public chipIdToTokenId;            // Maps chipId to tokenId (tokenId is the node in ERS)
     /* ============ Constructor ============ */
 
@@ -62,14 +65,14 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
     constructor(
         string memory _name,
         string memory _symbol,
-        string memory _baseURI,
+        string memory _baseTokenURI,
         uint256 _maxBlockWindow,
         ITransferPolicy _transferPolicy
     )
         ERC721ReadOnly(_name, _symbol)
     {
         // _baseURI is inherited from ERC721Metadata
-        _baseURI = _baseURI;
+        baseURI = _baseTokenURI;
         maxBlockWindow = _maxBlockWindow;
         transferPolicy = _transferPolicy;
     }
@@ -234,6 +237,15 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
     /* ============ Internal Functions ============ */
 
     /**
+     * @dev Returns the base URI for the token. This is used to generate the tokenURI for a given tokenId.
+     *
+     * @return string       The base URI for the token
+     */
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+    /**
      * @dev Sets the transfer policy for PBTSimple.
      * @param _newPolicy    The address of the new transfer policy. We allow the zero address in case owner doesn't want to allow xfers.
      */
@@ -243,6 +255,9 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         internal
         virtual
     {
+        console.log("Setting transfer policy");
+        require(address(_newPolicy) != address(0), "Transfer policy cannot be zero address");
+
         // Set the transfer policy
         transferPolicy = _newPolicy;
 
@@ -267,7 +282,7 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         returns(uint256)
     {
         uint256 tokenId = uint256(_ersNode);
-        super._mint(_to, tokenId);
+        _mint(_to, tokenId);
 
         chipIdToTokenId[_chipId] = tokenId;
 
