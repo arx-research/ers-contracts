@@ -194,7 +194,6 @@ describe("DeveloperRegistrar", () => {
   describe("#addProject", async () => {
     let subjectNameHash: string;
     let subjectProjectRegistrar: Address;
-    let subjectProjectPublicKey: Address;
     let subjectTransferPolicy: Address;
     let subjectProjectOwnershipProof: string;
     let subjectCaller: Account;
@@ -205,7 +204,6 @@ describe("DeveloperRegistrar", () => {
 
       subjectNameHash = calculateLabelHash("ProjectX");
       subjectProjectRegistrar = projectRegistrar.address;
-      subjectProjectPublicKey = developerOne.address;
       subjectTransferPolicy = ADDRESS_ZERO;
       subjectServiceId = exampleServiceId;
       subjectProjectOwnershipProof = await createProjectOwnershipProof(
@@ -218,13 +216,10 @@ describe("DeveloperRegistrar", () => {
 
     async function subject(): Promise<any> {
       return developerRegistrar.connect(subjectCaller.wallet).addProject(
-        subjectNameHash,
         subjectProjectRegistrar,
-        subjectProjectPublicKey,
+        subjectNameHash,
         subjectServiceId,
-        subjectTransferPolicy,
-        (await blockchain.getCurrentTimestamp()).add(100),
-        subjectProjectOwnershipProof,
+        (await blockchain.getCurrentTimestamp()).add(100)
       );
     }
 
@@ -233,8 +228,8 @@ describe("DeveloperRegistrar", () => {
 
       const actualProject = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
 
-      expect(actualProject.projectPublicKey).to.eq(subjectProjectPublicKey);
-      expect(actualProject.transferPolicy).to.eq(subjectTransferPolicy);
+      expect(actualProject.nameHash).to.eq(subjectNameHash);
+      expect(actualProject.serviceId).to.eq(subjectServiceId);
     });
 
     it("should set the correct node state on the ERSRegistry", async () => {
@@ -259,19 +254,7 @@ describe("DeveloperRegistrar", () => {
       await expect(subject()).to.emit(developerRegistrar, "ProjectAdded").withArgs(
         subjectProjectRegistrar,
         calculateSubnodeHash("ProjectX.gucci.ers"),
-        subjectProjectPublicKey,
-        subjectTransferPolicy
       );
-    });
-
-    describe("when the project public key is the zero address", async () => {
-      beforeEach(async () => {
-        subjectProjectPublicKey = ADDRESS_ZERO;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid project public key");
-      });
     });
 
     describe("when the project registrar is the zero address", async () => {

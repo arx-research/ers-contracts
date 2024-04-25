@@ -323,6 +323,7 @@ contract ChipRegistry is Ownable {
      * @return                  The content associated with the chip (if chip has been claimed already)
      */
     function resolveChipId(address _chipId) external view returns (IServicesRegistry.Record[] memory) {
+        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
         return servicesRegistry.getPrimaryServiceContent(_chipId);
     }
 
@@ -333,6 +334,7 @@ contract ChipRegistry is Ownable {
      * @return                  The ERS node of the chip
      */
     function getChipNode(address _chipId) external view returns (bytes32) {
+        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
         IProjectRegistrar projectRegistrar = IProjectRegistrar(chipEnrollments[_chipId].projectRegistrar);
         bytes32 rootNode = projectRegistrar.rootNode();
         bytes32 nameHash = chipEnrollments[_chipId].nameHash;
@@ -346,7 +348,8 @@ contract ChipRegistry is Ownable {
      * @param _chipId           The chip public key
      * @return                  The owner of the chip
      */
-    function ownerOf(address _chipId) public view returns (address) {
+    function ownerOf(address _chipId) public view virtual returns (address) {
+        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
         IPBT projectRegistrar = IPBT(chipEnrollments[_chipId].projectRegistrar);
 
         return projectRegistrar.ownerOf(_chipId);

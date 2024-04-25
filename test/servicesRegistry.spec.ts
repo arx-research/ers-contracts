@@ -849,7 +849,7 @@ describe("ServicesRegistry", () => {
 
     describe("#setNewPrimaryService", async () => {
       let timeJump: number;
-      let makeClaim: boolean;
+      let addingChip: boolean;
 
       let subjectChipId: Address;
       let subjectServiceId: string;
@@ -863,13 +863,13 @@ describe("ServicesRegistry", () => {
 
       before(async () => {
         timeJump = 100;
-        makeClaim = true;
+        addingChip = true;
       });
 
       beforeEach(async () => {
         subjectChipId = chip.address;
         subjectCaller = owner;
-        if (makeClaim) {
+        if (addingChip) {
           const primaryService = serviceOneId;
           const initialTimestamp = (await blockchain.getCurrentTimestamp()).add(100);
           mockChipNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
@@ -1020,17 +1020,17 @@ describe("ServicesRegistry", () => {
         });
       });
 
-      describe("when chip has not been claimed and primaryService not set", async () => {
+      describe("when chip has not been added and primaryService not set", async () => {
         before(async () => {
-          makeClaim = false;
+          addingChip = false;
         });
 
         after(async () => {
-          makeClaim = true;
+          addingChip = true;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Chip must be minted");
+          await expect(subject()).to.be.revertedWith("Chip not added");
         });
       });
     });

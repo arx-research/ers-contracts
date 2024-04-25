@@ -9,6 +9,7 @@ import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
 import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
  * @title BaseProjectRegistrar
@@ -66,6 +67,17 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         require(rootNode == bytes32(0), "Root node already set");
         rootNode = _rootNode;
         emit RootNodeSet(_rootNode);
+    }
+
+    /* ============ External Functions ============ */
+
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        virtual
+        returns (bool)
+    {
+        return _interfaceId == type(IProjectRegistrar).interfaceId;
     }
 
     /* ============ Internal Functions ============ */

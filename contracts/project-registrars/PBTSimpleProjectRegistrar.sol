@@ -10,6 +10,7 @@ import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
 
 import { PBTSimple } from "../token/PBTSimple.sol";
+import { IPBT } from "../token/IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
 /**
@@ -166,6 +167,22 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
                 chip.nameHash
             );
         }
+    }
+
+    /**
+     * 
+     * @param _interfaceId The interface ID to check for
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        override(BaseProjectRegistrar, PBTSimple)
+        returns (bool)
+    {
+        return
+            _interfaceId == type(IProjectRegistrar).interfaceId ||
+            _interfaceId == type(IPBT).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 }
 
