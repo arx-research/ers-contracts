@@ -5,7 +5,6 @@ import {
   Address
 } from "../types";
 import {
-  ArxProjectEnrollmentManager,
   ChipRegistry,
   DeployHelper,
   ERSRegistry,
@@ -67,7 +66,6 @@ export class ERSFixture {
   public developerRegistrarFactory: DeveloperRegistrarFactory;
 
   public developerRegistrar: DeveloperRegistrar;
-  public developerManager: ArxProjectEnrollmentManager;
 
   constructor(provider: providers.Web3Provider | providers.JsonRpcProvider, ownerAddress: Address) {
     this._provider = provider;
@@ -76,9 +74,9 @@ export class ERSFixture {
     this._deployer = new DeployHelper(this._ownerSigner);
   }
 
-  public async initializeProtocol(maxBlockWindow: BigNumber = BigNumber.from(10)): Promise<void> {
+  public async initializeProtocol(maxBlockWindow: BigNumber = BigNumber.from(10), maxLockinPeriod: BigNumber = BigNumber.from(1000)): Promise<void> {
     this.manufacturerRegistry = await this._deployer.deployManufacturerRegistry(this._ownerAddress);
-    this.chipRegistry = await this._deployer.deployChipRegistry(this.manufacturerRegistry.address, [], maxBlockWindow);
+    this.chipRegistry = await this._deployer.deployChipRegistry(this.manufacturerRegistry.address, maxLockinPeriod);
     this.developerRegistry = await this._deployer.deployDeveloperRegistry(this._ownerAddress);
     this.ersRegistry = await this._deployer.deployERSRegistry(this.chipRegistry.address, this.developerRegistry.address);
     this.servicesRegistry = await this._deployer.deployServicesRegistry(this.chipRegistry.address, maxBlockWindow);
@@ -99,27 +97,27 @@ export class ERSFixture {
     );
   }
 
-  public async initializeProject(projectName: string, maxBlockWindow: BigNumber = BigNumber.from(10)): Promise<void> {
-    await this.developerRegistry.addAllowedDeveloper(this._ownerAddress, calculateLabelHash(projectName));
+  // public async initializeProject(projectName: string, maxBlockWindow: BigNumber = BigNumber.from(10)): Promise<void> {
+  //   await this.developerRegistry.addAllowedDeveloper(this._ownerAddress, calculateLabelHash(projectName));
 
-    const tx = await this.developerRegistry.createNewDeveloperRegistrar(this.developerRegistrarFactory.address);
-    this.developerRegistrar = new DeveloperRegistrar__factory(this._ownerSigner).attach(
-      await this._getDeveloperRegistrarAddress(tx.hash, this.developerRegistry)
-    );
+  //   const tx = await this.developerRegistry.createNewDeveloperRegistrar(this.developerRegistrarFactory.address);
+  //   this.developerRegistrar = new DeveloperRegistrar__factory(this._ownerSigner).attach(
+  //     await this._getDeveloperRegistrarAddress(tx.hash, this.developerRegistry)
+  //   );
 
-    this.developerManager = await this._deployer.deployArxProjectEnrollmentManager(
-      this.chipRegistry.address,
-      this.developerRegistrar.address,
-      this.ersRegistry.address,
-      this.manufacturerRegistry.address,
-      ADDRESS_ZERO,
-      maxBlockWindow
-    );
-  }
+  //   this.developerManager = await this._deployer.deployArxProjectEnrollmentManager(
+  //     this.chipRegistry.address,
+  //     this.developerRegistrar.address,
+  //     this.ersRegistry.address,
+  //     this.manufacturerRegistry.address,
+  //     ADDRESS_ZERO,
+  //     maxBlockWindow
+  //   );
+  // }
 
-  private async  _getDeveloperRegistrarAddress(txHash: string, developerRegistry: DeveloperRegistry): Promise<Address> {
-    const receipt: ethers.providers.TransactionReceipt = await this._provider.getTransactionReceipt(txHash);
-    const registrarAddress: Address = developerRegistry.interface.parseLog(receipt.logs[receipt.logs.length - 1]).args.developerRegistrar;
-    return registrarAddress;
-  }
+  // private async  _getDeveloperRegistrarAddress(txHash: string, developerRegistry: DeveloperRegistry): Promise<Address> {
+  //   const receipt: ethers.providers.TransactionReceipt = await this._provider.getTransactionReceipt(txHash);
+  //   const registrarAddress: Address = developerRegistry.interface.parseLog(receipt.logs[receipt.logs.length - 1]).args.developerRegistrar;
+  //   return registrarAddress;
+  // }
 }
