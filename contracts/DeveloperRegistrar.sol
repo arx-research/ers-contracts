@@ -8,6 +8,7 @@ import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
+import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 
 /**
  * @title DeveloperRegistrar
@@ -31,7 +32,7 @@ contract DeveloperRegistrar is Ownable {
     IDeveloperRegistry public immutable developerRegistry;
 
     bool public initialized;
-    bytes32 public rootNode;            // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
+    bytes32 public rootNode;        // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
     address[] public projects;
 
     /* ============ Constructor ============ */
@@ -95,16 +96,21 @@ contract DeveloperRegistrar is Ownable {
         external
         onlyOwner()
     {
-        // Verify the project registrar is not the zero address
-        // TODO: check interface signatures to ensure it matches IPBT and IProjectRegistrar
+        // Ensure the project registrar is a valid address
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
+
+        // The initial DeveloperRegistrar always adheres to the ServicesRegistry in ChipRegistry;
+        // future registrars could allow for custom ServicesRegistries on project creation
+        IServicesRegistry _servicesRegistry = IServicesRegistry(chipRegistry.servicesRegistry());
 
         // Call project registrar to set root node (this is an untrusted contract!)
         bytes32 projectNode = keccak256(abi.encodePacked(rootNode, _nameHash));
 
+        // NOTE: Checks are carried out on ChipRegistry to validate the project registrar
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
             _nameHash,
+            _servicesRegistry,
             _serviceId,
             _lockinPeriod
         );
@@ -116,6 +122,16 @@ contract DeveloperRegistrar is Ownable {
             address(_projectRegistrar),
             projectNode
         );
+    }
+
+    /**
+     * @notice ONLY OWNER: Remove a project from the Developer. Removes the project from the ChipRegistry.
+     * Only works if no chips have been added.
+     *
+     * @param _projectRegistrar     ProjectRegistrar contract
+     */
+    function removeProject(IProjectRegistrar _projectRegistrar) external onlyOwner() {
+        chipRegistry.removeProjectEnrollment(_projectRegistrar);
     }
 
     /* ============ View Functions ============ */

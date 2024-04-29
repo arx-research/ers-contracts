@@ -19,6 +19,12 @@ interface IERS {
         address _resolver
     ) external returns(bytes32);
 
+    function deleteChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash,
+        address _developerRegistrar
+    ) external;
+
     function deleteSubnodeRecord(
         bytes32 _node,
         bytes32 _nameHash
@@ -45,6 +51,13 @@ interface IERS {
     function getSubnodeOwner(
         bytes32 _node,
         bytes32 _nameHash
+    )
+        external
+        view
+        returns (address);
+
+    function getResolver(
+        bytes32 _node
     )
         external
         view

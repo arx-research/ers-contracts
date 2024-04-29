@@ -5,18 +5,17 @@ pragma solidity ^0.8.24;
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
 import { IManufacturerRegistry } from "./interfaces/IManufacturerRegistry.sol";
-import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
 import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
+import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
 import { IPBT } from "./token/IPBT.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-
-import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
 
 /**
  * @title ChipRegistry
@@ -36,17 +35,25 @@ contract ChipRegistry is Ownable {
 
     /* ============ Events ============ */
 
-    event ProjectEnrollmentAdded(                   // Emitted during addProjectEnrollment
+    event ProjectEnrollmentAdded(                  // Emitted during addProjectEnrollment
         address indexed developerRegistrar,
         address indexed projectRegistrar
     );
 
+    event ProjectEnrollmentRemoved(                // Emitted during removeProjectEnrollment
+        address indexed developerRegistrar,
+        address indexed projectRegistrar,
+        bytes32 nameHash
+    );
+
     event ChipAdded(                              // Emitted during claimChip
         address indexed chipId,
-        address indexed owner,
+        address indexed projectRegistrar,
+        bytes32 indexed manufacturerEnrollmentId,
+        address owner,
         bytes32 serviceId,
-        bytes32 ersNode,
-        bytes32 indexed enrollmentId
+        bytes32 ersNode
+        
     );
 
     event MaxLockinPeriodUpdated(uint256 maxLockinPeriod);  // Emitted during updateMaxLockinPeriod
@@ -61,6 +68,8 @@ contract ChipRegistry is Ownable {
     // Do we need an identifier to replace the merkle root? nodehash?
     struct ProjectInfo {
         bytes32 nameHash;
+        IDeveloperRegistrar developerRegistrar;
+        IServicesRegistry servicesRegistry;
         bytes32 serviceId;
         uint256 lockinPeriod;
         uint256 creationTimestamp;
@@ -70,8 +79,8 @@ contract ChipRegistry is Ownable {
     struct ChipInfo {
         bytes32 nameHash;
         address projectRegistrar; // projectRegistrars are both IPBT and IProjectRegistrar
-        bytes32 enrollmentId;     // enrollmentId of the chip's manufacturer
-        bool chipAdded;
+        bytes32 manufacturerEnrollmentId;     // enrollmentId of the chip's manufacturer
+        bool chipEnrolled;
     }
 
     /* ============ State Variables ============ */
@@ -82,7 +91,7 @@ contract ChipRegistry is Ownable {
     bool public initialized;
 
     mapping(IProjectRegistrar => ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
-    mapping(address => ChipInfo) public chipEnrollments;                         // Maps chipId to ChipInfo
+    mapping(address => ChipInfo) public chipEnrollments;                  // Maps chipId to ChipInfo
     uint256 public maxLockinPeriod;                                       // Max amount of time chips can be locked into a service after a
                                                                           // project's creation timestamp
 
@@ -118,10 +127,10 @@ contract ChipRegistry is Ownable {
      *                                   key that signed the chip custodyProofs and developerInclusionProofs   
      */
 
-    // TODO: we may want to allow governance to remove projects with no chips added after a certain period of time
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
         bytes32 _nameHash,
+        IServicesRegistry _servicesRegistry,
         bytes32 serviceId,
         uint256 lockinPeriod
     )
@@ -130,18 +139,21 @@ contract ChipRegistry is Ownable {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
         IDeveloperRegistrar developerRegistrar = IDeveloperRegistrar(msg.sender);
 
+        require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
+
         // Verify that the project registrar implements the necessary interfaces
         IERC165 checker = IERC165(address(_projectRegistrar));
         require(checker.supportsInterface(type(IPBT).interfaceId), "Does not implement IPBT");
         require(checker.supportsInterface(type(IProjectRegistrar).interfaceId), "Does not implement IProjectRegistrar");
 
-        // TODO: is this a sufficient check for existence?
         // Verify that the project isn't already enrolled
         require(projectEnrollments[_projectRegistrar].creationTimestamp == 0, "Project already enrolled");
-        
-        // // When enrolling a project, public key cannot be zero address so we can use as check to make sure calling address is associated
-        // // with a project enrollment during claim
-        require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
+
+        // Verify that the services registry implements the necessary interfaces
+        require(IERC165(address(_servicesRegistry)).supportsInterface(type(IServicesRegistry).interfaceId), "Does not implement IServicesRegistry");
+
+        // Look up the serviceId to ensure it exists.
+        require(_servicesRegistry.isService(serviceId), "Service does not exist");
 
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = developerRegistrar.rootNode();
@@ -156,6 +168,8 @@ contract ChipRegistry is Ownable {
 
         projectEnrollments[_projectRegistrar] = ProjectInfo({
             nameHash: _nameHash,
+            developerRegistrar: developerRegistrar,
+            servicesRegistry: _servicesRegistry,
             serviceId: serviceId,
             lockinPeriod: lockinPeriod,
             creationTimestamp: block.timestamp,
@@ -184,6 +198,7 @@ contract ChipRegistry is Ownable {
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
      */
     
+    // TODO: should we allow the removal of chips under any circumstances? transfer to another project?
     function addChip(
         address _chipId,
         address _chipOwner,
@@ -199,41 +214,35 @@ contract ChipRegistry is Ownable {
         // Verify the chip owner is set to non-zero address
         require(_chipId != address(0), "Invalid chip");
     
+        // Verify the chip owner is set to non-zero address
+        require(_chipOwner != address(0), "Invalid chip owner");
+
         // Verify the chip is being added by an enrolled project
         require(projectInfo.creationTimestamp != 0, "Project not enrolled");
 
         // Verify that the chip doesn't exist yet
-        require(!chipEnrollments[_chipId].chipAdded, "Chip already added");
-
-        // TODO: do we care if chip owner is 0?
-        // Verify the chip owner is set to non-zero address
-        require(_chipOwner != address(0), "Invalid chip owner");
+        require(!chipEnrollments[_chipId].chipEnrolled, "Chip already added");
         
         // Validate the manufacturer certificate
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
-        // Get the project's root node which is used in the creation of the subnode
-        bytes32 rootNode = projectRegistrar.rootNode();
+        IServicesRegistry _servicesRegistry = projectInfo.servicesRegistry;
 
-        // Create the chip subnode record in the ERS; if the node already exists, this should revert
-        ers.createChipRegistrySubnodeRecord(
-            rootNode, 
-            _nameHash, 
-            _chipOwner, 
-            address(servicesRegistry)
+        // Create the chip subnode record in the ERS
+        bytes32 ersNode = _createChipSubnode(
+            projectRegistrar.rootNode(),
+            _nameHash,
+            _chipOwner,
+            address(_servicesRegistry)
         );
 
         // Store chip information
         chipEnrollments[_chipId] = ChipInfo({
             nameHash: _nameHash,
             projectRegistrar: address(projectRegistrar),
-            enrollmentId: _manufacturerValidation.enrollmentId,
-            chipAdded: true
+            manufacturerEnrollmentId: _manufacturerValidation.enrollmentId,
+            chipEnrolled: true
         });
-
-        // TODO: remove, redundant with createChipRegistrySubnodeRecord.
-        // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
-        bytes32 ersNode = keccak256(abi.encodePacked(rootNode, _nameHash));
        
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
         uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.lockinPeriod ?
@@ -241,7 +250,7 @@ contract ChipRegistry is Ownable {
             projectInfo.creationTimestamp + maxLockinPeriod;
         
         // Set primaryService on ServicesRegistry
-        servicesRegistry.setInitialService(
+        _servicesRegistry.setInitialService(
             _chipId,
             projectInfo.serviceId,
             lockinPeriod
@@ -253,10 +262,57 @@ contract ChipRegistry is Ownable {
 
         emit ChipAdded(
             _chipId,
+            address(projectRegistrar),
+            _manufacturerValidation.enrollmentId,
             _chipOwner,
             projectInfo.serviceId,
-            ersNode,
-            _manufacturerValidation.enrollmentId
+            ersNode
+        );
+    }
+
+
+    /**
+     * @dev ONLY Developer REGISTRAR: Remove project enrollment from ChipRegistry. This function is only callable by DeveloperRegistrars. This
+     * function will revert if the project is not enrolled or if the project has already added chips. This function will also remove the project
+     * subnode record in the ERS.
+     *
+     * @param _projectRegistrar          Address of the ProjectRegistrar contract
+     */
+    function removeProjectEnrollment(IProjectRegistrar _projectRegistrar) external {
+        require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
+        IDeveloperRegistrar developerRegistrar = IDeveloperRegistrar(msg.sender);
+
+        // Check that the project registrar is valid
+        require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
+
+        // Verify that the project is enrolled
+        require(projectEnrollments[_projectRegistrar].creationTimestamp != 0, "Project not enrolled");
+
+        // Verify that the project is being removed by the correct developer registrar
+        require(projectEnrollments[_projectRegistrar].developerRegistrar == developerRegistrar, "Developer Registrar does not own project");
+
+        // Verify that the project has not added chips
+        require(projectEnrollments[_projectRegistrar].chipsAdded == false, "Cannot remove project with chips added");
+
+        // Get the project's root node which is used in the creation of the subnode
+        bytes32 rootNode = developerRegistrar.rootNode();
+
+        // Get the project's nameHash
+        bytes32 nameHash = projectEnrollments[_projectRegistrar].nameHash;
+
+        // Remove the chip subnode record in the ERS
+        ers.deleteChipRegistrySubnodeRecord(
+            rootNode,
+            projectEnrollments[_projectRegistrar].nameHash,
+            msg.sender
+        );
+
+        delete projectEnrollments[_projectRegistrar];
+
+        emit ProjectEnrollmentRemoved(
+            msg.sender,
+            address(_projectRegistrar),
+            nameHash
         );
     }
 
@@ -279,7 +335,7 @@ contract ChipRegistry is Ownable {
         IProjectRegistrar projectRegistrar = IProjectRegistrar(msg.sender);
 
         require(projectEnrollments[projectRegistrar].chipsAdded, "Only enrolled projects with chips can call.");
-        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
+        require(chipEnrollments[_chipId].chipEnrolled, "Chip not added");
         require(chipEnrollments[_chipId].projectRegistrar == address(projectRegistrar), "ProjectRegistrar does not own chip");
 
         bytes32 _nameHash = chipEnrollments[_chipId].nameHash;
@@ -329,19 +385,20 @@ contract ChipRegistry is Ownable {
      * @param _chipId           The chip public key
      * @return                  The content associated with the chip (if chip has been claimed already)
      */
-    function resolveChipId(address _chipId) external view returns (IServicesRegistry.Record[] memory) {
-        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
-        return servicesRegistry.getPrimaryServiceContent(_chipId);
+    function resolveChip(address _chipId) external view returns (IServicesRegistry.Record[] memory) {
+        require(chipEnrollments[_chipId].chipEnrolled, "Chip not added");
+        IServicesRegistry _servicesRegistry = IServicesRegistry(ers.getResolver(node(_chipId)));
+        return _servicesRegistry.getPrimaryServiceContent(_chipId);
     }
 
     /**
-     * @notice Get the chip's ERS node
+     * @notice Get the chip's ERS node (function name follows ENS reverse registar naming conventions)
      *
      * @param _chipId           The chip public key
      * @return                  The ERS node of the chip
      */
-    function getChipNode(address _chipId) external view returns (bytes32) {
-        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
+    function node(address _chipId) public view virtual returns (bytes32) {
+        require(chipEnrollments[_chipId].chipEnrolled, "Chip not added");
         IProjectRegistrar projectRegistrar = IProjectRegistrar(chipEnrollments[_chipId].projectRegistrar);
         bytes32 rootNode = projectRegistrar.rootNode();
         bytes32 nameHash = chipEnrollments[_chipId].nameHash;
@@ -356,7 +413,7 @@ contract ChipRegistry is Ownable {
      * @return                  The owner of the chip
      */
     function ownerOf(address _chipId) public view virtual returns (address) {
-        require(chipEnrollments[_chipId].chipAdded, "Chip not added");
+        require(chipEnrollments[_chipId].chipEnrolled, "Chip not added");
         IPBT projectRegistrar = IPBT(chipEnrollments[_chipId].projectRegistrar);
 
         return projectRegistrar.ownerOf(_chipId);
@@ -364,6 +421,42 @@ contract ChipRegistry is Ownable {
 
     /* ============ Internal Functions ============ */
 
+    /**
+     * @notice Create a chip subnode record in the ERS; if resolver is not set, set to services registry
+     *
+     * @param _rootNode         The root node of the project
+     * @param _nameHash         The namehash of the chip
+     * @param _owner            The owner of the chip
+     * @param _resolver         The resolver of the chip
+     * @return                  The ERS node of the chip
+     */
+    function _createChipSubnode(
+        bytes32 _rootNode,
+        bytes32 _nameHash,
+        address _owner,
+        address _resolver
+    )
+        internal
+        returns (bytes32)
+    {
+        // Create the chip subnode record in the ERS; if the node already exists, this should revert
+        ers.createChipRegistrySubnodeRecord(
+            _rootNode, 
+            _nameHash, 
+            _owner, 
+            _resolver
+        );
+
+        // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
+        return keccak256(abi.encodePacked(_rootNode, _nameHash));
+    }
+
+    /**
+     * @notice Validate the manufacturer certificate for a chip
+     *
+     * @param chipId                The chip public key
+     * @param _manufacturerValidation Struct containing information for chip's inclusion in manufacturer's merkle tree
+     */
     function _validateManufacturerCertificate(
         address chipId,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation

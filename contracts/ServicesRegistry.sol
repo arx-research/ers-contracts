@@ -117,7 +117,7 @@ contract ServicesRegistry is IServicesRegistry {
      */
     function createService(bytes32 _serviceId, ServiceRecord[] calldata _serviceRecords) external {
         require(_serviceId != bytes32(0), "Invalid ServiceId");
-        require(!_isService(_serviceId), "ServiceId already taken");
+        require(!isService(_serviceId), "ServiceId already taken");
 
         serviceInfo[_serviceId].owner = msg.sender;
 
@@ -233,7 +233,7 @@ contract ServicesRegistry is IServicesRegistry {
         require(_timelock != 0, "Timelock cannot be set to 0");
         require(chipServices[_chipId].primaryService == bytes32(0), "Primary service already set");
         // Covers case where _serviceId == bytes32(0) since that can't be a service per createService
-        require(_isService(_serviceId), "Service does not exist");
+        require(isService(_serviceId), "Service does not exist");
         // chipServices[_chipId].primaryService = _serviceId;
         // chipServices[_chipId].secondaryServices = new bytes32[](0);
 
@@ -280,7 +280,7 @@ contract ServicesRegistry is IServicesRegistry {
         require(_newTimelock > block.timestamp, "Timelock must be greater than current timestamp");
 
         // Covers case where _serviceId == bytes32(0) since that can't be a service per createService
-        require(_isService(_serviceId), "Service does not exist");
+        require(isService(_serviceId), "Service does not exist");
         require(!enrolledServices[_chipId][_serviceId], "Primary service cannot be secondary service");
         require(_serviceId != oldPrimaryService, "Service already set as primary service");
 
@@ -322,7 +322,7 @@ contract ServicesRegistry is IServicesRegistry {
         external
         onlyChipOwner(_chipId)
     {
-        require(_isService(_serviceId), "Service does not exist");
+        require(isService(_serviceId), "Service does not exist");
         require(!enrolledServices[_chipId][_serviceId], "Service already enrolled");
         require(_serviceId != chipServices[_chipId].primaryService, "Service already set as primary service");
 
@@ -363,7 +363,7 @@ contract ServicesRegistry is IServicesRegistry {
         external
         onlyChipOwner(_chipId)
     {
-        require(_isService(_serviceId), "Service does not exist");
+        require(isService(_serviceId), "Service does not exist");
         require(enrolledServices[_chipId][_serviceId], "Service not enrolled");
 
         bytes memory payload = abi.encodePacked(_commitBlock, _serviceId);
@@ -488,6 +488,29 @@ contract ServicesRegistry is IServicesRegistry {
         return chipServices[_chipId].secondaryServices;
     }
 
+    /**
+     * @notice Checks if a service exists
+     *
+     * @param _serviceId        The service ID
+     * @return                  True if service exists, false otherwise
+     */
+    function isService(bytes32 _serviceId) public view returns (bool) {
+        return serviceInfo[_serviceId].owner != address(0);
+    }
+
+    /**
+     * 
+     * @param _interfaceId The interface ID to check for
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        virtual
+        returns (bool)
+    {
+        return _interfaceId == type(IServicesRegistry).interfaceId;
+    }
+
     /* ============ Internal Functions ============ */
 
     /**
@@ -510,16 +533,6 @@ contract ServicesRegistry is IServicesRegistry {
         serviceInfo[_serviceId].recordTypes.push(_record.recordType);
 
         emit ServiceRecordAdded(_serviceId, _record.recordType, _record.content, _record.appendId);
-    }
-
-    /**
-     * @notice Checks if a service exists
-     *
-     * @param _serviceId        The service ID
-     * @return                  True if service exists, false otherwise
-     */
-    function _isService(bytes32 _serviceId) internal view returns (bool) {
-        return serviceInfo[_serviceId].owner != address(0);
     }
 
     /**

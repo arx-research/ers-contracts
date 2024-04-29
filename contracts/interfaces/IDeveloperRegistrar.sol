@@ -17,5 +17,10 @@ interface IDeveloperRegistrar {
         bytes calldata _ownershipProof
     )
         external;
+
+    function removeProject(
+        IProjectRegistrar _projectRegistrar
+    )
+        external;
      
 }

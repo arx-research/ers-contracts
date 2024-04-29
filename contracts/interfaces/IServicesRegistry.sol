@@ -23,4 +23,5 @@ interface IServicesRegistry {
     function getPrimaryServiceContentByRecordtype(address _chipId, bytes32 _datatype) external view returns (bytes memory);
     function getPrimaryServiceContent(address _chipId) external view returns (Record[] memory);
     function getServiceContent(address _chipId, bytes32 _serviceId) external view returns (Record[] memory);
+    function isService(bytes32 _serviceId) external view returns (bool);
 }

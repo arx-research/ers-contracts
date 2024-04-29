@@ -33,7 +33,6 @@ contract ManufacturerRegistry is Ownable {
         bytes32 indexed manufacturerId
     );
 
-    // TODO: add enrollment expiration? or enrollment count?
     event EnrollmentAdded(                  // Called in addChipEnrollment
         bytes32 indexed manufacturerId,     // Manufacturer identifier
         bytes32 indexed enrollmentId,       // Enrollment identifier

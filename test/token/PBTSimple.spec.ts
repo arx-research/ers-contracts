@@ -24,6 +24,7 @@ import {
   getAccounts
 } from "@utils/test/index";
 import {
+  calculateLabelHash,
   calculateSubnodeHash
 } from "@utils/protocolUtils";
 
@@ -62,9 +63,7 @@ describe("PBTSimple", () => {
     deployer = new DeployHelper(owner.wallet);
     transferPolicy = await deployer.mocks.deployTransferPolicyMock();
     PBTSimple = await deployer.mocks.deployPBTSimpleMock(name, symbol, baseTokenURI, maxBlockWindow, transferPolicy.address);
-
     accountMock = await deployer.mocks.deployAccountMock(chipOne.address, PBTSimple.address);
-
   });
 
   describe("#constructor", async () => {
@@ -81,17 +80,24 @@ describe("PBTSimple", () => {
 
   describe("#isChipSignatureForToken", async () => {
     let subjectChipId: Address;
+    let subjectErsNode: string;
+    let subjectTokenId: BigNumber;
     let subjectPayload: string;
     let subjectChipSignature: string;
+    let subjectTo: Address;
 
     beforeEach(async () => {
       subjectChipId = chipOne.address;
+      subjectErsNode = calculateLabelHash(subjectChipId);
+      subjectTokenId = ethers.BigNumber.from(subjectErsNode);
       subjectPayload = ethers.utils.hashMessage("random message");
       subjectChipSignature = await chipOne.wallet.signMessage(ethers.utils.arrayify(subjectPayload));
+      subjectTo = owner.address;
     });
 
     async function subject(): Promise<any> {
-      return PBTSimple.isChipSignatureForToken(subjectChipId, subjectPayload, subjectChipSignature);
+      await PBTSimple.connect(owner.wallet).testMint(subjectTo, subjectChipId, subjectErsNode);
+      return PBTSimple.isChipSignatureForToken(subjectTokenId, subjectPayload, subjectChipSignature);
     }
 
     it("should return true", async () => {
@@ -324,7 +330,6 @@ describe("PBTSimple", () => {
       await subject();
 
       const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
-      console.log("actualOwner", actualOwner);
       const actualOwnerBalance = await PBTSimple.balanceOf(subjectTo);
       expect(actualOwner).to.eq(subjectTo);
       expect(actualOwnerBalance).to.eq(ONE);

@@ -64,8 +64,6 @@ contract ERSRegistry {
 
     /* ============ External Functions ============ */
 
-    // TODO: consider letting owners set their own resolvers; change default resolver to services registry
-
     /**
      * @dev ONLY CHIP REGISTRY: Sets the record on behalf of a new chip or project subnode. Note that ChipRegistry is not the node owner.
      *
@@ -95,6 +93,33 @@ contract ERSRegistry {
 
         emit NewOwner(_node, subnode, _nameHash, _owner);
         return subnode;
+    }
+
+     /**
+     * @dev ONLY CHIP REGISTRY: Delete the record for a project subnode. Note that ChipRegistry is not the node owner.
+     *
+     * @param _node     The parent node.
+     * @param _nameHash The hash of the nameHash specifying the subnode.
+     */
+    function deleteChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash,
+        address _developerRegistrar
+    )
+        external
+        virtual
+    {
+        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
+        require(developerRegistry.isDeveloperRegistrar(_developerRegistrar), "Caller must be DeveloperRegistrar");
+        // Note: we're expecting ChipRegistry to validate that the DeveloperRegistrar is the owner of the Project who created the node.
+        
+        bytes32 subnode = _calculateSubnode(_node, _nameHash);
+        require(recordExists(subnode), "Subnode does not exist");
+
+        _setOwner(subnode, address(0));
+        _setResolver(subnode, address(0));
+
+        emit NewOwner(_node, subnode, _nameHash, address(0));
     }
 
     /**
@@ -183,6 +208,19 @@ contract ERSRegistry {
         emit Transfer(_node, _newOwner);
     }
 
+    /**
+     * @dev Sets a new resolver for a node. This function is used to set the owner of a chip node in the ERS
+     * when a chip is transferred. This function is called by the ChipRegistry when a chip is transferred.
+     *
+     * @param _node        The node
+     * @param _resolver    The address of the new resolver
+     */
+    function setChipResolver(bytes32 _node, address _resolver) external virtual {
+        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
+        require(_resolver != address(0), "New resolver cannot be null address");
+        _setResolver(_node, _resolver);
+    }
+
     /* ============ View Functions ============ */
 
     /**
@@ -222,7 +260,7 @@ contract ERSRegistry {
      * @param _nameHash     The specified nameHash.
      * @return address of the owner.
      */
-    function getSubnodeOwner(bytes32 _node, bytes32 _nameHash) external view virtual returns (address) {
+    function getSubnodeOwner(bytes32 _node, bytes32 _nameHash) public view virtual returns (address) {
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         return getOwner(subnode);
     }

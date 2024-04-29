@@ -14,8 +14,6 @@ import { ERC721ReadOnly } from "./ERC721ReadOnly.sol";
 import { IPBT } from "./IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title PBTSimple
  * @author Arx
@@ -49,10 +47,11 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
     }
     
     /* ============ State Variables ============ */
-    string public baseURI;                                           // Base URI for the token
+    string public baseURI;                                       // Base URI for the token
     uint256 public immutable maxBlockWindow;                     // Amount of blocks from commitBlock after which chip signatures are expired
-    ITransferPolicy public transferPolicy;                              // Transfer policy for the PBT
-    mapping(address=>uint256) public chipIdToTokenId;            // Maps chipId to tokenId (tokenId is the node in ERS)
+    ITransferPolicy public transferPolicy;                       // Transfer policy for the PBT
+    mapping(address=>uint256) public chipIdToTokenId;            // Maps chipId to tokenId
+    mapping(uint256=>address) public tokenIdToChipId;            // Maps tokenId to chipId
     /* ============ Constructor ============ */
 
     /**
@@ -178,17 +177,18 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
      * @dev Using OpenZeppelin's SignatureChecker library, checks if the signature is valid for the payload. Library is
      * ERC-1271 compatible, so it will check if the chipId is a contract and if so, if it implements the isValidSignature.
      *
-     * @param _chipId       The chipId to check the signature for
+     * @param _tokenId      The tokenId to check the signature for
      * @param _payload      The payload to check the signature for
      * @param _signature    The signature to check
      * @return bool         If the signature is valid, false otherwise
      */
-    function isChipSignatureForToken(address _chipId, bytes calldata _payload, bytes calldata _signature)
+    function isChipSignatureForToken(uint256 _tokenId, bytes calldata _payload, bytes calldata _signature)
         public
         view
         returns (bool)
     {
         bytes32 _payloadHash = abi.encodePacked(_payload).toEthSignedMessageHash();
+        address _chipId = tokenIdToChipId[_tokenId];
         return _chipId.isValidSignatureNow(_payloadHash, _signature);
     }
 
@@ -224,6 +224,10 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         return ownerOf(tokenIdFor(_chipId));
     }
 
+    /**
+     * 
+     * @param _interfaceId The interface ID to check for
+     */
     function supportsInterface(bytes4 _interfaceId)
         public
         view
@@ -255,7 +259,6 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         internal
         virtual
     {
-        console.log("Setting transfer policy");
         require(address(_newPolicy) != address(0), "Transfer policy cannot be zero address");
 
         // Set the transfer policy
@@ -285,6 +288,7 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         _mint(_to, tokenId);
 
         chipIdToTokenId[_chipId] = tokenId;
+        tokenIdToChipId[tokenId] = _chipId;
 
         emit PBTMint(tokenId, _chipId);
         return tokenId;

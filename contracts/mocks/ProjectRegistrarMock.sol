@@ -52,7 +52,7 @@ contract ProjectRegistrarMock {
      */
     function supportsInterface(bytes4 _interfaceId)
         public
-        view
+        pure
         returns (bool)
     {
         return

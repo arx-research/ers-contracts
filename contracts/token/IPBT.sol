@@ -14,7 +14,7 @@ interface IPBT is IERC721Metadata {
 
     function tokenIdFor(address chipAddress) external view returns (uint256);
 
-    function isChipSignatureForToken(address chipId, bytes calldata payload, bytes calldata signature)
+    function isChipSignatureForToken(uint256 tokenId, bytes calldata payload, bytes calldata signature)
         external
         view
         returns (bool);

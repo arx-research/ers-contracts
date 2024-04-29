@@ -27,7 +27,7 @@ contract ChipRegistryMock is ChipRegistry {
         IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
     ) 
       external
-      override
+      override(ChipRegistry)
     {
       chipIds[_chipId] = true;
       chipOwners[_chipId] = _owner;
