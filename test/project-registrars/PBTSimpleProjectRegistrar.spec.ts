@@ -18,7 +18,7 @@ import {
   DeveloperRegistry,
   ChipRegistryMock
 } from "@utils/contracts";
-import { NULL_NODE, ONE, ZERO } from "@utils/constants";
+import { NULL_NODE, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
 
 import {
@@ -29,10 +29,8 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
-  createManufacturerCertificate,
-  createProjectOwnershipProof
+  createManufacturerCertificate
 } from "@utils/protocolUtils";
-import { ManufacturerTree, DeveloperTree } from "@utils/common";
 
 import { Blockchain } from "@utils/common";
 import { BigNumber } from "ethers";
@@ -195,8 +193,8 @@ describe("PBTSimpleProjectRegistrar", () => {
       BigNumber.from(5),
       transferPolicy.address
     );
-  
-    projectRegistrar.connect(owner.wallet).transferOwnership(developerOne.address);
+
+    await projectRegistrar.connect(owner.wallet).transferOwnership(developerOne.address);
 
     // 15. Create example service for project
 
@@ -230,7 +228,7 @@ describe("PBTSimpleProjectRegistrar", () => {
         projectRegistrar.address,
         projectNameHash,
         serviceId,
-        100,
+        100
       );
 
   });
