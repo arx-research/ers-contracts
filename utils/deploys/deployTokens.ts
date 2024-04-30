@@ -18,13 +18,13 @@ export default class DeployTokens {
     baseTokenURI: string,
     transferPolicy: string
   ): Promise<PBTSimple> {
-    const ChipPBT = await new PBTSimple__factory(this._deployerSigner).deploy(
+    const PBTSimple = await new PBTSimple__factory(this._deployerSigner).deploy(
       name,
       symbol,
       baseTokenURI,
       maxBlockWindow,
       transferPolicy
     );
-    return ChipPBT;
+    return PBTSimple;
   }
 }

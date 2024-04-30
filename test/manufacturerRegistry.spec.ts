@@ -1,6 +1,7 @@
 import "module-alias/register";
 
-import { ethers } from "ethers";
+import { ethers } from "hardhat";
+import { Blockchain } from "@utils/common";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
@@ -29,6 +30,9 @@ describe("ManufacturerRegistry", () => {
   let chipTwo: Account;
   let invalidChip: Account;
   let deployer: DeployHelper;
+  let chainId: number;
+
+  const blockchain = new Blockchain(ethers.provider);
 
   beforeEach(async () => {
     [
@@ -42,6 +46,7 @@ describe("ManufacturerRegistry", () => {
     ] = await getAccounts();
 
     deployer = new DeployHelper(governance.wallet);
+    chainId = await blockchain.getChainId();
 
     manufacturerRegistry = await deployer.deployManufacturerRegistry(governance.address);
   });
@@ -360,7 +365,7 @@ describe("ManufacturerRegistry", () => {
         chipModel
       );
 
-      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chipOne.address),
+      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
       subjectEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
       subjectChipId = chipOne.address;
     });
@@ -381,7 +386,7 @@ describe("ManufacturerRegistry", () => {
 
     describe("when certificate is invalid", () => {
       beforeEach(async () => {
-        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, invalidChip.address)
+        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, invalidChip.address)
       });
 
       it("should return false", async () => {

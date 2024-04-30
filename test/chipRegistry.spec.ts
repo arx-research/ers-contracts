@@ -42,7 +42,7 @@ import { namehash } from "ethers/lib/utils";
 
 const expect = getWaffleExpect();
 
-describe.only("ChipRegistry", () => {
+describe("ChipRegistry", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
@@ -378,7 +378,7 @@ describe.only("ChipRegistry", () => {
           subjectChipIdOne = chipOne.address;
           subjectManufacturerValidationOne = {
             enrollmentId: chipsEnrollmentId,
-            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
+            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
           };
           subjectChipOwner = developerOne.address;
         });
@@ -474,7 +474,7 @@ describe.only("ChipRegistry", () => {
 
             subjectManufacturerValidationTwo = {
               enrollmentId: chipsEnrollmentId,
-              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, subjectChipIdTwo),
+              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipIdTwo),
             };
             subjectCaller = developerOne;
 
@@ -508,11 +508,11 @@ describe.only("ChipRegistry", () => {
 
             subjectManufacturerValidationFour = {
               enrollmentId: chipsEnrollmentId,
-              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, subjectChipIdFour),
+              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipIdFour),
             };
             subjectManufacturerValidationFive = {
               enrollmentId: chipsEnrollmentId,
-              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, subjectChipIdFive),
+              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipIdFive),
             };
             subjectCaller = developerOne;
 
@@ -583,7 +583,7 @@ describe.only("ChipRegistry", () => {
           beforeEach(async () => {
             subjectManufacturerValidationOne = {
               enrollmentId: chipsEnrollmentId,
-              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, owner.address),
+              manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, owner.address),
             };
           });
 
@@ -631,7 +631,7 @@ describe.only("ChipRegistry", () => {
           subjectChipIdOne = chipOne.address;
           subjectManufacturerValidationOne = {
             enrollmentId: chipsEnrollmentId,
-            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, subjectChipIdOne),
+            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipIdOne),
           };
 
           await developerRegistrar.connect(subjectCaller.wallet).addProject(

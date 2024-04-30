@@ -41,7 +41,7 @@ contract DeveloperRegistry is Ownable {
     // Equal to keccak256(abi.encodePacked(uint256(0), keccak256("ers")))
     bytes32 public constant ROOT_NODE = 0xda53397877d78746657194546b25f20b5c2e580045028a6fa27f07cf94e704ba;
 
-    // TODO: do we add a CHAIN_NODE?
+    // TODO: do we add a CHAIN_NODE? Or simply concatenate as `chain-name.ers`?
     
     /* ============ State Variables ============ */
     IERS public ersRegistry;

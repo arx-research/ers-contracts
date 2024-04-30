@@ -198,7 +198,6 @@ contract ChipRegistry is Ownable {
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
      */
     
-    // TODO: should we allow the removal of chips under any circumstances? transfer to another project?
     function addChip(
         address _chipId,
         address _chipOwner,

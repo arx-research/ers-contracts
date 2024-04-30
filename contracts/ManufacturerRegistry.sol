@@ -195,7 +195,7 @@ contract ManufacturerRegistry is Ownable {
     /* ============ View Functions ============ */
 
     /**
-     @dev Validate that _chipId is included in the merkle tree for _enrollmentId.
+     @dev Validate that the manufacturer has signed the current chainId and chipId to produce the certficate.
 
      * @param _enrollmentId             bytes32 identifier of the manaufacturer enrollment
      * @param _chipId                   Public key associated with the chip
@@ -211,8 +211,7 @@ contract ManufacturerRegistry is Ownable {
         view
         returns (bool)
     {
-        // TODO: we probably need block.chainid in sig
-        bytes32 msgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+        bytes32 msgHash = abi.encodePacked(block.chainid, _chipId).toEthSignedMessageHash();
         return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate);
     }
 

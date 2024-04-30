@@ -259,7 +259,7 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       const manufacturerValidationOne = {
         enrollmentId: developerChipsEnrollmentId,
-        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipOne.address),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
       } as ManufacturerValidationInfo;
 
       const chipIdTwo = chipTwo.address;
@@ -267,7 +267,7 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       const manufacturerValidationTwo = {
         enrollmentId: developerChipsEnrollmentId,
-        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chipTwo.address),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address),
       } as ManufacturerValidationInfo;
 
       subjectAdditionData = [
