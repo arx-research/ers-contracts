@@ -123,7 +123,8 @@ contract ERSRegistry {
     }
 
     /**
-     * @dev ONLY DEPLOYER, DEVELOPER REGISTRY or DEVELOPER REGISTRAR: Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
+     * @dev ONLY DEPLOYER, DEVELOPER REGISTRY or DEVELOPER REGISTRAR: Sets the record for a new subnode. May only be called by owner of node (checked
+     * in _setSubnodeOwner).
      *
      * @param _node     The parent node.
      * @param _nameHash The hash of the nameHash specifying the subnode.
@@ -145,7 +146,10 @@ contract ERSRegistry {
         address deployerCaller = records[0x0].owner;
 
         // Check to see if caller is the ERS deployer, DeveloperRegistry or a DeveloperRegistrar
-        require(msg.sender == deployerCaller || msg.sender == address(developerRegistry) || developerRegistry.isDeveloperRegistrar(msg.sender), "Caller must be Deployer or DeveloperRegistry");
+        require(
+            msg.sender == deployerCaller || msg.sender == address(developerRegistry) || developerRegistry.isDeveloperRegistrar(msg.sender),
+            "Caller must be Deployer or DeveloperRegistry"
+        );
         
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         require(_owner != address(0), "New owner cannot be null address");

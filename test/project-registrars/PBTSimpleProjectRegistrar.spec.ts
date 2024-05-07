@@ -149,7 +149,7 @@ describe("PBTSimpleProjectRegistrar", () => {
     );
 
     // 9. Initialize Chip Registry
-    await chipRegistry.connect(owner.wallet).initialize(
+    await chipRegistry.connect(owner.wallet).initializeMock(
       ersRegistry.address,
       servicesRegistry.address,
       developerRegistry.address

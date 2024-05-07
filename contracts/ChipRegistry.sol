@@ -37,7 +37,10 @@ contract ChipRegistry is Ownable {
 
     event ProjectEnrollmentAdded(                  // Emitted during addProjectEnrollment
         address indexed developerRegistrar,
-        address indexed projectRegistrar
+        address indexed projectRegistrar,
+        bytes32 nameHash,
+        address servicesRegistry,
+        bytes32 serviceId
     );
 
     event ProjectEnrollmentRemoved(                // Emitted during removeProjectEnrollment
@@ -59,7 +62,6 @@ contract ChipRegistry is Ownable {
     event MaxLockinPeriodUpdated(uint256 maxLockinPeriod);  // Emitted during updateMaxLockinPeriod
     event RegistryInitialized(                              // Emitted during initialize
         address ers,
-        address servicesRegistry,
         address developerRegistry
     );
 
@@ -86,7 +88,6 @@ contract ChipRegistry is Ownable {
     /* ============ State Variables ============ */
     IManufacturerRegistry public immutable manufacturerRegistry;
     IERS public ers;
-    IServicesRegistry public servicesRegistry;
     IDeveloperRegistry public developerRegistry;
     bool public initialized;
 
@@ -123,16 +124,19 @@ contract ChipRegistry is Ownable {
      * to steal another Developer's chips for their own enrollment (unless the private key happens to be leaked). This function will
      * revert if the project is already enrolled. See documentation for more instructions on how to create a project merkle root.
      *
-     * @param _projectRegistrar          Address of the ProjectRegistrar contract
-     *                                   key that signed the chip custodyProofs and developerInclusionProofs   
+     * @param _projectRegistrar         Address of the ProjectRegistrar contract
+     * @param _nameHash                 Label of the project's node in the ERS tree
+     * @param _servicesRegistry         Address of the ServicesRegistry contract for the project
+     * @param _serviceId                The serviceId of the project's preferred service
+     * @param _lockinPeriod             The amount of time a chip can be locked into a service for beyond the project's creation timestamp
      */
 
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
         bytes32 _nameHash,
         IServicesRegistry _servicesRegistry,
-        bytes32 serviceId,
-        uint256 lockinPeriod
+        bytes32 _serviceId,
+        uint256 _lockinPeriod
     )
         external
     {
@@ -152,8 +156,8 @@ contract ChipRegistry is Ownable {
         // Verify that the services registry implements the necessary interfaces
         require(IERC165(address(_servicesRegistry)).supportsInterface(type(IServicesRegistry).interfaceId), "Does not implement IServicesRegistry");
 
-        // Look up the serviceId to ensure it exists.
-        require(_servicesRegistry.isService(serviceId), "Service does not exist");
+        // Look up the _serviceId to ensure it exists.
+        require(_servicesRegistry.isService(_serviceId), "Service does not exist");
 
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = developerRegistrar.rootNode();
@@ -170,15 +174,18 @@ contract ChipRegistry is Ownable {
             nameHash: _nameHash,
             developerRegistrar: developerRegistrar,
             servicesRegistry: _servicesRegistry,
-            serviceId: serviceId,
-            lockinPeriod: lockinPeriod,
+            serviceId: _serviceId,
+            lockinPeriod: _lockinPeriod,
             creationTimestamp: block.timestamp,
             chipsAdded: false
         });
 
         emit ProjectEnrollmentAdded(
             msg.sender,
-            address(_projectRegistrar)
+            address(_projectRegistrar),
+            _nameHash,
+            address(_servicesRegistry),
+            _serviceId
         );
     }
 
@@ -316,10 +323,6 @@ contract ChipRegistry is Ownable {
     }
 
     /**
-     * Get ERS node from tokenData and then sets the new Owner of the chip on the ERSRegistry.
-     */
-
-    /**
      * @notice Set the owner of a chip through its projectRegistrar
      *
      * @param _chipId           The chip public key
@@ -351,17 +354,15 @@ contract ChipRegistry is Ownable {
      * during deploy.
      *
      * @param _ers                       Address of the ERS contract
-     * @param _servicesRegistry          Address of the ServicesRegistry contract
      * @param _developerRegistry         Address of the DeveloperRegistry contract
      */
-    function initialize(IERS _ers, IServicesRegistry _servicesRegistry, IDeveloperRegistry _developerRegistry) external onlyOwner {
+    function initialize(IERS _ers, IDeveloperRegistry _developerRegistry) external onlyOwner {
         require(!initialized, "Contract already initialized");
         ers = _ers;
-        servicesRegistry = _servicesRegistry;
         developerRegistry = _developerRegistry;
 
         initialized = true;
-        emit RegistryInitialized(address(_ers), address(_servicesRegistry), address(_developerRegistry));
+        emit RegistryInitialized(address(_ers), address(_developerRegistry));
     }
 
     /**
@@ -469,25 +470,5 @@ contract ChipRegistry is Ownable {
             _manufacturerValidation.manufacturerCertificate
         );
         require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
-    }
-
-    /**
-     * @notice Grab passed record type of primary service. For purposes of use within this contract we convert bytes
-     * to string
-     *
-     * @param _chipId          Chip's address
-     * @param _recordType      Bytes32 hash representing the record type being queried
-     * @return                 Content cotained in _recordType
-     */
-    function _getChipPrimaryServiceContentByRecordType(
-        address _chipId,
-        bytes32 _recordType
-    )
-        internal
-        view
-        returns (string memory)
-    {
-        bytes memory content = servicesRegistry.getPrimaryServiceContentByRecordtype(_chipId, _recordType);
-        return string(content);
     }
 }

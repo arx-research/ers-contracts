@@ -22,7 +22,7 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
-import { calculateLabelHash, calculateSubnodeHash, createProjectOwnershipProof } from "../utils/protocolUtils";
+import { calculateLabelHash, calculateSubnodeHash } from "../utils/protocolUtils";
 import { Blockchain } from "../utils/common";
 
 const expect = getWaffleExpect();
@@ -66,11 +66,12 @@ describe("DeveloperRegistrar", () => {
     developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      developerRegistry.address
+      developerRegistry.address,
+      servicesRegistry.address
     );
     await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address], owner.address);
 
-    await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
+    await chipRegistry.initialize(ersRegistry.address, developerRegistry.address);
 
     projectRegistrar = await deployer.mocks.deployProjectRegistrarMock(
       chipRegistry.address,
@@ -104,12 +105,14 @@ describe("DeveloperRegistrar", () => {
     let subjectChipRegistry: Address;
     let subjectErsRegistry: Address;
     let subjectDeveloperRegistry: Address;
+    let subjectServicesRegistry: Address;
 
     beforeEach(async () => {
       subjectOwner = developerOne.address;
       subjectChipRegistry = chipRegistry.address;
       subjectErsRegistry = ersRegistry.address;
       subjectDeveloperRegistry = developerRegistry.address;
+      subjectServicesRegistry = servicesRegistry.address;
     });
 
     async function subject(): Promise<any> {
@@ -117,7 +120,8 @@ describe("DeveloperRegistrar", () => {
         subjectOwner,
         subjectChipRegistry,
         subjectErsRegistry,
-        subjectDeveloperRegistry
+        subjectDeveloperRegistry,
+        subjectServicesRegistry
       );
     }
 
@@ -128,11 +132,13 @@ describe("DeveloperRegistrar", () => {
       const actualChipRegistry = await developerRegistrar.chipRegistry();
       const actualErsRegistry = await developerRegistrar.ers();
       const actualDeveloperRegistry = await developerRegistrar.developerRegistry();
+      const actualServicesRegistry = await developerRegistrar.servicesRegistry();
 
       expect(actualOwner).to.eq(developerOne.address);
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualErsRegistry).to.eq(ersRegistry.address);
       expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
+      expect(actualServicesRegistry).to.eq(servicesRegistry.address);
     });
   });
 
@@ -145,7 +151,8 @@ describe("DeveloperRegistrar", () => {
         developerOne.address,
         chipRegistry.address,
         ersRegistry.address,
-        fakeDeveloperRegistry.address
+        fakeDeveloperRegistry.address,
+        servicesRegistry.address
       );
 
       subjectRootNode = calculateSubnodeHash("gucci.ers");
@@ -192,25 +199,19 @@ describe("DeveloperRegistrar", () => {
   });
 
   describe("#addProject", async () => {
-    let subjectNameHash: string;
     let subjectProjectRegistrar: Address;
-    let subjectTransferPolicy: Address;
-    let subjectProjectOwnershipProof: string;
-    let subjectCaller: Account;
+    let subjectNameHash: string;
     let subjectServiceId: string;
+    let subjectLockinPeriod: BigNumber;
+    let subjectCaller: Account;
 
     beforeEach(async () => {
       developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
       subjectNameHash = calculateLabelHash("ProjectX");
       subjectProjectRegistrar = projectRegistrar.address;
-      subjectTransferPolicy = ADDRESS_ZERO;
       subjectServiceId = exampleServiceId;
-      subjectProjectOwnershipProof = await createProjectOwnershipProof(
-        developerOne,
-        subjectProjectRegistrar,
-        await blockchain.getChainId()
-      );
+      subjectLockinPeriod = (await blockchain.getCurrentTimestamp()).add(100);
       subjectCaller = developerOne;
     });
 
@@ -219,7 +220,7 @@ describe("DeveloperRegistrar", () => {
         subjectProjectRegistrar,
         subjectNameHash,
         subjectServiceId,
-        (await blockchain.getCurrentTimestamp()).add(100)
+        subjectLockinPeriod
       );
     }
 
@@ -253,7 +254,7 @@ describe("DeveloperRegistrar", () => {
     it("should emit the correct ProjectAdded event", async () => {
       await expect(subject()).to.emit(developerRegistrar, "ProjectAdded").withArgs(
         subjectProjectRegistrar,
-        calculateSubnodeHash("ProjectX.gucci.ers"),
+        calculateSubnodeHash("ProjectX.gucci.ers")
       );
     });
 

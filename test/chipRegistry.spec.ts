@@ -16,14 +16,12 @@ import {
   ManufacturerRegistry,
   ProjectRegistrarMock,
   ServicesRegistry,
-  TransferPolicyMock,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
-  DeveloperRegistryMock,
   DeveloperRegistry,
   PBTSimpleProjectRegistrar
 } from "@utils/contracts";
-import { ADDRESS_ZERO, NULL_NODE, ONE, ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
+import { ADDRESS_ZERO, NULL_NODE, ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
 
 import {
@@ -35,24 +33,21 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
-  createManufacturerCertificate,
+  createManufacturerCertificate
 } from "@utils/protocolUtils";
 import { Blockchain } from "@utils/common";
-import { namehash } from "ethers/lib/utils";
 
 const expect = getWaffleExpect();
 
-describe("ChipRegistry", () => {
+describe.only("ChipRegistry", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
   let manufacturerOne: Account;
   let chipOne: Account;
   let chipTwo: Account;
-  let chipThree: Account;
   let chipFour: Account;
   let chipFive: Account;
-  let newOwner: Account;
   let nameGovernor: Account;
 
   let manufacturerRegistry: ManufacturerRegistry;
@@ -62,8 +57,6 @@ describe("ChipRegistry", () => {
   let servicesRegistry: ServicesRegistry;
   let chipRegistry: ChipRegistry;
   let developerRegistrar: DeveloperRegistrar;
-  let transferPolicy: TransferPolicyMock;
-  let fakeProjectRegistrar: Account;
   let projectRegistrarOne: ProjectRegistrarMock;
   let projectRegistrarTwo: PBTSimpleProjectRegistrar;
   let projectRegistrarThree: ProjectRegistrarMock;
@@ -86,11 +79,8 @@ describe("ChipRegistry", () => {
       manufacturerOne,
       chipOne,
       chipTwo,
-      chipThree,
       chipFour,
       chipFive,
-      newOwner,
-      fakeProjectRegistrar,
       nameGovernor,
     ] = await getAccounts();
 
@@ -119,11 +109,10 @@ describe("ChipRegistry", () => {
     developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      developerRegistry.address
+      developerRegistry.address,
+      servicesRegistry.address
     );
     await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
-    
-    transferPolicy = await deployer.mocks.deployTransferPolicyMock();
 
     await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
       manufacturerId,
@@ -171,13 +160,11 @@ describe("ChipRegistry", () => {
 
   describe("#initialize", async () => {
     let subjectERSRegistry: Address;
-    let subjectServicesRegistry: Address;
     let subjectDeveloperRegistry: Address;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       subjectERSRegistry = ersRegistry.address;
-      subjectServicesRegistry = servicesRegistry.address;
       subjectDeveloperRegistry = developerRegistry.address;
       subjectCaller = owner;
     });
@@ -185,7 +172,6 @@ describe("ChipRegistry", () => {
     async function subject(): Promise<any> {
       return chipRegistry.connect(subjectCaller.wallet).initialize(
         subjectERSRegistry,
-        subjectServicesRegistry,
         subjectDeveloperRegistry
       );
     }
@@ -194,12 +180,10 @@ describe("ChipRegistry", () => {
       await subject();
 
       const actualErsRegistry = await chipRegistry.ers();
-      const actualServicesRegistry = await chipRegistry.servicesRegistry();
       const actualDeveloperRegistry = await chipRegistry.developerRegistry();
       const isInitialized = await chipRegistry.initialized();
 
       expect(actualErsRegistry).to.eq(ersRegistry.address);
-      expect(actualServicesRegistry).to.eq(servicesRegistry.address);
       expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
       expect(isInitialized).to.be.true;
     });
@@ -207,7 +191,6 @@ describe("ChipRegistry", () => {
     it("should emit a RegistryInitialized event", async () => {
       await expect(subject()).to.emit(chipRegistry, "RegistryInitialized").withArgs(
         subjectERSRegistry,
-        subjectServicesRegistry,
         subjectDeveloperRegistry
       );
     });
@@ -235,7 +218,7 @@ describe("ChipRegistry", () => {
 
   context("when a Developer has deployed their Registrar", async () => {
     beforeEach(async () => {
-      await chipRegistry.initialize(ersRegistry.address, servicesRegistry.address, developerRegistry.address);
+      await chipRegistry.initialize(ersRegistry.address, developerRegistry.address);
     });
 
     describe("#addProjectEnrollment", async () => {
@@ -259,13 +242,13 @@ describe("ChipRegistry", () => {
         subjectLockinPeriod = (await blockchain.getCurrentTimestamp()).add(100);
         subjectCaller = developerOne;
       });
-  
+
       async function subject(): Promise<any> {
         return developerRegistrar.connect(subjectCaller.wallet).addProject(
           subjectProjectRegistrar,
           subjectNameHash,
           subjectServiceId,
-          subjectLockinPeriod,
+          subjectLockinPeriod
         );
       }
 
@@ -274,6 +257,11 @@ describe("ChipRegistry", () => {
 
         const actualProjectInfo = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
 
+        expect(actualProjectInfo.nameHash).to.eq(subjectNameHash);
+        expect(actualProjectInfo.developerRegistrar).to.eq(developerRegistrar.address);
+        expect(actualProjectInfo.servicesRegistry).to.eq(servicesRegistry.address);
+        expect(actualProjectInfo.serviceId).to.eq(subjectServiceId);
+        expect(actualProjectInfo.lockinPeriod).to.eq(subjectLockinPeriod);
         expect(actualProjectInfo.creationTimestamp).to.eq(await blockchain.getCurrentTimestamp());
         expect(actualProjectInfo.chipsAdded).to.be.false;
       });
@@ -281,7 +269,10 @@ describe("ChipRegistry", () => {
       it("should emit the correct ProjectEnrollmentAdded event", async () => {
         await expect(subject()).to.emit(chipRegistry, "ProjectEnrollmentAdded").withArgs(
           developerRegistrar.address,
-          subjectProjectRegistrar
+          subjectProjectRegistrar,
+          subjectNameHash,
+          servicesRegistry.address,
+          subjectServiceId
         );
       });
 
@@ -336,7 +327,6 @@ describe("ChipRegistry", () => {
         let subjectCaller: Account;
 
         let subjectProjectRegistrar: Address;
-        let subjectTransferPolicy: Address;
         let subjectNameHash: string;
         let subjectServiceId: string;
         let subjectLockinPeriod: BigNumber;
@@ -347,7 +337,7 @@ describe("ChipRegistry", () => {
         beforeEach(async () => {
           developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
-          subjectTransferPolicy = ADDRESS_ZERO;
+          const transferPolicy = ADDRESS_ZERO;
           subjectCaller = developerOne;
 
           projectRegistrarTwo = await deployer.deployPBTSimpleProjectRegistrar(
@@ -358,9 +348,9 @@ describe("ChipRegistry", () => {
             "PRY",
             "https://projecty.com/",
             BigNumber.from(5),
-            subjectTransferPolicy
+            transferPolicy
           );
-          projectRegistrarTwo.connect(owner.wallet).transferOwnership(developerOne.address);
+          await projectRegistrarTwo.connect(owner.wallet).transferOwnership(developerOne.address);
 
           subjectNameHash = calculateLabelHash("ProjectY");
           subjectProjectRegistrar = projectRegistrarTwo.address;
@@ -371,8 +361,8 @@ describe("ChipRegistry", () => {
           await developerRegistrar.connect(subjectCaller.wallet).addProject(
             subjectProjectRegistrar,
             subjectNameHash,
-            subjectServiceId, 
-            subjectLockinPeriod,
+            subjectServiceId,
+            subjectLockinPeriod
           );
 
           subjectChipIdOne = chipOne.address;
@@ -391,7 +381,7 @@ describe("ChipRegistry", () => {
               nameHash: calculateLabelHash(subjectChipIdOne),
               manufacturerValidation: subjectManufacturerValidationOne,
             } as ProjectChipAddition,
-          ]
+          ];
 
           // One the mock, anyone can add a chip to a project.
           return projectRegistrarTwo.connect(subjectCaller.wallet).addChips(subjectChipAdditionOne);
@@ -485,7 +475,7 @@ describe("ChipRegistry", () => {
                 nameHash: calculateLabelHash(subjectChipIdTwo),
                 manufacturerValidation: subjectManufacturerValidationTwo,
               } as ProjectChipAddition,
-            ]
+            ];
 
           });
 
@@ -497,7 +487,7 @@ describe("ChipRegistry", () => {
             const actualNamehash = (await chipRegistry.chipEnrollments(subjectChipIdTwo)).nameHash;
             expect(actualNamehash).to.eq(calculateLabelHash(subjectChipIdTwo));
           });
-       
+
         });
 
         describe("when multiple chips are added to a project", async () => {
@@ -529,7 +519,7 @@ describe("ChipRegistry", () => {
                 nameHash: calculateLabelHash(subjectChipIdFive),
                 manufacturerValidation: subjectManufacturerValidationFive,
               } as ProjectChipAddition,
-            ]
+            ];
 
           });
 
@@ -543,7 +533,7 @@ describe("ChipRegistry", () => {
             expect(actualNamehashFour).to.eq(calculateLabelHash(subjectChipIdFour));
             expect(actualNamehashFive).to.eq(calculateLabelHash(subjectChipIdFive));
           });
-       
+
         });
 
         describe("when the chip has already been added", async () => {
@@ -594,23 +584,19 @@ describe("ChipRegistry", () => {
 
       });
 
-      describe("#removeProjectEnrollment", async () => { 
+      describe("#removeProjectEnrollment", async () => {
         let subjectProjectRegistrar: ProjectRegistrarMock;
         let subjectNameHash: string;
         let subjectCaller: Account;
         let subjectServiceId: string;
         let subjectLockinPeriod: BigNumber;
         let subjectChipIdOne: Address;
-        let mockChipNode: string;
-        let addingChip: boolean;
         let subjectChipOwner: Address;
         let subjectManufacturerValidationOne: ManufacturerValidationInfo;
 
-        let subjectChipAdditionOne: ProjectChipAddition[];
-  
         beforeEach(async () => {
           developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
-  
+
           projectRegistrarThree = await deployer.mocks.deployProjectRegistrarMock(
             chipRegistry.address,
             ersRegistry.address
@@ -638,11 +624,11 @@ describe("ChipRegistry", () => {
             subjectProjectRegistrar.address,
             subjectNameHash,
             subjectServiceId,
-            subjectLockinPeriod,
+            subjectLockinPeriod
           );
 
         });
-    
+
         async function subject(): Promise<any> {
           return developerRegistrar.connect(subjectCaller.wallet).removeProject(subjectProjectRegistrar.address);
         }
@@ -672,10 +658,10 @@ describe("ChipRegistry", () => {
             await expect(subject()).to.be.revertedWith("Cannot remove project with chips added");
           });
         });
-        
+
         describe("should not remove an unenrolled project", async () => {
           beforeEach(async () => {
-            subjectProjectRegistrar = projectRegistrarFour;  
+            subjectProjectRegistrar = projectRegistrarFour;
           });
 
           it("should revert", async () => {
@@ -688,7 +674,7 @@ describe("ChipRegistry", () => {
             await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerTwo.address, calculateLabelHash("nike"));
             await developerRegistry.connect(developerTwo.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
 
-            subjectProjectRegistrar = projectRegistrarFour; 
+            subjectProjectRegistrar = projectRegistrarFour;
 
             developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[1]);
 
@@ -696,8 +682,8 @@ describe("ChipRegistry", () => {
               subjectProjectRegistrar.address,
               subjectNameHash,
               subjectServiceId,
-              subjectLockinPeriod,
-            ); 
+              subjectLockinPeriod
+            );
           });
 
           it("should revert", async () => {

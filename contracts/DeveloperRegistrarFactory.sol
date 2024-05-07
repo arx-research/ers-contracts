@@ -2,10 +2,11 @@
 
 pragma solidity ^0.8.24;
 
+import { DeveloperRegistrar } from "./DeveloperRegistrar.sol";
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
-import { DeveloperRegistrar } from "./DeveloperRegistrar.sol";
+import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 
 /**
  * @title DeveloperRegistrarFactory
@@ -22,12 +23,14 @@ contract DeveloperRegistrarFactory {
     IChipRegistry public immutable chipRegistry;
     IERS public immutable ers;
     IDeveloperRegistry public immutable developerRegistry;
+    IServicesRegistry public immutable servicesRegistry;
 
     /* ============ Constructor ============ */
-    constructor(IChipRegistry _chipRegistry, IERS _ers, IDeveloperRegistry _developerRegistry) {
+    constructor(IChipRegistry _chipRegistry, IERS _ers, IDeveloperRegistry _developerRegistry, IServicesRegistry _servicesRegistry) {
         chipRegistry = _chipRegistry;
         ers = _ers;
         developerRegistry = _developerRegistry;
+        servicesRegistry = _servicesRegistry;
     }
 
     /* ============ External Functions ============ */
@@ -37,7 +40,7 @@ contract DeveloperRegistrarFactory {
     {
         require(IDeveloperRegistry(msg.sender) == developerRegistry, "Caller must be DeveloperRegistry");
 
-        DeveloperRegistrar newRegistrar = new DeveloperRegistrar(_owner, chipRegistry, ers, developerRegistry);
+        DeveloperRegistrar newRegistrar = new DeveloperRegistrar(_owner, chipRegistry, ers, developerRegistry, servicesRegistry);
         emit DeveloperRegistrarDeployed(address(newRegistrar), _owner);
         return address(newRegistrar);
     }

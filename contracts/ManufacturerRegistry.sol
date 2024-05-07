@@ -38,7 +38,7 @@ contract ManufacturerRegistry is Ownable {
         bytes32 indexed enrollmentId,       // Enrollment identifier
         address manufacturerCertSigner,     // Address of certificate signer for this enrollment
         address authModel,                  // Address of contract that implements example signature validation for a chip
-        string chipValidationDataUri,       // Optional: URI pointing to location of off-chain data required to validate chip is part of manufacturer enrollment (now just certificates; can be potentially optional)
+        string chipValidationDataUri,       // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
         string bootloaderApp,               // Optional: Bootloader app for this enrollment
         string chipModel                    // Chip model for this enrollment
     );
@@ -54,8 +54,8 @@ contract ManufacturerRegistry is Ownable {
         uint256 manufacturerId;
         address manufacturerCertSigner;
         address authModel;                  // Address with implementation for validating chip signatures
-        string chipValidationDataUri;       // Optional: URI pointing to location of off-chain data required to validate chip is part of manufacturer enrollment
-        string bootloaderApp;               // Optional:
+        string chipValidationDataUri;       // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
+        string bootloaderApp;               // Optional: Bootloader app for this enrollment
         string chipModel;                   // Description of chip
     }
 

@@ -1,5 +1,5 @@
 import { BigNumber, ethers, providers, Signer } from "ethers";
-import { ADDRESS_ZERO, NULL_NODE } from "../constants";
+import { NULL_NODE } from "../constants";
 
 import {
   Address
@@ -14,7 +14,6 @@ import {
   DeveloperRegistrarFactory,
   DeveloperRegistry
 } from "..";
-import { DeveloperRegistrar__factory } from "../../typechain/factories/contracts";
 
 export * from "./signatures";
 
@@ -80,14 +79,19 @@ export class ERSFixture {
     this.developerRegistry = await this._deployer.deployDeveloperRegistry(this._ownerAddress);
     this.ersRegistry = await this._deployer.deployERSRegistry(this.chipRegistry.address, this.developerRegistry.address);
     this.servicesRegistry = await this._deployer.deployServicesRegistry(this.chipRegistry.address, maxBlockWindow);
-    this.developerRegistrarFactory = await this._deployer.deployDeveloperRegistrarFactory(this.chipRegistry.address, this.ersRegistry.address, this.developerRegistry.address);
+    this.developerRegistrarFactory = await this._deployer.deployDeveloperRegistrarFactory(
+      this.chipRegistry.address,
+      this.ersRegistry.address,
+      this.developerRegistry.address,
+      this.servicesRegistry.address
+    );
 
     await this.developerRegistry.initialize(
       this.ersRegistry.address,
       [this.developerRegistrarFactory.address],
       this._ownerAddress
     );
-    await this.chipRegistry.initialize(this.ersRegistry.address, this.servicesRegistry.address, this.developerRegistry.address);
+    await this.chipRegistry.initialize(this.ersRegistry.address, this.developerRegistry.address);
 
     await this.ersRegistry.createSubnodeRecord(
       NULL_NODE,

@@ -18,6 +18,7 @@ describe("DeveloperRegistrarFactory", () => {
   let developerRegistry: Account;
   let chipRegistry: Account;
   let ersRegistry: Account;
+  let servicesRegistry: Account;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let deployer: DeployHelper;
 
@@ -27,6 +28,7 @@ describe("DeveloperRegistrarFactory", () => {
       developerRegistry,
       chipRegistry,
       ersRegistry,
+      servicesRegistry,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -34,7 +36,8 @@ describe("DeveloperRegistrarFactory", () => {
     developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      developerRegistry.address
+      developerRegistry.address,
+      servicesRegistry.address
     );
   });
 
@@ -45,10 +48,12 @@ describe("DeveloperRegistrarFactory", () => {
       const actualChipRegistry = await developerRegistrarFactory.chipRegistry();
       const actualErsRegistry = await developerRegistrarFactory.ers();
       const actualDeveloperRegistry = await developerRegistrarFactory.developerRegistry();
+      const actualServicesRegistry = await developerRegistrarFactory.servicesRegistry();
 
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualErsRegistry).to.eq(ersRegistry.address);
       expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
+      expect(actualServicesRegistry).to.eq(servicesRegistry.address);
     });
   });
 

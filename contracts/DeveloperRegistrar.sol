@@ -30,6 +30,7 @@ contract DeveloperRegistrar is Ownable {
     IChipRegistry public immutable chipRegistry;
     IERS public immutable ers;
     IDeveloperRegistry public immutable developerRegistry;
+    IServicesRegistry public immutable servicesRegistry;
 
     bool public initialized;
     bytes32 public rootNode;        // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
@@ -44,18 +45,21 @@ contract DeveloperRegistrar is Ownable {
      * @param _chipRegistry         ChipRegistry contract
      * @param _ers                  ERS registry
      * @param _developerRegistry    DeveloperRegistry contract
+     * @param _servicesRegistry     ServicesRegistry contract used by all Projects deployed by this Registrar
      */
     constructor(
         address _owner,
         IChipRegistry _chipRegistry,
         IERS _ers,
-        IDeveloperRegistry _developerRegistry
+        IDeveloperRegistry _developerRegistry,
+        IServicesRegistry _servicesRegistry
     )
         Ownable()
     {
         chipRegistry = _chipRegistry;
         ers = _ers;
         developerRegistry = _developerRegistry;
+        servicesRegistry = _servicesRegistry;
         transferOwnership(_owner);
     }
 
@@ -99,10 +103,6 @@ contract DeveloperRegistrar is Ownable {
         // Ensure the project registrar is a valid address
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
-        // The initial DeveloperRegistrar always adheres to the ServicesRegistry in ChipRegistry;
-        // future registrars could allow for custom ServicesRegistries on project creation
-        IServicesRegistry _servicesRegistry = IServicesRegistry(chipRegistry.servicesRegistry());
-
         // Call project registrar to set root node (this is an untrusted contract!)
         bytes32 projectNode = keccak256(abi.encodePacked(rootNode, _nameHash));
 
@@ -110,7 +110,7 @@ contract DeveloperRegistrar is Ownable {
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
             _nameHash,
-            _servicesRegistry,
+            servicesRegistry,
             _serviceId,
             _lockinPeriod
         );

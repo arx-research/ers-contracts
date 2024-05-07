@@ -5,13 +5,18 @@ pragma solidity ^0.8.24;
 import { ChipRegistry } from "../ChipRegistry.sol";
 import { PBTSimple } from "../token/PBTSimple.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
+import { IDeveloperRegistry } from "../interfaces/IDeveloperRegistry.sol";
+import { IERS } from "../interfaces/IERS.sol";
 import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
+import { IServicesRegistry } from "../interfaces/IServicesRegistry.sol";
 import { IManufacturerRegistry } from "../interfaces/IManufacturerRegistry.sol";
 import { PBTSimpleMock } from "./PBTSimpleMock.sol";
 
 contract ChipRegistryMock is ChipRegistry {
     mapping(address=>bool) public chipIds;
     mapping(address=>address) public chipOwners;
+
+    IServicesRegistry public servicesRegistry;
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
@@ -20,37 +25,23 @@ contract ChipRegistryMock is ChipRegistry {
         ChipRegistry(_manufacturerRegistry, _maxLockinPeriod)
     {}
 
-    function addChip(
-        address _chipId,
-        address _owner,
-        bytes32 _nameHash,
-        IChipRegistry.ManufacturerValidation memory /*_manufacturerValidation*/
-    ) 
-      external
-      override(ChipRegistry)
-    {
-      chipIds[_chipId] = true;
-      chipOwners[_chipId] = _owner;
-
-      // Get the project's root node which is used in the creation of the subnode
-      bytes32 rootNode = IProjectRegistrar(msg.sender).rootNode();
-
-      // Create the chip subnode record in the ERS; if the node already exists, this should revert
-      ers.createChipRegistrySubnodeRecord(
-        rootNode, 
-        _nameHash, 
-        _owner, 
-        address(servicesRegistry)
-      );
+    function initializeMock(IERS _ers, IServicesRegistry _servicesRegistry, IDeveloperRegistry _developerRegistry) external {
+        ers = _ers;
+        servicesRegistry = _servicesRegistry;
+        developerRegistry = _developerRegistry;
     }
 
     // Note: this originally set PBT chip state, but we currently bypass that for simpler testing
-    function mockAddChip(address _chipId, bytes32 _ersNode, address _owner) external {
+    function mockAddChip(address _chipId, address _owner) external {
         chipIds[_chipId] = true;
         chipOwners[_chipId] = _owner;
     }
 
-    function setInitialService(address _chipId, bytes32 _serviceId, uint256 _timelock) external {
+    function setInitialService(
+        address _chipId, 
+        bytes32 _serviceId,
+        uint256 _timelock
+    ) external {
         servicesRegistry.setInitialService(_chipId, _serviceId, _timelock);
     }
 
