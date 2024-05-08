@@ -22,8 +22,13 @@ export async function createDeveloperInclusionProof(signer: Account, chipId: Add
   return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
 }
 
-export async function createDeveloperCustodyProof(signer: Account, projectPublicKey: Address): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(["address"], [projectPublicKey]);
+export async function createDeveloperCustodyProof(chipId: Account, developerAddress: Address): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(["address"], [developerAddress]);
+  return chipId.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+}
+
+export async function createMigrationProof(signer: Account, chipId: Address): Promise<string> {
+  const packedMsg = ethers.utils.solidityPack(["address"], [chipId]);
   return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
 }
 

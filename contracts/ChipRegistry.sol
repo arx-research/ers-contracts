@@ -238,7 +238,7 @@ contract ChipRegistry is Ownable {
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Validate the custody proof and determine if it is a developer custody proof or migration proof; will revert if invalid proof for both cases
-        bool hasDeveloperCustodyProof = _isValidCustodyProofAndFromDeveloper(_chipId, projectInfo.developerRegistrar.owner.address, _custodyProof);
+        bool hasDeveloperCustodyProof = _isDeveloperCustodyProofAndValid(_chipId, projectInfo.developerRegistrar.owner(), _custodyProof);
 
         // Record the services registy used
         IServicesRegistry _servicesRegistry = projectInfo.servicesRegistry;
@@ -500,7 +500,7 @@ contract ChipRegistry is Ownable {
      * @param _developer       The developer's address
      * @param _custodyProof    The developer's custody proof or migration proof
      */
-    function _isValidCustodyProofAndFromDeveloper(
+    function _isDeveloperCustodyProofAndValid(
         address _chipId,
         address _developer,
         bytes memory _custodyProof

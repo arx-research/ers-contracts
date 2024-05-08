@@ -34,6 +34,7 @@ export interface ProjectChipAddition {
   chipOwner: Address;
   nameHash: string;
   manufacturerValidation: ManufacturerValidationInfo;
+  custodyProof: string;
 }
 
 export interface ServiceRecord{

@@ -33,7 +33,8 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
-  createManufacturerCertificate
+  createManufacturerCertificate,
+  createDeveloperCustodyProof
 } from "@utils/protocolUtils";
 import { Blockchain } from "@utils/common";
 
@@ -49,6 +50,7 @@ describe("ChipRegistry", () => {
   let chipFour: Account;
   let chipFive: Account;
   let nameGovernor: Account;
+  let migrationSigner: Account;
 
   let manufacturerRegistry: ManufacturerRegistry;
   let ersRegistry: ERSRegistry;
@@ -82,6 +84,7 @@ describe("ChipRegistry", () => {
       chipFour,
       chipFive,
       nameGovernor,
+      migrationSigner,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -92,7 +95,8 @@ describe("ChipRegistry", () => {
 
     chipRegistry = await deployer.deployChipRegistry(
       manufacturerRegistry.address,
-      BigNumber.from(1000)
+      BigNumber.from(1000),
+      migrationSigner.address
     );
 
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
@@ -324,6 +328,7 @@ describe("ChipRegistry", () => {
         let subjectManufacturerValidationTwo: ManufacturerValidationInfo;
         let subjectManufacturerValidationFour: ManufacturerValidationInfo;
         let subjectManufacturerValidationFive: ManufacturerValidationInfo;
+        let subjectCustodyProofChipOne: string;
         let subjectCaller: Account;
 
         let subjectProjectRegistrar: Address;
@@ -370,6 +375,8 @@ describe("ChipRegistry", () => {
             enrollmentId: chipsEnrollmentId,
             manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
           };
+
+          subjectCustodyProofChipOne = await createDeveloperCustodyProof(chipOne, developerOne.address);
           subjectChipOwner = developerOne.address;
         });
 
@@ -380,6 +387,7 @@ describe("ChipRegistry", () => {
               chipOwner: subjectChipOwner,
               nameHash: calculateLabelHash(subjectChipIdOne),
               manufacturerValidation: subjectManufacturerValidationOne,
+              custodyProof: subjectCustodyProofChipOne,
             } as ProjectChipAddition,
           ];
 
@@ -434,7 +442,8 @@ describe("ChipRegistry", () => {
             subjectManufacturerValidationOne.enrollmentId,
             subjectChipOwner,
             ethers.utils.formatBytes32String("Gucci-Flex"),
-            calculateSubnodeHash(`${subjectChipIdOne}.ProjectY.gucci.ers`)
+            calculateSubnodeHash(`${subjectChipIdOne}.ProjectY.gucci.ers`),
+            true
           );
         });
 
@@ -474,6 +483,7 @@ describe("ChipRegistry", () => {
                 chipOwner: subjectChipOwner,
                 nameHash: calculateLabelHash(subjectChipIdTwo),
                 manufacturerValidation: subjectManufacturerValidationTwo,
+                custodyProof: await createDeveloperCustodyProof(chipTwo, developerOne.address),
               } as ProjectChipAddition,
             ];
 
@@ -512,12 +522,14 @@ describe("ChipRegistry", () => {
                 chipOwner: subjectChipOwner,
                 nameHash: calculateLabelHash(subjectChipIdFour),
                 manufacturerValidation: subjectManufacturerValidationFour,
+                custodyProof: await createDeveloperCustodyProof(chipFour, developerOne.address),
               } as ProjectChipAddition,
               {
                 chipId: subjectChipIdFive,
                 chipOwner: subjectChipOwner,
                 nameHash: calculateLabelHash(subjectChipIdFive),
                 manufacturerValidation: subjectManufacturerValidationFive,
+                custodyProof: await createDeveloperCustodyProof(chipFive, developerOne.address),
               } as ProjectChipAddition,
             ];
 
@@ -593,6 +605,7 @@ describe("ChipRegistry", () => {
         let subjectChipIdOne: Address;
         let subjectChipOwner: Address;
         let subjectManufacturerValidationOne: ManufacturerValidationInfo;
+        let subjectCustodyProofChipOne: string;
 
         beforeEach(async () => {
           developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
@@ -619,6 +632,7 @@ describe("ChipRegistry", () => {
             enrollmentId: chipsEnrollmentId,
             manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipIdOne),
           };
+          subjectCustodyProofChipOne = await createDeveloperCustodyProof(chipOne, developerOne.address);
 
           await developerRegistrar.connect(subjectCaller.wallet).addProject(
             subjectProjectRegistrar.address,
@@ -651,7 +665,13 @@ describe("ChipRegistry", () => {
 
         describe("should not remove the project enrollment if chips are added", async () => {
           beforeEach(async () => {
-            await subjectProjectRegistrar.connect(subjectCaller.wallet).addChip(subjectChipIdOne, subjectChipOwner, calculateLabelHash(subjectChipIdOne), subjectManufacturerValidationOne);
+            await subjectProjectRegistrar.connect(subjectCaller.wallet).addChip(
+              subjectChipIdOne,
+              subjectChipOwner,
+              calculateLabelHash(subjectChipIdOne),
+              subjectManufacturerValidationOne,
+              subjectCustodyProofChipOne
+            );
           });
 
           it("should revert", async () => {

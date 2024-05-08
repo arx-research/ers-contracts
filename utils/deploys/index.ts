@@ -119,11 +119,13 @@ export default class DeployHelper {
 
   public async deployChipRegistry(
     manufacturerRegistry: Address,
-    maxLockinPeriod: BigNumber = BigNumber.from(1000)
+    maxLockinPeriod: BigNumber = BigNumber.from(1000),
+    migrationSigner: Address
   ): Promise<ChipRegistry> {
     const chipRegistry = await new ChipRegistry__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      maxLockinPeriod
+      maxLockinPeriod,
+      migrationSigner
     );
     return chipRegistry;
   }
