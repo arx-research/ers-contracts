@@ -275,6 +275,8 @@ contract ChipRegistry is Ownable {
             projectEnrollments[projectRegistrar].chipsAdded = true;
         }
 
+        // TODO: add a transfer event for the PBT -- likely in base registrar
+
         emit ChipAdded(
             _chipId,
             address(projectRegistrar),

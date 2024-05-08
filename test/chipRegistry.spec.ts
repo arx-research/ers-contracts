@@ -34,7 +34,8 @@ import {
   calculateLabelHash,
   calculateSubnodeHash,
   createManufacturerCertificate,
-  createDeveloperCustodyProof
+  createDeveloperCustodyProof,
+  createMigrationProof
 } from "@utils/protocolUtils";
 import { Blockchain } from "@utils/common";
 
@@ -84,7 +85,7 @@ describe("ChipRegistry", () => {
       chipFour,
       chipFive,
       nameGovernor,
-      migrationSigner,
+      migrationSigner
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -375,7 +376,7 @@ describe("ChipRegistry", () => {
             enrollmentId: chipsEnrollmentId,
             manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
           };
-
+          
           subjectCustodyProofChipOne = await createDeveloperCustodyProof(chipOne, developerOne.address);
           subjectChipOwner = developerOne.address;
         });
@@ -387,7 +388,7 @@ describe("ChipRegistry", () => {
               chipOwner: subjectChipOwner,
               nameHash: calculateLabelHash(subjectChipIdOne),
               manufacturerValidation: subjectManufacturerValidationOne,
-              custodyProof: subjectCustodyProofChipOne,
+              custodyProof: subjectCustodyProofChipOne
             } as ProjectChipAddition,
           ];
 
@@ -466,6 +467,24 @@ describe("ChipRegistry", () => {
           });
         });
 
+        describe("when the custody proof is invalid", async () => {
+          beforeEach(async () => {
+            subjectCustodyProofChipOne = await createMigrationProof(migrationSigner, chipOne.address);
+          });
+
+          it("should emit a ChipAdded event with isDeveloperCustodyProof false", async () => {
+            await expect(subject()).to.emit(chipRegistry, "ChipAdded").withArgs(
+              subjectChipIdOne,
+              subjectProjectRegistrar,
+              subjectManufacturerValidationOne.enrollmentId,
+              subjectChipOwner,
+              ethers.utils.formatBytes32String("Gucci-Flex"),
+              calculateSubnodeHash(`${subjectChipIdOne}.ProjectY.gucci.ers`),
+              false
+            );
+          });
+        });         
+
         describe("when a second chip is being added to a project", async () => {
           beforeEach(async () => {
             subjectChipIdTwo = chipTwo.address;
@@ -483,7 +502,7 @@ describe("ChipRegistry", () => {
                 chipOwner: subjectChipOwner,
                 nameHash: calculateLabelHash(subjectChipIdTwo),
                 manufacturerValidation: subjectManufacturerValidationTwo,
-                custodyProof: await createDeveloperCustodyProof(chipTwo, developerOne.address),
+                custodyProof: await createDeveloperCustodyProof(chipTwo, developerOne.address)
               } as ProjectChipAddition,
             ];
 
@@ -522,14 +541,14 @@ describe("ChipRegistry", () => {
                 chipOwner: subjectChipOwner,
                 nameHash: calculateLabelHash(subjectChipIdFour),
                 manufacturerValidation: subjectManufacturerValidationFour,
-                custodyProof: await createDeveloperCustodyProof(chipFour, developerOne.address),
+                custodyProof: await createDeveloperCustodyProof(chipFour, developerOne.address)
               } as ProjectChipAddition,
               {
                 chipId: subjectChipIdFive,
                 chipOwner: subjectChipOwner,
                 nameHash: calculateLabelHash(subjectChipIdFive),
                 manufacturerValidation: subjectManufacturerValidationFive,
-                custodyProof: await createDeveloperCustodyProof(chipFive, developerOne.address),
+                custodyProof: await createDeveloperCustodyProof(chipFive, developerOne.address)
               } as ProjectChipAddition,
             ];
 
@@ -591,6 +610,16 @@ describe("ChipRegistry", () => {
 
           it("should revert", async () => {
             await expect(subject()).to.be.revertedWith("Chip not enrolled with ManufacturerRegistry");
+          });
+        });
+
+        describe("when the custody proof is invalid", async () => {
+          beforeEach(async () => {
+            subjectCustodyProofChipOne = await createDeveloperCustodyProof(chipOne, owner.address);
+          });
+
+          it("should revert", async () => {
+            await expect(subject()).to.be.revertedWith("Invalid custody proof");
           });
         });
 
@@ -666,9 +695,9 @@ describe("ChipRegistry", () => {
         describe("should not remove the project enrollment if chips are added", async () => {
           beforeEach(async () => {
             await subjectProjectRegistrar.connect(subjectCaller.wallet).addChip(
-              subjectChipIdOne,
-              subjectChipOwner,
-              calculateLabelHash(subjectChipIdOne),
+              subjectChipIdOne, 
+              subjectChipOwner, 
+              calculateLabelHash(subjectChipIdOne), 
               subjectManufacturerValidationOne,
               subjectCustodyProofChipOne
             );

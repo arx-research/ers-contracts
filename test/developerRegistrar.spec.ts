@@ -58,7 +58,7 @@ describe("DeveloperRegistrar", () => {
     deployer = new DeployHelper(owner.wallet);
 
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
-    chipRegistry = await deployer.deployChipRegistry(manufacturerRegistry.address);
+    chipRegistry = await deployer.deployChipRegistry(manufacturerRegistry.address, BigNumber.from(1000), owner.address);
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address, maxBlockWindow);
     ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);

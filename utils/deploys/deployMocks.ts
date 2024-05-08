@@ -81,11 +81,13 @@ export default class DeployMocks {
 
   public async deployChipRegistryMock(
     manufacturerRegistry: Address,
-    maxLockinPeriod: BigNumber = BigNumber.from(1000)
+    maxLockinPeriod: BigNumber = BigNumber.from(1000),
+    migrationSigner: Address
   ): Promise<ChipRegistryMock>{
     const chipRegistryMock = await new ChipRegistryMock__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      maxLockinPeriod
+      maxLockinPeriod,
+      migrationSigner
     );
     return chipRegistryMock;
   }

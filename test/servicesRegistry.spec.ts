@@ -49,7 +49,7 @@ describe("ServicesRegistry", () => {
 
     deployer = new DeployHelper(deployAccount.wallet);
 
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(owner.address);
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(owner.address, BigNumber.from(1000), owner.address);
 
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address, maxBlockWindow);
 

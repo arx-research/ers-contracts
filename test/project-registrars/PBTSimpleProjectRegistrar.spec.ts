@@ -29,7 +29,8 @@ import {
   calculateEnrollmentId,
   calculateLabelHash,
   calculateSubnodeHash,
-  createManufacturerCertificate
+  createManufacturerCertificate,
+  createDeveloperCustodyProof
 } from "@utils/protocolUtils";
 
 import { Blockchain } from "@utils/common";
@@ -129,7 +130,7 @@ describe("PBTSimpleProjectRegistrar", () => {
     );
 
     // 4. Deploy chip registry
-    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, BigNumber.from(1000));
+    chipRegistry = await deployer.mocks.deployChipRegistryMock(manufacturerRegistry.address, BigNumber.from(1000), owner.address);
 
     // 5. Deploy Developer Registry
     developerRegistry = await deployer.deployDeveloperRegistry(owner.address);
@@ -275,12 +276,14 @@ describe("PBTSimpleProjectRegistrar", () => {
           chipOwner: developerOne.address,
           nameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
+          custodyProof: await createDeveloperCustodyProof(developerOne, chipIdOne),
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
           chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
+          custodyProof: await createDeveloperCustodyProof(developerOne, chipIdTwo),
         } as ProjectChipAddition,
       ];
       subjectCaller = developerOne;

@@ -75,7 +75,7 @@ export class ERSFixture {
 
   public async initializeProtocol(maxBlockWindow: BigNumber = BigNumber.from(10), maxLockinPeriod: BigNumber = BigNumber.from(1000)): Promise<void> {
     this.manufacturerRegistry = await this._deployer.deployManufacturerRegistry(this._ownerAddress);
-    this.chipRegistry = await this._deployer.deployChipRegistry(this.manufacturerRegistry.address, maxLockinPeriod);
+    this.chipRegistry = await this._deployer.deployChipRegistry(this.manufacturerRegistry.address, maxLockinPeriod, this._ownerAddress);
     this.developerRegistry = await this._deployer.deployDeveloperRegistry(this._ownerAddress);
     this.ersRegistry = await this._deployer.deployERSRegistry(this.chipRegistry.address, this.developerRegistry.address);
     this.servicesRegistry = await this._deployer.deployServicesRegistry(this.chipRegistry.address, maxBlockWindow);
