@@ -37,7 +37,7 @@ import { BigNumber } from "ethers";
 
 const expect = getWaffleExpect();
 
-describe("PBTSimpleProjectRegistrar", () => {
+describe.only("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let manufacturerOne: Account;
@@ -145,7 +145,8 @@ describe("PBTSimpleProjectRegistrar", () => {
     developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
       chipRegistry.address,
       ersRegistry.address,
-      developerRegistry.address
+      developerRegistry.address,
+      servicesRegistry.address
     );
 
     // 9. Initialize Chip Registry

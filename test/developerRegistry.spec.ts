@@ -16,7 +16,7 @@ import { ethers } from "hardhat";
 
 const expect = getWaffleExpect();
 
-describe("DeveloperRegistry", () => {
+describe.only("DeveloperRegistry", () => {
   let owner: Account;
   let nameGovernor: Account;
   let developerOne: Account;
@@ -24,6 +24,7 @@ describe("DeveloperRegistry", () => {
   let ersRegistry: ERSRegistry;
   let developerRegistry: DeveloperRegistry;
   let chipRegistry: Account;
+  let servicesRegistry: Account;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let deployer: DeployHelper;
 
@@ -34,6 +35,7 @@ describe("DeveloperRegistry", () => {
       developerOne,
       developerTwo,
       chipRegistry,
+      servicesRegistry,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -43,7 +45,7 @@ describe("DeveloperRegistry", () => {
     ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(chipRegistry.address, ersRegistry.address, developerRegistry.address);
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(chipRegistry.address, ersRegistry.address, developerRegistry.address, servicesRegistry.address);
   });
 
   addSnapshotBeforeRestoreAfterEach();
