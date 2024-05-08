@@ -16,7 +16,7 @@ import { ethers } from "hardhat";
 
 const expect = getWaffleExpect();
 
-describe.only("DeveloperRegistry", () => {
+describe("DeveloperRegistry", () => {
   let owner: Account;
   let nameGovernor: Account;
   let developerOne: Account;

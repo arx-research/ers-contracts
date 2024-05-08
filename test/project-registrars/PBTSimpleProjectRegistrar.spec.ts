@@ -37,7 +37,7 @@ import { BigNumber } from "ethers";
 
 const expect = getWaffleExpect();
 
-describe.only("PBTSimpleProjectRegistrar", () => {
+describe("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let manufacturerOne: Account;
