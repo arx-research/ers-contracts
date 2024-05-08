@@ -7,6 +7,7 @@ import { IProjectRegistrar } from "./IProjectRegistrar.sol";
 interface IDeveloperRegistrar {
     function initialize(bytes32 _rootNode) external;
     function rootNode() external view returns (bytes32);
+    function owner() external view returns (address);
 
     function addProject(
         bytes32 _nameHash,

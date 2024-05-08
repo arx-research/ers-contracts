@@ -31,7 +31,8 @@ contract ProjectRegistrarMock {
         address chipId,
         address chipOwner,
         bytes32 nodeLabel,
-        IChipRegistry.ManufacturerValidation calldata _manufacturerValidation
+        IChipRegistry.ManufacturerValidation calldata _manufacturerValidation,
+        bytes memory custodyProof
     )
         external
     {
@@ -42,7 +43,8 @@ contract ProjectRegistrarMock {
             chipId,
             chipOwner,
             nodeLabel,
-            _manufacturerValidation
+            _manufacturerValidation,
+            custodyProof
         );
     }
 

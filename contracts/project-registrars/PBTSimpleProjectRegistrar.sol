@@ -29,6 +29,7 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
         address chipOwner;
         bytes32 nameHash; // A label used to identify the chip; in a PBT imlementation, this might match the tokenId
         IChipRegistry.ManufacturerValidation manufacturerValidation;
+        bytes custodyProof;
     }
     
     /* ============ Constructor ============ */
@@ -159,7 +160,8 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
                 chip.chipId,
                 chip.chipOwner,
                 chip.nameHash,
-                chip.manufacturerValidation
+                chip.manufacturerValidation,
+                chip.custodyProof
             );
             _mint(
                 chip.chipOwner,

@@ -20,9 +20,10 @@ contract ChipRegistryMock is ChipRegistry {
     
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
-        uint256 _maxLockinPeriod
+        uint256 _maxLockinPeriod,
+        address _migrationSigner
     )
-        ChipRegistry(_manufacturerRegistry, _maxLockinPeriod)
+        ChipRegistry(_manufacturerRegistry, _maxLockinPeriod, _migrationSigner)
     {}
 
     function initializeMock(IERS _ers, IServicesRegistry _servicesRegistry, IDeveloperRegistry _developerRegistry) external {

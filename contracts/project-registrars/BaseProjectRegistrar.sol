@@ -90,17 +90,25 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
      * @param _chipId                   Address of the chip being claimed
      * @param _chipOwner                Intended owner of the chip being claimed
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
+     * @param _custodyProof             Proof of custody for the chip
      */
     function _addChip(
         address _chipId,
         address _chipOwner,
         bytes32 _nameHash,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+        bytes memory _custodyProof
     ) 
         internal
         onlyOwner()
     {
         // Registrar calls the addChip function on the ChipRegistry
-        chipRegistry.addChip(_chipId, _chipOwner, _nameHash, _manufacturerValidation);
+        chipRegistry.addChip(
+            _chipId, 
+            _chipOwner, 
+            _nameHash,
+            _manufacturerValidation, 
+            _custodyProof
+        );
     }
 }

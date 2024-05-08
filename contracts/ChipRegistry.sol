@@ -55,7 +55,8 @@ contract ChipRegistry is Ownable {
         bytes32 indexed manufacturerEnrollmentId,
         address owner,
         bytes32 serviceId,
-        bytes32 ersNode
+        bytes32 ersNode,
+        bool    hasDeveloperCustodyProof
         
     );
 
@@ -90,6 +91,7 @@ contract ChipRegistry is Ownable {
     IERS public ers;
     IDeveloperRegistry public developerRegistry;
     bool public initialized;
+    address public migrationSigner;
 
     mapping(IProjectRegistrar => ProjectInfo) public projectEnrollments;  // Maps ProjectRegistrar addresses to ProjectInfo
     mapping(address => ChipInfo) public chipEnrollments;                  // Maps chipId to ChipInfo
@@ -106,12 +108,14 @@ contract ChipRegistry is Ownable {
     */
     constructor(
         IManufacturerRegistry _manufacturerRegistry,
-        uint256 _maxLockinPeriod
+        uint256 _maxLockinPeriod,
+        address _migrationSigner
     )
         Ownable()
     {
         manufacturerRegistry = _manufacturerRegistry;
         maxLockinPeriod = _maxLockinPeriod;
+        migrationSigner = _migrationSigner;
     }
 
     /* ============ External Functions ============ */
@@ -203,13 +207,14 @@ contract ChipRegistry is Ownable {
      * @param _nameHash                     Label of the node in the ERS tree; typically the chipId unless the project wishes to use 
      *                                      another unique identifier. The full ersNode will be used as the tokenId for the issued PBT.
      * @param _manufacturerValidation       Struct containing information for chip's inclusion in manufacturer's merkle tree
+     * @param _custodyProof                 Proof of chip custody by the developer; this can also be a migration proof
      */
-    
     function addChip(
         address _chipId,
         address _chipOwner,
         bytes32 _nameHash,
-        IChipRegistry.ManufacturerValidation memory _manufacturerValidation
+        IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
+        bytes memory _custodyProof
     )
         external
         virtual
@@ -232,6 +237,10 @@ contract ChipRegistry is Ownable {
         // Validate the manufacturer certificate
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
+        // Validate the custody proof and determine if it is a developer custody proof or migration proof; will revert if invalid proof for both cases
+        bool hasDeveloperCustodyProof = _isValidCustodyProofAndFromDeveloper(_chipId, projectInfo.developerRegistrar.owner.address, _custodyProof);
+
+        // Record the services registy used
         IServicesRegistry _servicesRegistry = projectInfo.servicesRegistry;
 
         // Create the chip subnode record in the ERS
@@ -272,7 +281,8 @@ contract ChipRegistry is Ownable {
             _manufacturerValidation.enrollmentId,
             _chipOwner,
             projectInfo.serviceId,
-            ersNode
+            ersNode,
+            hasDeveloperCustodyProof
         );
     }
 
@@ -377,6 +387,15 @@ contract ChipRegistry is Ownable {
         emit MaxLockinPeriodUpdated(_maxLockinPeriod);
     }
 
+    /**
+     * @notice ONLY OWNER: Update the migration signer address
+     *
+     * @param _migrationSigner         The new migration signer address
+     */
+    function updateMigrationSigner(address _migrationSigner) external onlyOwner {
+        migrationSigner = _migrationSigner;
+    }
+
     /* ============ View Functions ============ */
 
     /**
@@ -470,5 +489,36 @@ contract ChipRegistry is Ownable {
             _manufacturerValidation.manufacturerCertificate
         );
         require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
+    }
+
+    /**
+     * 
+     * @notice Validate the developer custody proof for a chip; should return true if the developer signed the developer address, 
+     * false if the migration signer signed the chipId and should revert if the proof is invalid for either case.
+     * 
+     * @param _chipId           The chip public key
+     * @param _developer       The developer's address
+     * @param _custodyProof    The developer's custody proof or migration proof
+     */
+    function _isValidCustodyProofAndFromDeveloper(
+        address _chipId,
+        address _developer,
+        bytes memory _custodyProof
+    )
+        internal
+        view
+        returns (bool)
+    {
+        // For developer custody proofs, the chip signs the developer address. For migration proofs the migration signer signs the chipId
+        bytes32 developerMsgHash = abi.encodePacked(_developer).toEthSignedMessageHash();
+        bytes32 migrationMsgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+
+        // If the developer signed the developer address, return 
+        if(_chipId.isValidSignatureNow(developerMsgHash, _custodyProof))
+            return true;
+        else if(migrationSigner.isValidSignatureNow(migrationMsgHash, _custodyProof))
+            return false;
+        else
+            revert("Invalid custody proof");
     }
 }

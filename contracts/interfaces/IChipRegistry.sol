@@ -26,7 +26,8 @@ interface IChipRegistry {
         address _chipId,
         address _owner,
         bytes32 _nameHash,
-        ManufacturerValidation calldata _manufacturerValidation
+        ManufacturerValidation calldata _manufacturerValidation,
+        bytes calldata _custodyProof
     )
         external;
 
