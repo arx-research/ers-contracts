@@ -30,7 +30,8 @@ import {
   calculateLabelHash,
   calculateSubnodeHash,
   createManufacturerCertificate,
-  createDeveloperCustodyProof
+  createDeveloperCustodyProof,
+  createMigrationProof
 } from "@utils/protocolUtils";
 
 import { Blockchain } from "@utils/common";
@@ -276,14 +277,14 @@ describe("PBTSimpleProjectRegistrar", () => {
           chipOwner: developerOne.address,
           nameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
-          custodyProof: await createDeveloperCustodyProof(developerOne, chipIdOne),
+          custodyProof: await createDeveloperCustodyProof(chipOne, developerOne.address),
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
           chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
-          custodyProof: await createDeveloperCustodyProof(developerOne, chipIdTwo),
+          custodyProof: await createMigrationProof(owner, chipTwo.address),
         } as ProjectChipAddition,
       ];
       subjectCaller = developerOne;
