@@ -103,8 +103,16 @@ contract DeveloperRegistrar is Ownable {
         // Ensure the project registrar is a valid address
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
+        bytes32 projectNode = ers.createSubnodeRecord(
+            rootNode,
+            _nameHash,
+            address(_projectRegistrar),
+            address(_projectRegistrar)
+        );
+
         // Call project registrar to set root node (this is an untrusted contract!)
-        bytes32 projectNode = keccak256(abi.encodePacked(rootNode, _nameHash));
+        _projectRegistrar.setRootNode(projectNode);
+        projects.push(address(_projectRegistrar));
 
         // NOTE: Checks are carried out on ChipRegistry to validate the project registrar
         chipRegistry.addProjectEnrollment(
@@ -114,9 +122,6 @@ contract DeveloperRegistrar is Ownable {
             _serviceId,
             _lockinPeriod
         );
-
-        _projectRegistrar.setRootNode(projectNode);
-        projects.push(address(_projectRegistrar));
 
         emit ProjectAdded(
             address(_projectRegistrar),

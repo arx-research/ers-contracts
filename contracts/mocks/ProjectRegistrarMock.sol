@@ -2,63 +2,74 @@
 
 pragma solidity ^0.8.24;
 
+import { BaseProjectRegistrar } from "../project-registrars/BaseProjectRegistrar.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
+import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
 import { IERS } from "../interfaces/IERS.sol";
-import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IPBT } from "../token/IPBT.sol";
+import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
+import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
+import { PBTSimpleMock } from "./PBTSimpleMock.sol";
 
-contract ProjectRegistrarMock {
-    
-    IChipRegistry public immutable chipRegistry;
-    IERS public immutable ers;
+contract ProjectRegistrarMock is BaseProjectRegistrar, PBTSimpleMock {
 
-    bytes32 public rootNode;
-
-    constructor(IChipRegistry _chipRegistry, IERS _ers) {
-        chipRegistry = _chipRegistry;
-        ers = _ers;
-    }
-    
-    function setRootNode(
-        bytes32 _rootNode
-    )
-        external
-    {
-        rootNode = _rootNode;
+    /* ============ Structs ============ */
+    struct ProjectChipAddition {
+        address chipId;
+        address chipOwner;
+        bytes32 nameHash; // A label used to identify the chip; in a PBT imlementation, this might match the tokenId
+        IChipRegistry.ManufacturerValidation manufacturerValidation;
+        bytes custodyProof;
     }
 
-    function addChip(
-        address chipId,
-        address chipOwner,
-        bytes32 nodeLabel,
-        IChipRegistry.ManufacturerValidation calldata _manufacturerValidation,
-        bytes memory custodyProof
-    )
-        external
-    {
-        // NOTE: Don't use in prod. We are passing in the "label" in the ChipAddition struct then over-writing for
-        // testing convenience.
+    constructor(IChipRegistry _chipRegistry, IERS _ers, IDeveloperRegistrar _developerRegistrar)
+        BaseProjectRegistrar(_chipRegistry, _ers, _developerRegistrar)
+        PBTSimpleMock("SimplePBT", "PBT", "pbt.com", 5, ITransferPolicy(address(0)))
+    {}
 
-        chipRegistry.addChip(
-            chipId,
-            chipOwner,
-            nodeLabel,
-            _manufacturerValidation,
-            custodyProof
-        );
-    }
-
-     /**
+    /**
+     * @notice ONLY OWNER: Allow the project manager to add chips to the project.
      * 
-     * @param _interfaceId The interface ID to check for
+     * @param _chips    Array of information needed for claiming chips
      */
+    function addChips(
+        ProjectChipAddition[] calldata _chips
+    ) 
+        external
+        onlyOwner()
+    {
+        for (uint256 i = 0; i < _chips.length; i++) {
+            ProjectChipAddition memory chip = _chips[i];
+            _addChip(
+                chip.chipId,
+                chip.chipOwner,
+                chip.nameHash,
+                chip.manufacturerValidation,
+                chip.custodyProof
+            );
+            _mint(chip.chipOwner, chip.chipId, chip.nameHash);
+        }
+    }
+
+    function setChipNodeOwnerMock(
+        address _chipId,
+        address _newOwner
+    )
+        external
+        onlyOwner()
+    {
+        chipRegistry.setChipNodeOwner(_chipId, _newOwner);
+    }
+
     function supportsInterface(bytes4 _interfaceId)
         public
-        pure
+        view
+        override(BaseProjectRegistrar, PBTSimpleMock)
         returns (bool)
     {
         return
             _interfaceId == type(IProjectRegistrar).interfaceId ||
-            _interfaceId == type(IPBT).interfaceId;
+            _interfaceId == type(IPBT).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 }

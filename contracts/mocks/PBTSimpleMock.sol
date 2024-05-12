@@ -7,13 +7,9 @@ import { IPBT } from "../token/IPBT.sol";
 import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
 
 contract PBTSimpleMock is PBTSimple {
-    address public owner;
-
     constructor(string memory _name, string memory _symbol, string memory _baseURI, uint256 maxBlockWindow, ITransferPolicy _transferPolicy) 
         PBTSimple(_name, _symbol, _baseURI, maxBlockWindow, _transferPolicy)
-    {
-        owner = msg.sender;
-    }
+    {}
 
     function testMint(
         address _to,
@@ -28,7 +24,6 @@ contract PBTSimpleMock is PBTSimple {
     )
         public
     {
-        require(msg.sender == owner, "Ownable: caller is not the owner");
         _setTransferPolicy(_newPolicy);
     }
 
@@ -40,6 +35,7 @@ contract PBTSimpleMock is PBTSimple {
         public
         view
         override(PBTSimple)
+        virtual
         returns (bool)
     {
         return

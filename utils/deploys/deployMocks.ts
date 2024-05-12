@@ -23,6 +23,7 @@ import {
   TransferPolicyMock,
   DeveloperRegistryMock
 } from "../contracts";
+import { ADDRESS_ZERO } from "..";
 
 export default class DeployMocks {
   private _deployerSigner: Signer;
@@ -45,14 +46,14 @@ export default class DeployMocks {
     maxBlockWindow: BigNumber,
     transferPolicy: Address
   ): Promise<PBTSimpleMock> {
-    const PBTSimpleMock = await new PBTSimpleMock__factory(this._deployerSigner).deploy(
+    const pbtSimpleMock = await new PBTSimpleMock__factory(this._deployerSigner).deploy(
       name,
       symbol,
       baseURI,
       maxBlockWindow,
       transferPolicy
     );
-    return PBTSimpleMock;
+    return pbtSimpleMock;
   }
 
   public async deployAccountMock(
@@ -65,11 +66,13 @@ export default class DeployMocks {
 
   public async deployProjectRegistrarMock(
     chipRegistry: Address,
-    ersRegistry: Address
+    ersRegistry: Address,
+    developerRegistrar: Address = ADDRESS_ZERO
   ): Promise<ProjectRegistrarMock> {
     const registrarMock = await new ProjectRegistrarMock__factory(this._deployerSigner).deploy(
       chipRegistry,
-      ersRegistry
+      ersRegistry,
+      developerRegistrar
     );
     return registrarMock;
   }
