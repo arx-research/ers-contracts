@@ -480,6 +480,8 @@ contract ChipRegistry is Ownable {
             chipId,
             _manufacturerValidation.manufacturerCertificate
         );
+        bool isValidEnrollment = manufacturerRegistry.isValidEnrollment(_manufacturerValidation.enrollmentId);
+        require(isValidEnrollment, "Expired manufacturer enrollment");
         require(isEnrolledChip, "Chip not enrolled with ManufacturerRegistry");
     }
 

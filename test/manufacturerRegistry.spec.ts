@@ -20,7 +20,7 @@ import { calculateEnrollmentId } from "@utils/index";
 
 const expect = getWaffleExpect();
 
-describe("ManufacturerRegistry", () => {
+describe.only("ManufacturerRegistry", () => {
   let governance: Account;
   let manufacturerOne: Account;
   let manufacturerTwo: Account;
@@ -232,6 +232,92 @@ describe("ManufacturerRegistry", () => {
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Only manufacturer can call this function");
       });
+    });
+  });
+
+  describe("#updateChipEnrollment", async () => {
+    let subjectManufacturerId: string;
+    let subjectManufacturerIdTwo: string;
+    let subjectCertSigner: Address;
+    let subjectCertSignerTwo: Address;
+    let subjectAuthModel: Address;
+    let subjectBootloaderApp: string;
+    let subjectChipModel: string;
+    let subjectChipValidationDataUri: string;
+    let subjectCaller: Account;
+
+    let expectedEnrollmentId: string;
+    let expectedEnrollmentIdTwo: string;
+
+    beforeEach(async () => {
+      subjectManufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
+      subjectManufacturerIdTwo = ethers.utils.formatBytes32String("manufacturerTwo");
+
+      await manufacturerRegistry.addManufacturer(subjectManufacturerId, manufacturerOne.address);
+      await manufacturerRegistry.addManufacturer(subjectManufacturerIdTwo, manufacturerTwo.address);
+
+      expectedEnrollmentId = calculateEnrollmentId(
+        subjectManufacturerId,
+        ZERO
+      );
+
+      expectedEnrollmentIdTwo = calculateEnrollmentId(
+        subjectManufacturerIdTwo,
+        ZERO
+      );
+
+      subjectCertSigner = manufacturerOne.address;
+      subjectCertSignerTwo = manufacturerTwo.address;
+
+      subjectAuthModel = authModel.address;
+      subjectChipValidationDataUri = "ipfs://ipfsHash";
+      subjectBootloaderApp = "https://bootloader.app";
+      subjectChipModel = "SuperCool ChipModel";
+      subjectCaller = manufacturerOne;
+    });
+
+    async function subject(): Promise<any> {
+      await manufacturerRegistry.connect(manufacturerTwo.wallet).addChipEnrollment(
+        subjectManufacturerIdTwo,
+        subjectCertSignerTwo,
+        subjectAuthModel,
+        subjectChipValidationDataUri,
+        subjectBootloaderApp,
+        subjectChipModel
+      );
+
+      return await manufacturerRegistry.connect(subjectCaller.wallet).addChipEnrollment(
+        subjectManufacturerId,
+        subjectCertSigner,
+        subjectAuthModel,
+        subjectChipValidationDataUri,
+        subjectBootloaderApp,
+        subjectChipModel
+      );
+    }
+
+    it("should set the enrollment to active correctly", async () => {
+      await subject();
+
+      const eInfo = await manufacturerRegistry.getEnrollmentInfo(expectedEnrollmentId);
+
+      expect(eInfo.active).to.eq(true);
+    });
+
+    it("should disable enrollment", async () => {
+      await subject();
+
+      await manufacturerRegistry.connect(subjectCaller.wallet).updateChipEnrollment(subjectManufacturerId, false, expectedEnrollmentId);
+
+      const eInfo = await manufacturerRegistry.getEnrollmentInfo(expectedEnrollmentId);
+
+      expect(eInfo.active).to.eq(false);
+    });
+
+    it("should fail to disable enrollment when another manufacturer", async () => {
+      await subject();
+
+      await expect(manufacturerRegistry.connect(subjectCaller.wallet).updateChipEnrollment(subjectManufacturerId, false, expectedEnrollmentIdTwo)).to.be.revertedWith("Wrong manufacturer for enrollment id");
     });
   });
 

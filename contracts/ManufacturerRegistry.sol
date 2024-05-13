@@ -57,6 +57,7 @@ contract ManufacturerRegistry is Ownable {
         string chipValidationDataUri;       // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
         string bootloaderApp;               // Optional: Bootloader app for this enrollment
         string chipModel;                   // Description of chip
+        bool active;                        // If enrollment can be used to validate chips
     }
 
     struct ManufacturerInfo {
@@ -126,7 +127,8 @@ contract ManufacturerRegistry is Ownable {
             authModel: _authModel,
             chipValidationDataUri: _chipValidationDataUri,
             bootloaderApp: _bootloaderApp,
-            chipModel: _chipModel
+            chipModel: _chipModel,
+            active: true
         });
 
         manufacturers[_manufacturerId].enrollments.push(enrollmentId);
@@ -142,6 +144,22 @@ contract ManufacturerRegistry is Ownable {
             _chipModel
         );
 
+    }
+
+    /**
+     * @dev ONLY MANUFACTURER: Updates the active status of an enrollment. Only owner address associated with _manufacturerId can call this function.
+     * 
+     * @param _manufacturerId The manufacturer id associated with the enrollment
+     * @param _active Whether or not to set the enrollment as active
+     * @param _enrollmentId The enrollment id to update
+     */
+    function updateChipEnrollment(
+        bytes32 _manufacturerId, 
+        bool _active, 
+        bytes32 _enrollmentId
+    ) external onlyManufacturer(_manufacturerId) {
+        require(enrollments[_enrollmentId].manufacturerId == uint256(_manufacturerId), "Wrong manufacturer for enrollment id");
+        enrollments[_enrollmentId].active = _active;
     }
 
     /**
@@ -213,6 +231,10 @@ contract ManufacturerRegistry is Ownable {
     {
         bytes32 msgHash = abi.encodePacked(block.chainid, _chipId).toEthSignedMessageHash();
         return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate);
+    }
+
+    function isValidEnrollment(bytes32 _enrollmentId) external view returns (bool) {
+        return enrollments[_enrollmentId].active;
     }
 
     function getManufacturerInfo(bytes32 _manufacturerId) external view returns (ManufacturerInfo memory) {

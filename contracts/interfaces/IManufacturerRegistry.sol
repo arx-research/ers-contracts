@@ -12,5 +12,12 @@ interface IManufacturerRegistry {
         view
         returns (bool);
 
+    function isValidEnrollment (
+        bytes32 _enrollmentId
+    )
+        external
+        view
+        returns (bool);
+
     function getEnrollmentBootloaderApp(bytes32 _enrollmentId) external view returns (string memory);
 }
