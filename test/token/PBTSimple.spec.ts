@@ -558,24 +558,6 @@ describe("PBTSimple", () => {
         });
       });
 
-      describe("when no transfer policy is set", async () => {
-        let newTransferPolicy: Address;
-        
-        beforeEach(async () => {
-          newTransferPolicy = ADDRESS_ZERO;
-  
-          subjectCaller = owner;
-        });
-
-        async function subject(): Promise<any> {
-          return PBTSimple.connect(subjectCaller.wallet).setTransferPolicy(newTransferPolicy);
-        }
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Transfer policy cannot be zero address");
-        });
-      });
-
       describe("when the payload has expired", async () => {
         beforeEach(async () => {
           await blockchain.waitBlocksAsync(6);
@@ -743,22 +725,11 @@ describe("PBTSimple", () => {
     });
 
     describe("#setTransferPolicy", async() => {
-      let subjectChipId: Address;
       let subjectNewTransferPolicy: Address;
-      let subjectCommitBlock: BigNumber;
-      let subjectSignature: string;
       let subjectCaller: Account;
 
       beforeEach(async () => {
-        subjectChipId = chip.address;
         subjectNewTransferPolicy = transferPolicyTwo.address;
-        subjectCommitBlock = await blockchain.getLatestBlockNumber();
-
-        const packedMsg = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [subjectCommitBlock, subjectNewTransferPolicy]
-        );
-        subjectSignature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
         subjectCaller = owner;
       });
 
@@ -779,13 +750,13 @@ describe("PBTSimple", () => {
         );
       });
 
-      describe("when the owner isn't the project owner", async () => {
+      describe("when the new transfer policy is the zero address", async () => {
         beforeEach(async () => {
-          subjectCaller = chip;
+          subjectNewTransferPolicy = ADDRESS_ZERO;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+          await expect(subject()).to.be.revertedWith("Transfer policy cannot be zero address");
         });
       });
     });
@@ -821,13 +792,11 @@ describe("PBTSimple", () => {
 
     describe("#tokenUri(address)", async() => {
       let subjectChipId: Address;
-      let subjectTokenId: BigNumber;
       let subjectErsNode: string;      
 
       beforeEach(async () => {
         subjectChipId = chip.address;
         subjectErsNode = calculateSubnodeHash(`${chip.address}.ProjectY.gucci.ers`);
-        subjectTokenId = BigNumber.from(subjectErsNode);
       });
 
       async function subject(): Promise<any> {

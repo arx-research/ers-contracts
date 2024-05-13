@@ -73,11 +73,6 @@ describe("DeveloperRegistrar", () => {
 
     await chipRegistry.initialize(ersRegistry.address, developerRegistry.address);
 
-    projectRegistrar = await deployer.mocks.deployProjectRegistrarMock(
-      chipRegistry.address,
-      ersRegistry.address
-    );
-
     exampleServiceId = ethers.utils.formatBytes32String("Gucci-Flex");
     exampleServiceRecords = [
       {
@@ -208,6 +203,12 @@ describe("DeveloperRegistrar", () => {
     beforeEach(async () => {
       developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
+      projectRegistrar = await deployer.mocks.deployProjectRegistrarMock(
+        chipRegistry.address,
+        ersRegistry.address,
+        developerRegistrar.address
+      );
+
       subjectNameHash = calculateLabelHash("ProjectX");
       subjectProjectRegistrar = projectRegistrar.address;
       subjectServiceId = exampleServiceId;
@@ -274,7 +275,7 @@ describe("DeveloperRegistrar", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Project already enrolled");
+        await expect(subject()).to.be.revertedWith("Subnode already exists");
       });
     });
 

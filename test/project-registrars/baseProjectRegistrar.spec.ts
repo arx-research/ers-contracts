@@ -16,7 +16,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("BaseProjectRegistrar", () => {
+describe("BaseProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let projectManager: Account;
