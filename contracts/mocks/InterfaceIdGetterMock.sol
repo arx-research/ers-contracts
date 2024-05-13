@@ -8,6 +8,7 @@ import { IERC721Metadata } from "@openzeppelin/contracts/token/ERC721/extensions
 
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IPBT } from "../token/IPBT.sol";
+import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 
 contract InterfaceIdGetterMock {
     constructor() {}
@@ -26,6 +27,10 @@ contract InterfaceIdGetterMock {
 
     function getPBTInterfaceId() external pure returns (bytes4) {
         return type(IPBT).interfaceId;
+    }
+
+    function getProjectRegistrarInterfaceId() external pure returns (bytes4) {
+        return type(IProjectRegistrar).interfaceId;
     }
 
     function getChipRegistryInterfaceId() external pure returns (bytes4) {

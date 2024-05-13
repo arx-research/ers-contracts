@@ -1,6 +1,7 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
+import { Address } from "@utils/types";
 
 import {
   ManufacturerValidationInfo,
@@ -9,14 +10,16 @@ import {
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
-  PBTSimpleProjectRegistrar,
-  ERSRegistry,
-  ManufacturerRegistry,
-  ServicesRegistry,
+  ChipRegistryMock,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
   DeveloperRegistry,
-  ChipRegistryMock
+  ERSRegistry,
+  InterfaceIdGetterMock,
+  ManufacturerRegistry,
+  OpenTransferPolicy,
+  PBTSimpleProjectRegistrar,
+  ServicesRegistry
 } from "@utils/contracts";
 import { NULL_NODE, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
@@ -36,12 +39,12 @@ import {
 
 import { Blockchain } from "@utils/common";
 import { BigNumber } from "ethers";
-
 const expect = getWaffleExpect();
 
 describe("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
+  let developerTwo: Account;
   let manufacturerOne: Account;
   let chipOne: Account;
   let chipTwo: Account;
@@ -58,7 +61,8 @@ describe("PBTSimpleProjectRegistrar", () => {
 
   // Chip Registry Mock is used to be able to test the arguments passed to ChipRegistry.claimChip
   let chipRegistry: ChipRegistryMock;
-  let transferPolicy: Account;
+  let transferPolicy: OpenTransferPolicy;
+  let newTransferPolicy: Account;
   let developerRegistrar: DeveloperRegistrar;
 
 
@@ -88,13 +92,14 @@ describe("PBTSimpleProjectRegistrar", () => {
     [
       owner,
       developerOne,
+      developerTwo,
       manufacturerOne,
       chipOne,
       chipTwo,
       projectManager,
       authModel,
       fakeDeveloperRegistrar,
-      transferPolicy,
+      newTransferPolicy,
     ] = await getAccounts();
     deployer = new DeployHelper(owner.wallet);
 
@@ -186,6 +191,7 @@ describe("PBTSimpleProjectRegistrar", () => {
     developerRegistrar = await deployer.getDeveloperRegistrar(expectedRegistrarAddress);
 
     // 14. Deploy project registrar and transfer ownership to developer
+    transferPolicy = await deployer.transferPolicies.deployOpenTransferPolicy();
     projectRegistrar = await deployer.deployPBTSimpleProjectRegistrar(
       chipRegistry.address,
       ersRegistry.address,
@@ -317,6 +323,139 @@ describe("PBTSimpleProjectRegistrar", () => {
     });
   });
 
+  context("when chips have been added", async() => {
+    beforeEach(async () => {
+      const chipIdOne = chipOne.address;
+      const nameHashOne = calculateLabelHash("chip1");
+
+      const manufacturerValidationOne = {
+        enrollmentId: developerChipsEnrollmentId,
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
+      } as ManufacturerValidationInfo;
+
+      const chipIdTwo = chipTwo.address;
+      const nameHashTwo = calculateLabelHash("chip2");
+
+      const manufacturerValidationTwo = {
+        enrollmentId: developerChipsEnrollmentId,
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address),
+      } as ManufacturerValidationInfo;
+
+      const additionData = [
+        {
+          chipId: chipIdOne,
+          chipOwner: developerOne.address,
+          nameHash: nameHashOne,
+          manufacturerValidation: manufacturerValidationOne,
+          custodyProof: await createDeveloperCustodyProof(chipOne, developerOne.address),
+        } as ProjectChipAddition,
+        {
+          chipId: chipIdTwo,
+          chipOwner: developerOne.address,
+          nameHash: nameHashTwo,
+          manufacturerValidation: manufacturerValidationTwo,
+          custodyProof: await createMigrationProof(owner, chipTwo.address),
+        } as ProjectChipAddition,
+      ];
+
+      await projectRegistrar.connect(developerOne.wallet).addChips(additionData);
+    });
+
+    describe("#transferToken", async () => {
+      let subjectChipId: Address;
+      let subjectSignatureFromChip: string;
+      let subjectBlockNumberUsedInSig: BigNumber;
+      let subjectUseSafeTranfer: boolean;
+      let subjectPayload: Uint8Array;
+      let subjectCaller: Account;
+
+      beforeEach(async () => {
+        subjectChipId = chipOne.address;
+        const anchorBlock = await blockchain._provider.getBlock("latest");
+        subjectBlockNumberUsedInSig = BigNumber.from(anchorBlock.number);
+        subjectUseSafeTranfer = false;
+        subjectPayload = ethers.utils.zeroPad(subjectBlockNumberUsedInSig.toHexString(), 32);
+        subjectCaller = developerTwo;
+        const msgContents = ethers.utils.solidityPack(
+          ["address", "bytes32", "bytes"],
+          [subjectCaller.address, anchorBlock.hash, subjectPayload]
+        );
+
+        subjectSignatureFromChip = await chipOne.wallet.signMessage(ethers.utils.arrayify(msgContents));
+      });
+
+      async function subject(): Promise<any> {
+        return projectRegistrar.connect(subjectCaller.wallet).transferToken(
+          subjectChipId,
+          subjectSignatureFromChip,
+          subjectBlockNumberUsedInSig,
+          subjectUseSafeTranfer,
+          subjectPayload
+        );
+      }
+
+      it("should transfer the token", async() => {
+        await subject();
+
+        expect(await projectRegistrar["ownerOf(address)"](chipOne.address)).to.be.equal(subjectCaller.address);
+      });
+
+      it("should set the new address as the owner in the ERSRegistry", async() => {
+        await subject();
+
+        const actualNewOwner = await ersRegistry.getOwner(calculateSubnodeHash("chip1.ProjectX.Gucci.ers"));
+
+        expect(actualNewOwner).to.be.equal(subjectCaller.address);
+      });
+    });
+
+    describe("#setOwner", async () => {
+      let subjectChipId: Address;
+      let subjectNewOwner: Address;
+      let subjectCommitBlock: BigNumber;
+      let subjectSignature: string;
+      let subjectCaller: Account;
+
+      beforeEach(async () => {
+        subjectChipId = chipOne.address;
+        subjectNewOwner = developerTwo.address;
+        subjectCommitBlock = await blockchain.getLatestBlockNumber();
+        subjectCaller = developerOne;
+        const msgContents = ethers.utils.solidityPack(
+          ["uint256", "address"],
+          [subjectCommitBlock, subjectNewOwner]
+        );
+
+        subjectSignature = await chipOne.wallet.signMessage(ethers.utils.arrayify(msgContents));
+      });
+
+      async function subject(): Promise<any> {
+        return projectRegistrar.connect(subjectCaller.wallet).setOwner(
+          subjectChipId,
+          subjectNewOwner,
+          subjectCommitBlock,
+          subjectSignature
+        );
+      }
+
+      it("should transfer the PBT to the new address", async() => {
+        await subject();
+
+        const actualNewOwner = await projectRegistrar["ownerOf(address)"](chipOne.address);
+
+        expect(actualNewOwner).to.be.equal(subjectNewOwner);
+      });
+
+      it("should set the new address as the owner in the ERSRegistry", async() => {
+        await subject();
+
+        const actualNewOwner = await ersRegistry.getOwner(calculateSubnodeHash("chip1.ProjectX.Gucci.ers"));
+
+        expect(actualNewOwner).to.be.equal(subjectNewOwner);
+      });
+    });
+  });
+
   describe("#setRootNode", async () => {
     let subjectRootNode: string;
     let subjectCaller:Account;
@@ -371,6 +510,114 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       it("should revert",  async() => {
         await expect(subject()).to.be.revertedWith("onlyDeveloperRegistrar: Only the contract's Developer Registrar can call this function");
+      });
+    });
+  });
+
+  describe("#setTransferPolcy", async () => {
+    let subjectNewPolicy: Address;
+    let subjectCaller:Account;
+
+    beforeEach(async () => {
+      subjectNewPolicy = newTransferPolicy.address;
+      subjectCaller = developerOne;
+    });
+
+    async function subject(): Promise<any> {
+      return projectRegistrar.connect(subjectCaller.wallet).setTransferPolicy(subjectNewPolicy);
+    }
+
+    it("should change the transfer policy", async() => {
+      await subject();
+      expect(await projectRegistrar.transferPolicy()).to.be.equal(subjectNewPolicy);
+    });
+
+    it("should emit a TransferPolicyChanged event", async () => {
+      await expect(await subject()).to.emit(projectRegistrar, "TransferPolicyChanged").withArgs(
+        subjectNewPolicy
+      );
+    });
+
+    describe("setRootNode reverts when the caller is not the Developer Registrar contract", async() => {
+      beforeEach(async () => {
+        // Any Account should cause a revert as long as it isn't the fakeDeveloperRegistrar
+        subjectCaller = projectManager;
+      });
+
+      it("should revert",  async() => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#transferTokenWithChip", async () => {
+    let subjectSignatureFromChip: string;
+    let subjectBlockNumberUsedInSig: BigNumber;
+    let subjectUseSafeTranfer: boolean;
+    let subjectCaller:Account;
+
+    beforeEach(async () => {
+      subjectSignatureFromChip = "0x";
+      subjectBlockNumberUsedInSig = BigNumber.from(0);
+      subjectUseSafeTranfer = false;
+      subjectCaller = developerOne;
+    });
+
+    async function subject(): Promise<any> {
+      return projectRegistrar.connect(subjectCaller.wallet).transferTokenWithChip(
+        subjectSignatureFromChip,
+        subjectBlockNumberUsedInSig,
+        subjectUseSafeTranfer
+      );
+    }
+
+    it("should revert",  async() => {
+      await expect(subject()).to.be.revertedWith("Not implemented");
+    });
+  });
+
+  describe("#supportsInterface", async () => {
+    let subjectInterfaceId: string;
+
+    let interfaceIdGetter: InterfaceIdGetterMock;
+
+    beforeEach(async () => {
+      interfaceIdGetter = await deployer.mocks.deployInterfaceIdGetterMock();
+
+      subjectInterfaceId = await interfaceIdGetter.getProjectRegistrarInterfaceId();
+    });
+
+    async function subject(): Promise<any> {
+      return projectRegistrar.supportsInterface(subjectInterfaceId);
+    }
+
+    it("should return true",  async() => {
+      const isInterfaceSupported = await subject();
+
+      expect(isInterfaceSupported).to.be.true;
+    });
+
+    describe("when the interface is the IPBT interface", async() => {
+      beforeEach(async () => {
+        subjectInterfaceId = await interfaceIdGetter.getPBTInterfaceId();
+      });
+
+      it("should return true",  async() => {
+        const isInterfaceSupported = await subject();
+
+        expect(isInterfaceSupported).to.be.true;
+      });
+    });
+
+    describe("when the interface is the IChipRegistry interface", async() => {
+      beforeEach(async () => {
+        subjectInterfaceId = await interfaceIdGetter.getChipRegistryInterfaceId();
+      });
+
+      it("should return false",  async() => {
+        const isInterfaceSupported = await subject();
+
+        expect(isInterfaceSupported).to.be.false;
       });
     });
   });

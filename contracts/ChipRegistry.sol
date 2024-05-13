@@ -307,8 +307,7 @@ contract ChipRegistry is Ownable {
         // Remove the chip subnode record in the ERS
         ers.deleteChipRegistrySubnodeRecord(
             rootNode,
-            nameHash,
-            msg.sender
+            nameHash
         );
 
         delete projectEnrollments[_projectRegistrar];

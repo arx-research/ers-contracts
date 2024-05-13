@@ -1,5 +1,6 @@
 export {
   AccountMock,
+  BaseProjectRegistrar,
   ChipRegistry,
   ChipRegistryMock,
   ChipValidationsMock,
@@ -11,6 +12,7 @@ export {
   ERSRegistry,
   InterfaceIdGetterMock,
   ManufacturerRegistry,
+  OpenTransferPolicy,
   PBTSimple,
   PBTSimpleMock,
   PBTSimpleProjectRegistrar,

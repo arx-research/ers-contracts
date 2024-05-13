@@ -83,9 +83,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
     /* ============ Internal Functions ============ */
 
     /**
-     * @notice Allow a chip holder to name chip to the ERS and enroll it to the Chip Registry. Chip owner will be
-     * set as the msg.sender. Will revert if invalid proof of ownership is given or ownership proof is expired.
-     * Will revert if chip is msg.sender since it cannot own itself.
+     * @notice Allow a chip holder to name chip to the ERS and enroll it to the Chip Registry
      * 
      * @param _chipId                   Address of the chip being claimed
      * @param _chipOwner                Intended owner of the chip being claimed
@@ -100,7 +98,6 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         bytes memory _custodyProof
     ) 
         internal
-        onlyOwner()
     {
         // Registrar calls the addChip function on the ChipRegistry
         chipRegistry.addChip(

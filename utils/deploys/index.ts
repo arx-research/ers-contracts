@@ -14,11 +14,13 @@ import {
 } from "../../typechain/factories/contracts";
 
 import {
+  BaseProjectRegistrar__factory,
   PBTSimpleProjectRegistrar__factory
 } from "../../typechain/factories/contracts/project-registrars";
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
 import {
+  BaseProjectRegistrar,
   ChipRegistry,
   DeveloperNameGovernor,
   DeveloperRegistrar,
@@ -158,6 +160,20 @@ export default class DeployHelper {
       baseURI,
       maxBlockWindow,
       transferPolicy
+    );
+
+    return projectRegistrar;
+  }
+
+  public async deployBaseProjectRegistrar(
+    chipRegistry: Address,
+    ersRegistry: Address,
+    developerRegistrar: Address
+  ): Promise<BaseProjectRegistrar> {
+    const projectRegistrar = await new BaseProjectRegistrar__factory(this._deployerSigner).deploy(
+      chipRegistry,
+      ersRegistry,
+      developerRegistrar
     );
 
     return projectRegistrar;

@@ -27,7 +27,6 @@ describe("ManufacturerRegistry", () => {
   let authModel: Account;
   let manufacturerRegistry: ManufacturerRegistry;
   let chipOne: Account;
-  let chipTwo: Account;
   let invalidChip: Account;
   let deployer: DeployHelper;
   let chainId: number;
@@ -41,8 +40,7 @@ describe("ManufacturerRegistry", () => {
       manufacturerTwo,
       authModel,
       chipOne,
-      chipTwo,
-      invalidChip
+      invalidChip,
     ] = await getAccounts();
 
     deployer = new DeployHelper(governance.wallet);
@@ -124,7 +122,6 @@ describe("ManufacturerRegistry", () => {
 
   describe("#addChipEnrollment", async () => {
     let subjectManufacturerId: string;
-    let subjectMerkleRoot: string;
     let subjectCertSigner: Address;
     let subjectAuthModel: Address;
     let subjectBootloaderApp: string;
@@ -144,7 +141,6 @@ describe("ManufacturerRegistry", () => {
         ZERO
       );
 
-      subjectMerkleRoot = ethers.utils.formatBytes32String("merkleRoot");
       subjectCertSigner = manufacturerOne.address;
       subjectAuthModel = authModel.address;
       subjectChipValidationDataUri = "ipfs://ipfsHash";
@@ -386,7 +382,7 @@ describe("ManufacturerRegistry", () => {
 
     describe("when certificate is invalid", () => {
       beforeEach(async () => {
-        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, invalidChip.address)
+        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, invalidChip.address);
       });
 
       it("should return false", async () => {
@@ -394,6 +390,43 @@ describe("ManufacturerRegistry", () => {
 
         expect(isChip).to.be.false;
       });
+    });
+  });
+
+  describe("#getEnrollmentBootloaderApp", async () => {
+    let subjectEnrollmentId: string;
+
+    beforeEach(async () => {
+      const manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
+
+      await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
+
+      const certSigner = manufacturerOne.address;
+      const chipAuthModel = authModel.address;
+      const chipValidationDataUri = "ipfs://ipfsHash";
+      const bootloaderApp = "https://bootloader.app";
+      const chipModel = "SuperCool ChipModel";
+
+      await manufacturerRegistry.connect(manufacturerOne.wallet).addChipEnrollment(
+        manufacturerId,
+        certSigner,
+        chipAuthModel,
+        chipValidationDataUri,
+        bootloaderApp,
+        chipModel
+      );
+
+      subjectEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
+    });
+
+    async function subject(): Promise<any> {
+      return await manufacturerRegistry.getEnrollmentBootloaderApp(subjectEnrollmentId);
+    }
+
+    it("should return correct bootloader app", async () => {
+      const actualBootloaderApp = await subject();
+
+      expect(actualBootloaderApp).to.eq("https://bootloader.app");
     });
   });
 });

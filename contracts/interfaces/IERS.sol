@@ -21,8 +21,7 @@ interface IERS {
 
     function deleteChipRegistrySubnodeRecord(
         bytes32 _node,
-        bytes32 _nameHash,
-        address _developerRegistrar
+        bytes32 _nameHash
     ) external;
 
     function deleteSubnodeRecord(
@@ -34,11 +33,6 @@ interface IERS {
         bytes32 _node,
         address _owner
     ) external;
-
-    function isValidChipState(
-        bytes32 _node,
-        address _chipId
-    ) external view returns(bool);
 
     function getSubnodeHash(
         bytes32 _node,

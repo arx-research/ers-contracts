@@ -103,15 +103,13 @@ contract ERSRegistry {
      */
     function deleteChipRegistrySubnodeRecord(
         bytes32 _node,
-        bytes32 _nameHash,
-        address _developerRegistrar
+        bytes32 _nameHash
     )
         external
         virtual
     {
-        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
-        require(developerRegistry.isDeveloperRegistrar(_developerRegistrar), "Caller must be DeveloperRegistrar");
         // Note: we're expecting ChipRegistry to validate that the DeveloperRegistrar is the owner of the Project who created the node.
+        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
         
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         require(recordExists(subnode), "Subnode does not exist");
@@ -222,30 +220,12 @@ contract ERSRegistry {
     function setChipResolver(bytes32 _node, address _resolver) external virtual {
         require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
         require(_resolver != address(0), "New resolver cannot be null address");
+        require(recordExists(_node), "Node does not exist");
+
         _setResolver(_node, _resolver);
     }
 
     /* ============ View Functions ============ */
-
-    /**
-     * @dev Validate that state has been correctly set for a chip. Used by ChipRegistry to validate that a ProjectRegistrar has
-     * set the correct state for a chip.
-     *
-     * @param _node     The specified node.
-     * @param _chipId   The specified chipId.
-     * @return bool indicating whether state is valid
-     */
-    function isValidChipState(
-        bytes32 _node,
-        address _chipId
-    )
-        external
-        virtual
-        view
-        returns(bool)
-    {
-        return (records[_node].resolver == _chipId);
-    }
 
     /**
      * @dev Returns the address that owns the specified node.

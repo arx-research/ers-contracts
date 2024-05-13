@@ -62,7 +62,7 @@ describe("ERSRegistry", () => {
     });
   });
 
-  describe("#createSubnodeRecord", async () => {
+  describe("#createChipRegistrySubnodeRecord", async () => {
     let subjectNode: string;
     let subjectNameHash: string;
     let subjectOwner: Address;
@@ -73,6 +73,163 @@ describe("ERSRegistry", () => {
       subjectNode = NULL_NODE;
       subjectNameHash = calculateLabelHash("ers");
       subjectOwner = owner.address;
+      subjectResolver = resolver.address;
+      subjectCaller = chipRegistry;
+    });
+
+    async function subject(): Promise<any> {
+      return await ersRegistry.connect(subjectCaller.wallet).createChipRegistrySubnodeRecord(subjectNode, subjectNameHash, subjectOwner, subjectResolver);
+    }
+
+    it("should set the record", async () => {
+      await subject();
+
+      const subnodeHash = calculateSubnodeHash("ers");
+      const actualOwner = await ersRegistry.getOwner(subnodeHash);
+      const actualResolver = await ersRegistry.getResolver(subnodeHash);
+      expect(actualOwner).to.eq(subjectOwner);
+      expect(actualResolver).to.eq(subjectResolver);
+    });
+
+    it("should emit the correct NewOwner event", async () => {
+      await expect(subject()).to.emit(ersRegistry, "NewOwner").withArgs(
+        subjectNode,
+        calculateSubnodeHash("ers"),
+        subjectNameHash,
+        subjectOwner
+      );
+    });
+
+    it("should emit the correct NewResolver event", async () => {
+      await expect(subject()).to.emit(ersRegistry, "NewResolver").withArgs(
+        calculateSubnodeHash("ers"),
+        subjectResolver
+      );
+    });
+
+    describe("when the owner is the zero address", async () => {
+      beforeEach(async () => {
+        subjectOwner = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("New owner cannot be null address");
+      });
+    });
+
+    describe("when the subnode has already been created", async () => {
+      beforeEach(async () => {
+        await subject();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Subnode already exists");
+      });
+    });
+
+    describe("when the caller is not the node owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = developerRegistry;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry");
+      });
+    });
+  });
+
+  describe("#deleteChipRegistrySubnodeRecord", async () => {
+    let subjectNode: string;
+    let subjectNameHash: string;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      await ersRegistry.connect(owner.wallet).createSubnodeRecord(
+        NULL_NODE,
+        calculateLabelHash("ers"),
+        developerRegistry.address,
+        resolver.address
+      );
+
+      subjectNode = calculateSubnodeHash("ers");
+      subjectNameHash = calculateLabelHash("developer");
+      subjectCaller = chipRegistry;
+
+      await ersRegistry.connect(developerRegistry.wallet).createSubnodeRecord(
+        subjectNode,
+        subjectNameHash,
+        owner.address,
+        resolver.address
+      );
+    });
+
+    async function subject(): Promise<any> {
+      return await ersRegistry.connect(subjectCaller.wallet).deleteChipRegistrySubnodeRecord(subjectNode, subjectNameHash);
+    }
+
+    it("should set the record", async () => {
+      const subnodeHash = calculateSubnodeHash("developer.ers");
+      const preActualOwner = await ersRegistry.getOwner(subnodeHash);
+      const preActualResolver = await ersRegistry.getResolver(subnodeHash);
+      expect(preActualOwner).to.not.eq(ADDRESS_ZERO);
+      expect(preActualResolver).to.not.eq(ADDRESS_ZERO);
+
+      await subject();
+
+      const actualOwner = await ersRegistry.getOwner(subnodeHash);
+      const actualResolver = await ersRegistry.getResolver(subnodeHash);
+      expect(actualOwner).to.eq(ADDRESS_ZERO);
+      expect(actualResolver).to.eq(ADDRESS_ZERO);
+    });
+
+    it("should emit the correct NewOwner event", async () => {
+      await expect(subject()).to.emit(ersRegistry, "NewOwner").withArgs(
+        subjectNode,
+        calculateSubnodeHash("developer.ers"),
+        subjectNameHash,
+        ADDRESS_ZERO
+      );
+    });
+
+    it("should emit the correct NewResolver event", async () => {
+      await expect(subject()).to.emit(ersRegistry, "NewResolver").withArgs(
+        calculateSubnodeHash("developer.ers"),
+        ADDRESS_ZERO
+      );
+    });
+
+    describe("when the subnode has not been created", async () => {
+      beforeEach(async () => {
+        subjectNameHash = calculateLabelHash("new");
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Subnode does not exist");
+      });
+    });
+
+    describe("when the caller is not the ChipRegistry", async () => {
+      beforeEach(async () => {
+        subjectCaller = owner;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry");
+      });
+    });
+  });
+
+  describe("#createSubnodeRecord", async () => {
+    let subjectNode: string;
+    let subjectNameHash: string;
+    let subjectOwner: Address;
+    let subjectResolver: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectNode = NULL_NODE;
+      subjectNameHash = calculateLabelHash("ers");
+      subjectOwner = developerRegistry.address;
       subjectResolver = resolver.address;
       subjectCaller = owner;
     });
@@ -105,6 +262,28 @@ describe("ERSRegistry", () => {
         calculateSubnodeHash("ers"),
         subjectResolver
       );
+    });
+
+    describe("when the caller is the DeveloperRegistry", async () => {
+      beforeEach(async () => {
+        await subject();
+
+        subjectNode = calculateSubnodeHash("ers");
+        subjectNameHash = calculateLabelHash("developer");
+        subjectOwner = owner.address;
+        subjectResolver = resolver.address;
+        subjectCaller = developerRegistry;
+      });
+
+      it("should set the record", async () => {
+        await subject();
+
+        const subnodeHash = calculateSubnodeHash("developer.ers");
+        const actualOwner = await ersRegistry.getOwner(subnodeHash);
+        const actualResolver = await ersRegistry.getResolver(subnodeHash);
+        expect(actualOwner).to.eq(subjectOwner);
+        expect(actualResolver).to.eq(subjectResolver);
+      });
     });
 
     describe("when the owner is the zero address", async () => {
@@ -327,6 +506,73 @@ describe("ERSRegistry", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry or owner of node");
+      });
+    });
+  });
+
+  describe("#setChipResolver", async () => {
+    let subjectNode: string;
+    let subjectResolver: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      await ersRegistry.connect(owner.wallet).createSubnodeRecord(
+        NULL_NODE,
+        calculateLabelHash("ers"),
+        nodeOwner.address,
+        resolver.address
+      );
+
+      subjectNode = calculateSubnodeHash("ers");
+      subjectResolver = newOwner.address;
+      subjectCaller = chipRegistry;
+    });
+
+    async function subject(): Promise<any> {
+      return await ersRegistry.connect(subjectCaller.wallet).setChipResolver(subjectNode, subjectResolver);
+    }
+
+    it("should set the correct resolver", async () => {
+      await subject();
+
+      const actualResolver = await ersRegistry.getResolver(subjectNode);
+      expect(actualResolver).to.eq(subjectResolver);
+    });
+
+    it("should emit the correct NewResolver event", async () => {
+      await expect(subject()).to.emit(ersRegistry, "NewResolver").withArgs(
+        subjectNode,
+        subjectResolver
+      );
+    });
+
+    describe("when the resolver is the null address", async () => {
+      beforeEach(async () => {
+        subjectResolver = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("New resolver cannot be null address");
+      });
+    });
+
+    describe("when the caller is not the chipRegistry", async () => {
+      beforeEach(async () => {
+        subjectCaller = nodeOwner;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be ChipRegistry");
+      });
+    });
+
+    describe("when the node has not been created", async () => {
+      beforeEach(async () => {
+        subjectNode = calculateSubnodeHash("test");
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Node does not exist");
       });
     });
   });
