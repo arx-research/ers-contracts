@@ -296,7 +296,7 @@ contract ChipRegistry is Ownable {
         require(projectEnrollments[_projectRegistrar].developerRegistrar == developerRegistrar, "Developer Registrar does not own project");
 
         // Verify that the project has not added chips
-        require(projectEnrollments[_projectRegistrar].chipsAdded == false, "Cannot remove project with chips added");
+        require(!projectEnrollments[_projectRegistrar].chipsAdded, "Cannot remove project with chips added");
 
         // Get the project's root node which is used in the creation of the subnode
         bytes32 rootNode = developerRegistrar.rootNode();

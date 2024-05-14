@@ -20,7 +20,7 @@ import { calculateEnrollmentId } from "@utils/index";
 
 const expect = getWaffleExpect();
 
-describe.only("ManufacturerRegistry", () => {
+describe("ManufacturerRegistry", () => {
   let governance: Account;
   let manufacturerOne: Account;
   let manufacturerTwo: Account;
