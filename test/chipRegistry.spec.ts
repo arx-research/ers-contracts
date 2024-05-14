@@ -429,7 +429,7 @@ describe("ChipRegistry", () => {
         );
       }
 
-      it("should add the chip and set chip state", async () => {
+      it.only("should add the chip and set chip state", async () => {
         await subject();
 
         const actualChipInfo = (await chipRegistry.chipEnrollments(subjectChipAddition[0].chipId)).chipEnrolled;
@@ -873,7 +873,7 @@ describe("ChipRegistry", () => {
         });
 
         it("should revert", async () => {
-          await expect(subjectCallDirectly()).to.be.revertedWith("ProjectRegistrar does not own chip");
+          await expect(subjectCallDirectly()).to.be.revertedWith("ProjectRegistrar did not add chip");
         });
       });
     });

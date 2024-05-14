@@ -228,15 +228,12 @@ contract ChipRegistry is Ownable {
         // Validate the custody proof and determine if it is a developer custody proof or migration proof; will revert if invalid proof for both cases
         bool hasDeveloperCustodyProof = _isDeveloperCustodyProofAndValid(_chipId, projectInfo.developerRegistrar.owner(), _custodyProof);
 
-        // Record the services registy used
-        IServicesRegistry _servicesRegistry = projectInfo.servicesRegistry;
-
         // Create the chip subnode record in the ERS
         bytes32 ersNode = _createChipSubnode(
-            ers.getSubnodeHash(projectInfo.developerRegistrar.rootNode(), projectInfo.nameHash),
+            _calculateProjectERSNode(projectInfo),
             _nameHash,
             _chipOwner,
-            address(_servicesRegistry)
+            address(projectInfo.servicesRegistry)
         );
 
         // Store chip information
@@ -253,7 +250,7 @@ contract ChipRegistry is Ownable {
             projectInfo.creationTimestamp + maxLockinPeriod;
 
         // Set primaryService on ServicesRegistry
-        _servicesRegistry.setInitialService(
+        projectInfo.servicesRegistry.setInitialService(
             _chipId,
             projectInfo.serviceId,
             lockinPeriod
@@ -284,29 +281,28 @@ contract ChipRegistry is Ownable {
      */
     function removeProjectEnrollment(IProjectRegistrar _projectRegistrar) external {
         require(developerRegistry.isDeveloperRegistrar(msg.sender), "Must be Developer Registrar");
+
         IDeveloperRegistrar developerRegistrar = IDeveloperRegistrar(msg.sender);
+        ProjectInfo memory projectInfo = projectEnrollments[_projectRegistrar];
 
         // Check that the project registrar is valid
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
         // Verify that the project is enrolled
-        require(projectEnrollments[_projectRegistrar].creationTimestamp != 0, "Project not enrolled");
+        require(projectInfo.creationTimestamp != 0, "Project not enrolled");
 
         // Verify that the project is being removed by the correct developer registrar
-        require(projectEnrollments[_projectRegistrar].developerRegistrar == developerRegistrar, "Developer Registrar does not own project");
+        require(projectInfo.developerRegistrar == developerRegistrar, "Developer Registrar does not own project");
 
         // Verify that the project has not added chips
-        require(!projectEnrollments[_projectRegistrar].chipsAdded, "Cannot remove project with chips added");
-
-        // Get the project's root node which is used in the creation of the subnode
-        bytes32 rootNode = developerRegistrar.rootNode();
+        require(!projectInfo.chipsAdded, "Cannot remove project with chips added");
 
         // Get the project's nameHash
-        bytes32 nameHash = projectEnrollments[_projectRegistrar].nameHash;
+        bytes32 nameHash = projectInfo.nameHash;
 
         // Remove the chip subnode record in the ERS
         ers.deleteChipRegistrySubnodeRecord(
-            rootNode,
+            developerRegistrar.rootNode(),
             nameHash
         );
 
@@ -333,13 +329,12 @@ contract ChipRegistry is Ownable {
     {
         IProjectRegistrar projectRegistrar = IProjectRegistrar(msg.sender);
         ChipInfo memory chipInfo = chipEnrollments[_chipId];
-        ProjectInfo memory projectInfo = projectEnrollments[projectRegistrar];
 
         require(chipInfo.chipEnrolled, "Chip not added");
-        require(chipInfo.projectRegistrar == address(projectRegistrar), "ProjectRegistrar does not own chip");
+        require(chipInfo.projectRegistrar == address(projectRegistrar), "ProjectRegistrar did not add chip");
 
         bytes32 _nameHash = chipInfo.nameHash;
-        bytes32 rootNode = ers.getSubnodeHash(projectInfo.developerRegistrar.rootNode(), projectInfo.nameHash);
+        bytes32 rootNode = _calculateProjectERSNode(projectEnrollments[projectRegistrar]);
        
         bytes32 chipErsNode = keccak256(abi.encodePacked(rootNode, _nameHash));
         ers.setNodeOwner(chipErsNode, _newOwner);
@@ -411,7 +406,7 @@ contract ChipRegistry is Ownable {
 
         require(chipInfo.chipEnrolled, "Chip not added");
 
-        bytes32 rootNode = ers.getSubnodeHash(projectInfo.developerRegistrar.rootNode(), projectInfo.nameHash);
+        bytes32 rootNode = _calculateProjectERSNode(projectInfo);
         bytes32 nameHash = chipEnrollments[_chipId].nameHash;
 
         return keccak256(abi.encodePacked(rootNode, nameHash));
@@ -451,15 +446,22 @@ contract ChipRegistry is Ownable {
         returns (bytes32)
     {
         // Create the chip subnode record in the ERS; if the node already exists, this should revert
-        ers.createChipRegistrySubnodeRecord(
+        return ers.createChipRegistrySubnodeRecord(
             _rootNode, 
             _nameHash, 
             _owner, 
             _resolver
         );
+    }
 
-        // Verify the chip's ERS node was created by the ProjectRegistrar; this is the source of truth for the chip's ownership
-        return keccak256(abi.encodePacked(_rootNode, _nameHash));
+    /**
+     * @notice Calculate the project's ERS node
+     *
+     * @param _projectInfo      Struct containing information about the project
+     * @return                  The project's ERS node
+     */
+    function _calculateProjectERSNode(ProjectInfo memory _projectInfo) internal view returns (bytes32) {
+        return ers.getSubnodeHash(_projectInfo.developerRegistrar.rootNode(), _projectInfo.nameHash);
     }
 
     /**
