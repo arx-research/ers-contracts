@@ -236,7 +236,7 @@ describe("ManufacturerRegistry", () => {
     });
   });
 
-  describe.only("#updateChipEnrollment", async () => {
+  describe("#updateChipEnrollment", async () => {
     let subjectManufacturerId: string;
     let subjectActive: boolean;
     let subjectEnrollmentId: string;

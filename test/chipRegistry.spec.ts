@@ -429,7 +429,7 @@ describe("ChipRegistry", () => {
         );
       }
 
-      it.only("should add the chip and set chip state", async () => {
+      it("should add the chip and set chip state", async () => {
         await subject();
 
         const actualChipInfo = (await chipRegistry.chipEnrollments(subjectChipAddition[0].chipId)).chipEnrolled;
