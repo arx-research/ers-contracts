@@ -226,7 +226,7 @@ contract ChipRegistry is Ownable {
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Validate the custody proof and determine if it is a developer custody proof or migration proof; will revert if invalid proof for both cases
-        bool hasDeveloperCustodyProof = _isDeveloperCustodyProofAndValid(_chipId, projectInfo.developerRegistrar.owner(), _custodyProof);
+        bool hasDeveloperCustodyProof = _isDeveloperCustodyProofAndValid(_chipId, address(projectInfo.developerRegistrar), _custodyProof);
 
         // Create the chip subnode record in the ERS
         bytes32 ersNode = _createChipSubnode(
@@ -492,13 +492,13 @@ contract ChipRegistry is Ownable {
      * @notice Validate the developer custody proof for a chip; should return true if the developer signed the developer address, 
      * false if the migration signer signed the chipId and should revert if the proof is invalid for either case.
      * 
-     * @param _chipId           The chip public key
-     * @param _developer       The developer's address
-     * @param _custodyProof    The developer's custody proof or migration proof
+     * @param _chipId                 The chip public key
+     * @param _developerRegistrar     The developer's registrar address
+     * @param _custodyProof           The developer's custody proof or migration proof
      */
     function _isDeveloperCustodyProofAndValid(
         address _chipId,
-        address _developer,
+        address _developerRegistrar,
         bytes memory _custodyProof
     )
         internal
@@ -506,7 +506,7 @@ contract ChipRegistry is Ownable {
         returns (bool)
     {
         // For developer custody proofs, the chip signs the developer address. For migration proofs the migration signer signs the chipId
-        bytes32 developerMsgHash = abi.encodePacked(_developer).toEthSignedMessageHash();
+        bytes32 developerMsgHash = abi.encodePacked(_developerRegistrar).toEthSignedMessageHash();
         bytes32 migrationMsgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
 
         // If the developer signed the developer address, return 

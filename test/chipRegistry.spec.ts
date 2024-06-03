@@ -410,7 +410,7 @@ describe("ChipRegistry", () => {
           enrollmentId: chipsEnrollmentId,
           manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
         };
-        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerTwo.address);
+        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address);
         subjectChipAddition = [
           {
             chipId: chipOne.address,
@@ -536,7 +536,7 @@ describe("ChipRegistry", () => {
               chipOwner,
               nameHash: calculateLabelHash(chipTwo.address),
               manufacturerValidation: manufacturerValidationTwo,
-              custodyProof: await createDeveloperCustodyProof(chipTwo, developerTwo.address),
+              custodyProof: await createDeveloperCustodyProof(chipTwo, developerRegistrar.address),
             } as ProjectChipAddition,
           ];
         });
@@ -616,7 +616,8 @@ describe("ChipRegistry", () => {
 
       describe("when the custody proof is invalid", async () => {
         beforeEach(async () => {
-          subjectChipAddition[0].custodyProof = await createDeveloperCustodyProof(chipOne, owner.address);
+          // Set to developerTwo address in order to create a bad custodyProof
+          subjectChipAddition[0].custodyProof = await createDeveloperCustodyProof(chipOne, developerTwo.address);
         });
 
         it("should revert", async () => {
@@ -667,7 +668,7 @@ describe("ChipRegistry", () => {
           enrollmentId: chipsEnrollmentId,
           manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipId),
         };
-        subjectCustodyProofChip = await createDeveloperCustodyProof(chipOne, developerOne.address);
+        subjectCustodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address);
 
         await developerRegistrar.connect(subjectCaller.wallet).addProject(
           subjectProjectRegistrar,
@@ -825,7 +826,7 @@ describe("ChipRegistry", () => {
           enrollmentId: chipsEnrollmentId,
           manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
         };
-        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerTwo.address);
+        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address);
         const chipAddition = [
           {
             chipId: chipOne.address,
@@ -915,7 +916,7 @@ describe("ChipRegistry", () => {
           enrollmentId: chipsEnrollmentId,
           manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
         };
-        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerTwo.address);
+        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address);
         const chipAddition = [
           {
             chipId: chipOne.address,
@@ -992,7 +993,7 @@ describe("ChipRegistry", () => {
           enrollmentId: chipsEnrollmentId,
           manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
         };
-        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerTwo.address);
+        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address);
         const chipAddition = [
           {
             chipId: chipOne.address,
@@ -1061,7 +1062,7 @@ describe("ChipRegistry", () => {
           enrollmentId: chipsEnrollmentId,
           manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
         };
-        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerTwo.address);
+        const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address);
         const chipAddition = [
           {
             chipId: chipOne.address,
