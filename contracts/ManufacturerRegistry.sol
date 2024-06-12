@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
  * @title ManufacturerRegistry
@@ -19,7 +20,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * 3. Read-only: manufacturers[_manufacturerId].registered = true && manufacturers[_manufacturerId].owner == address(0).
  *    Once a manufacturerId has been put in this state it CANNOT leave it.
  */
-contract ManufacturerRegistry is Ownable {
+contract ManufacturerRegistry is Ownable, EIP712 {
 
     using SignatureChecker for address;
     using ECDSA for bytes;
@@ -75,6 +76,12 @@ contract ManufacturerRegistry is Ownable {
         _;
     }
 
+    /* ============ Constants ============ */
+    // Match signature version to project version.
+    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
+    string public constant EIP712_SIGNATURE_VERSION = "2.1.0";
+
+
     /* ============ State Variables ============ */
     mapping(bytes32 => EnrollmentInfo) internal enrollments;
     mapping(bytes32 => ManufacturerInfo) internal manufacturers;
@@ -85,7 +92,10 @@ contract ManufacturerRegistry is Ownable {
      *
      * @param _governance               Address of governance
      */
-    constructor(address _governance) Ownable() {
+    constructor(address _governance) 
+        Ownable() 
+        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
+    {
         transferOwnership(_governance);
     }
 
@@ -229,8 +239,13 @@ contract ManufacturerRegistry is Ownable {
         view
         returns (bool)
     {
-        bytes32 msgHash = abi.encodePacked(block.chainid, _chipId).toEthSignedMessageHash();
-        return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(msgHash, _manufacturerCertificate);
+        // bytes32 msgHash = abi.encodePacked(block.chainid, _chipId).toEthSignedMessageHash();
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("manufacturerCertificate(address chipId)"),
+            _chipId
+        )));
+        // address signer = ECDSA.recover(digest, signature);
+        return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(digest, _manufacturerCertificate);
     }
 
     function isValidEnrollment(bytes32 _enrollmentId) external view returns (bool) {

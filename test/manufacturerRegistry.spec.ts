@@ -20,7 +20,7 @@ import { calculateEnrollmentId } from "@utils/index";
 
 const expect = getWaffleExpect();
 
-describe("ManufacturerRegistry", () => {
+describe.only("ManufacturerRegistry", () => {
   let governance: Account;
   let manufacturerOne: Account;
   let manufacturerTwo: Account;
@@ -455,7 +455,7 @@ describe("ManufacturerRegistry", () => {
         chipModel
       );
 
-      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address),
+      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
       subjectEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
       subjectChipId = chipOne.address;
     });
@@ -476,7 +476,7 @@ describe("ManufacturerRegistry", () => {
 
     describe("when certificate is invalid", () => {
       beforeEach(async () => {
-        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, invalidChip.address);
+        subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, invalidChip.address, manufacturerRegistry.address);
       });
 
       it("should return false", async () => {

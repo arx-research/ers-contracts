@@ -3,9 +3,32 @@ import { BigNumber, ethers } from "ethers";
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 
-export async function createManufacturerCertificate(signer: Account, chainId: number, chipId: Address): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, chipId]);
-  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+// export async function createManufacturerCertificate(signer: Account, chainId: number, chipId: Address): Promise<string> {
+//   const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, chipId]);
+//   return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+// }
+
+const types = {
+  manufacturerCertificate: [
+    { name: "chipId", type: "address" },
+  ],
+};
+
+export async function createManufacturerCertificate(signer: Account, chainId: number, chipId: Address, verifyingContract: Address): Promise<string> {
+  const domain = {
+    name: "ERS",
+    version: "2.1.0",
+    chainId, // Use the appropriate chainId
+    verifyingContract, // Replace with your contract address
+  };
+
+  const domainWithChainId = { ...domain, chainId };
+
+  const value = {
+    chipId,
+  };
+
+  return await signer.wallet._signTypedData(domainWithChainId, types, value);
 }
 
 export async function createProjectOwnershipProof(
