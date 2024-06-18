@@ -2,6 +2,7 @@ import "module-alias/register";
 
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
+import { Blockchain } from "@utils/common";
 
 import {
   Address,
@@ -22,11 +23,10 @@ import {
   getAccounts
 } from "@utils/test/index";
 
-import { Blockchain } from "@utils/common";
-
 const expect = getWaffleExpect();
 
 describe("ServicesRegistry", () => {
+  let chainId: number;
   let deployAccount: Account;
   let owner: Account;
   let chip: Account;
@@ -46,6 +46,8 @@ describe("ServicesRegistry", () => {
       chip,
       chipTwo,
     ] = await getAccounts();
+
+    chainId = await blockchain.getChainId();
 
     deployer = new DeployHelper(deployAccount.wallet);
 
@@ -721,9 +723,8 @@ describe("ServicesRegistry", () => {
       let subjectServiceId: string;
       let subjectCommitBlock: BigNumber;
       let subjectSignature: string;
+      let subjectIncorrectSignature: string;
       let subjectCaller: Account;
-
-      let packedMsg: string;
 
       beforeEach(async () => {
         const primaryService = serviceOneId;
@@ -738,12 +739,31 @@ describe("ServicesRegistry", () => {
 
         subjectServiceId = serviceTwoId;
         subjectCommitBlock = await blockchain.getLatestBlockNumber();
+        const verifyingContract = servicesRegistry.address;
 
-        packedMsg = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [subjectCommitBlock, subjectServiceId]
-        );
-        subjectSignature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+        const domain = {
+          name: "ERS",
+          version: "1.0.0",
+          chainId,
+          verifyingContract,
+        };
+
+        const types = {
+          AddSecondaryService: [
+            { name: "commitBlock", type: "uint256" },
+            { name: "serviceId", type: "bytes32" },
+          ],
+        };
+
+        const domainWithChainId = { ...domain, chainId };
+
+        const value = {
+          commitBlock: subjectCommitBlock,
+          serviceId: subjectServiceId,
+        };
+
+        subjectSignature = await chip.wallet._signTypedData(domainWithChainId, types, value);
+        subjectIncorrectSignature = await chipTwo.wallet._signTypedData(domainWithChainId, types, value);
         subjectChipId = chip.address;
         subjectCaller = owner;
       });
@@ -823,7 +843,7 @@ describe("ServicesRegistry", () => {
 
       describe("when the signature isn't valid", async () => {
         beforeEach(async () => {
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
+          subjectSignature = subjectIncorrectSignature;
         });
 
         it("should revert", async () => {
@@ -853,8 +873,6 @@ describe("ServicesRegistry", () => {
       let subjectSignature: string;
       let subjectCaller: Account;
 
-      let packedMsg: string;
-
       before(async () => {
         timeJump = 100;
         addingChip = true;
@@ -882,11 +900,35 @@ describe("ServicesRegistry", () => {
         subjectServiceId = serviceTwoId;
         subjectNewTimelock = (await blockchain.getCurrentTimestamp()).add(100);
 
-        packedMsg = ethers.utils.solidityPack(
-          ["uint256", "address", "uint256"],
-          [subjectCommitBlock, subjectServiceId, subjectNewTimelock]
-        );
-        subjectSignature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+        const verifyingContract = servicesRegistry.address;
+
+        const domain = {
+          name: "ERS",
+          version: "1.0.0",
+          chainId,
+          verifyingContract,
+        };
+
+        const types = {
+          SetNewPrimaryService: [
+            { name: "commitBlock", type: "uint256" },
+            { name: "serviceId", type: "bytes32" },
+            { name: "newTimelock", type: "uint256" },
+          ],
+        };
+
+        const domainWithChainId = { ...domain, chainId };
+
+        const value = {
+          commitBlock: subjectCommitBlock,
+          serviceId: subjectServiceId,
+          newTimelock: subjectNewTimelock,
+        };
+
+        subjectSignature = await chip.wallet._signTypedData(domainWithChainId, types, value);
+
+        subjectChipId = chip.address;
+        subjectCaller = owner;
       });
 
       async function subject(): Promise<any> {
@@ -921,11 +963,30 @@ describe("ServicesRegistry", () => {
         beforeEach(async () => {
           const commitBlock = await blockchain.getLatestBlockNumber();
 
-          const addServicePackedMsg = ethers.utils.solidityPack(
-            ["uint256", "address"],
-            [commitBlock, subjectServiceId]
-          );
-          const signature = await chip.wallet.signMessage(ethers.utils.arrayify(addServicePackedMsg));
+          const verifyingContract = servicesRegistry.address;
+
+          const domain = {
+            name: "ERS",
+            version: "1.0.0",
+            chainId,
+            verifyingContract,
+          };
+
+          const types = {
+            AddSecondaryService: [
+              { name: "commitBlock", type: "uint256" },
+              { name: "serviceId", type: "bytes32" },
+            ],
+          };
+
+          const domainWithChainId = { ...domain, chainId };
+
+          const value = {
+            commitBlock: subjectCommitBlock,
+            serviceId: subjectServiceId,
+          };
+
+          const signature = await chip.wallet._signTypedData(domainWithChainId, types, value);
           await servicesRegistry.connect(subjectCaller.wallet).addSecondaryService(
             subjectChipId,
             subjectServiceId,
@@ -995,7 +1056,30 @@ describe("ServicesRegistry", () => {
 
       describe("when the signature isn't valid", async () => {
         beforeEach(async () => {
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
+          const verifyingContract = servicesRegistry.address;
+
+          const domain = {
+            name: "ERS",
+            version: "1.0.0",
+            chainId,
+            verifyingContract,
+          };
+
+          const types = {
+            AddSecondaryService: [
+              { name: "commitBlock", type: "uint256" },
+              { name: "serviceId", type: "bytes32" },
+            ],
+          };
+
+          const domainWithChainId = { ...domain, chainId };
+
+          const value = {
+            commitBlock: subjectCommitBlock,
+            serviceId: subjectServiceId,
+          };
+
+          subjectSignature = await chipTwo.wallet._signTypedData(domainWithChainId, types, value);
         });
 
         it("should revert", async () => {
@@ -1032,10 +1116,10 @@ describe("ServicesRegistry", () => {
       let subjectChipId: Address;
       let subjectServiceId: string;
       let subjectCommitBlock: BigNumber;
+      let subjectAddSignature: string;
       let subjectSignature: string;
+      let subjectWrongSignature: string;
       let subjectCaller: Account;
-
-      let packedMsg: string;
 
       beforeEach(async () => {
         subjectChipId = chip.address;
@@ -1054,17 +1138,45 @@ describe("ServicesRegistry", () => {
         subjectServiceId = serviceTwoId;
         subjectCommitBlock = await blockchain.getLatestBlockNumber();
 
-        packedMsg = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [subjectCommitBlock, subjectServiceId]
-        );
-        subjectSignature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+        const verifyingContract = servicesRegistry.address;
+
+        const domain = {
+          name: "ERS",
+          version: "1.0.0",
+          chainId,
+          verifyingContract,
+        };
+
+        const addTypes = {
+          AddSecondaryService: [
+            { name: "commitBlock", type: "uint256" },
+            { name: "serviceId", type: "bytes32" },
+          ],
+        };
+
+        const removeTypes = {
+          RemoveSecondaryService: [
+            { name: "commitBlock", type: "uint256" },
+            { name: "serviceId", type: "bytes32" },
+          ],
+        };
+
+        const domainWithChainId = { ...domain, chainId };
+
+        const value = {
+          commitBlock: subjectCommitBlock,
+          serviceId: subjectServiceId,
+        };
+
+        subjectAddSignature = await chip.wallet._signTypedData(domainWithChainId, addTypes, value);
+        subjectSignature = await chip.wallet._signTypedData(domainWithChainId, removeTypes, value);
+        subjectWrongSignature = await chipTwo.wallet._signTypedData(domainWithChainId, removeTypes, value);
 
         await servicesRegistry.connect(subjectCaller.wallet).addSecondaryService(
           subjectChipId,
           subjectServiceId,
           subjectCommitBlock,
-          subjectSignature
+          subjectAddSignature
         );
       });
 
@@ -1077,7 +1189,7 @@ describe("ServicesRegistry", () => {
         );
       }
 
-      it("should add the service to the secondary services array", async () => {
+      it("should remove the service to the secondary services array", async () => {
         const preChipSecondaryServices = await servicesRegistry.getChipSecondaryServices(chip.address);
 
         expect(preChipSecondaryServices).to.include(subjectServiceId);
@@ -1141,7 +1253,7 @@ describe("ServicesRegistry", () => {
 
       describe("when the signature isn't valid", async () => {
         beforeEach(async () => {
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
+          subjectSignature = subjectWrongSignature;
         });
 
         it("should revert", async () => {
@@ -1165,6 +1277,7 @@ describe("ServicesRegistry", () => {
       let subjectRecordtype: string;
 
       beforeEach(async() => {
+        await chipRegistry.mockAddChip(chip.address, owner.address);
         await chipRegistry.setInitialService(
           chip.address,
           serviceOneId,
@@ -1276,16 +1389,36 @@ describe("ServicesRegistry", () => {
         const firstServiceId = serviceTwoId;
         const secondServiceId = serviceThreeId;
 
-        const firstPackedMsg = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [commitBlock, firstServiceId]
-        );
-        const secondPackedMsg = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [commitBlock, secondServiceId]
-        );
-        const firstSignature = await chip.wallet.signMessage(ethers.utils.arrayify(firstPackedMsg));
-        const secondSignature = await chip.wallet.signMessage(ethers.utils.arrayify(secondPackedMsg));
+        const verifyingContract = servicesRegistry.address;
+
+        const domain = {
+          name: "ERS",
+          version: "1.0.0",
+          chainId,
+          verifyingContract,
+        };
+
+        const types = {
+          AddSecondaryService: [
+            { name: "commitBlock", type: "uint256" },
+            { name: "serviceId", type: "bytes32" },
+          ],
+        };
+
+        const domainWithChainId = { ...domain, chainId };
+
+        const firstValue = {
+          commitBlock,
+          serviceId: firstServiceId,
+        };
+
+        const secondValue = {
+          commitBlock,
+          serviceId: secondServiceId,
+        };
+
+        const firstSignature = await chip.wallet._signTypedData(domainWithChainId, types, firstValue);
+        const secondSignature = await chip.wallet._signTypedData(domainWithChainId, types, secondValue);
 
         await servicesRegistry.connect(owner.wallet).addSecondaryService(subjectChipId, firstServiceId, commitBlock, firstSignature);
         await servicesRegistry.connect(owner.wallet).addSecondaryService(subjectChipId, secondServiceId, commitBlock, secondSignature);

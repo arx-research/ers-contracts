@@ -79,7 +79,7 @@ contract ManufacturerRegistry is Ownable, EIP712 {
     /* ============ Constants ============ */
     // Match signature version to project version.
     string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
-    string public constant EIP712_SIGNATURE_VERSION = "2.1.0";
+    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
 
 
     /* ============ State Variables ============ */
@@ -239,12 +239,11 @@ contract ManufacturerRegistry is Ownable, EIP712 {
         view
         returns (bool)
     {
-        // bytes32 msgHash = abi.encodePacked(block.chainid, _chipId).toEthSignedMessageHash();
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("manufacturerCertificate(address chipId)"),
+            keccak256("ManufacturerCertificate(address chipId)"),
             _chipId
         )));
-        // address signer = ECDSA.recover(digest, signature);
+
         return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(digest, _manufacturerCertificate);
     }
 

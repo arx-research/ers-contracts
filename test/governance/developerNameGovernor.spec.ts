@@ -17,6 +17,7 @@ import {
 } from "@utils/test/index";
 import { calculateLabelHash, createNameApprovalProof } from "../../utils/protocolUtils";
 import { ethers } from "hardhat";
+import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
@@ -31,6 +32,9 @@ describe("DeveloperRegistry", () => {
   let developerRegistry: DeveloperRegistry;
   let chipRegistry: Account;
   let deployer: DeployHelper;
+  let chainId: number;
+
+  const blockchain = new Blockchain(ethers.provider);
 
   beforeEach(async () => {
     [
@@ -40,6 +44,8 @@ describe("DeveloperRegistry", () => {
       attacker,
       chipRegistry,
     ] = await getAccounts();
+
+    chainId = await blockchain.getChainId();
 
     deployer = new DeployHelper(owner.wallet);
 
@@ -75,7 +81,7 @@ describe("DeveloperRegistry", () => {
     beforeEach(async () => {
       subjectDeveloperName = ethers.utils.formatBytes32String("testName");
       subjectCaller = developerOne;
-      subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectCaller.address, subjectDeveloperName);
+      subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectCaller.address, subjectDeveloperName, chainId, developerNameGovernor.address);
     });
 
     async function subject(): Promise<any> {
@@ -111,7 +117,7 @@ describe("DeveloperRegistry", () => {
     beforeEach(async () => {
       subjectDeveloperOwner = developerOne.address;
       developerName = ethers.utils.formatBytes32String("testName");
-      const subjectApprovalProof = await createNameApprovalProof(nameCoordinator, developerOne.address, developerName);
+      const subjectApprovalProof = await createNameApprovalProof(nameCoordinator, developerOne.address, developerName, chainId, developerNameGovernor.address);
 
       await developerNameGovernor.connect(developerOne.wallet).claimName(
         developerName,

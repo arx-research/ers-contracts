@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { IDeveloperRegistry } from "../interfaces/IDeveloperRegistry.sol";
 
 /**
@@ -15,13 +15,18 @@ import { IDeveloperRegistry } from "../interfaces/IDeveloperRegistry.sol";
  * signature signed by the coordinator of this contract over hash(developerAddress, developerName).
  */
 
-contract DeveloperNameGovernor is Ownable {
+contract DeveloperNameGovernor is Ownable, EIP712 {
 
     using ECDSA for bytes;
     using SignatureChecker for address;
 
     /* ============ Events ============ */
     event NameCoordinatorUpdated(address newNameCoordinator);
+
+    /* ============ Constants ============ */
+    // Match signature version to project version.
+    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
+    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
 
     /* ============ State Variables ============ */
     IDeveloperRegistry public immutable developerRegistry;
@@ -36,6 +41,7 @@ contract DeveloperNameGovernor is Ownable {
      */
     constructor(IDeveloperRegistry _developerRegistry, address _nameCoordinator)
         Ownable()
+        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
         developerRegistry = _developerRegistry;
         nameCoordinator = _nameCoordinator;
@@ -57,8 +63,13 @@ contract DeveloperNameGovernor is Ownable {
         // .toEthSignedMessageHash() prepends the message with "\x19Ethereum Signed Message:\n" + message.length and hashes message
         address sender = msg.sender;
         
-        bytes32 messageHash = abi.encodePacked(sender, _developerName).toEthSignedMessageHash();
-        require(nameCoordinator.isValidSignatureNow(messageHash, _nameApprovalProof), "Invalid signature");
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("NameApprovalProof(address developerOwner,bytes32 developerName)"),
+            sender,
+            _developerName
+        )));
+        
+        require(nameCoordinator.isValidSignatureNow(digest, _nameApprovalProof), "Invalid signature");
 
         developerRegistry.addAllowedDeveloper(sender, _developerName);
     }

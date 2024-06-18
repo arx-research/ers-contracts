@@ -7,6 +7,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
@@ -28,7 +29,7 @@ import { IPBT } from "./token/IPBT.sol";
  * chips are represented as tokens any physical chip transfers should also be completed on-chain in order to get full 
  * functionality for the chip.
  */
-contract ChipRegistry is Ownable {
+contract ChipRegistry is Ownable, EIP712 {
     using SignatureChecker for address;
     using ECDSA for bytes;
     using StringArrayUtils for string[];
@@ -87,6 +88,11 @@ contract ChipRegistry is Ownable {
         bool chipEnrolled;
     }
 
+    /* ============ Constants ============ */
+    // Match signature version to project version.
+    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
+    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
+
     /* ============ State Variables ============ */
     IManufacturerRegistry public immutable manufacturerRegistry;
     IERS public ers;
@@ -113,6 +119,7 @@ contract ChipRegistry is Ownable {
         address _migrationSigner
     )
         Ownable()
+        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
         manufacturerRegistry = _manufacturerRegistry;
         maxLockinPeriod = _maxLockinPeriod;
@@ -506,13 +513,19 @@ contract ChipRegistry is Ownable {
         returns (bool)
     {
         // For developer custody proofs, the chip signs the developer address. For migration proofs the migration signer signs the chipId
-        bytes32 developerMsgHash = abi.encodePacked(_developerRegistrar).toEthSignedMessageHash();
-        bytes32 migrationMsgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+        bytes32 developerDigest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("DeveloperCustodyProof(address developerRegistrar)"),
+            _developerRegistrar
+        )));
+        bytes32 migrationDigest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("MigrationProof(address chipId)"),
+            _chipId
+        )));
 
         // If the developer signed the developer address, return 
-        if(_chipId.isValidSignatureNow(developerMsgHash, _custodyProof))
+        if(_chipId.isValidSignatureNow(developerDigest, _custodyProof))
             return true;
-        else if(migrationSigner.isValidSignatureNow(migrationMsgHash, _custodyProof))
+        else if(migrationSigner.isValidSignatureNow(migrationDigest, _custodyProof))
             return false;
         else
             revert("Invalid custody proof");
