@@ -33,8 +33,8 @@ contract DeveloperRegistrar is Ownable {
     IServicesRegistry public immutable servicesRegistry;
 
     bool public initialized;
-    bytes32 public rootNode;        // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
-    address[] public projects;
+    bytes32 public rootNode;                        // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
+    mapping(address => bytes32) public projects;    // Projects mapped to their assigned nameHashes
 
     /* ============ Constructor ============ */
 
@@ -112,7 +112,7 @@ contract DeveloperRegistrar is Ownable {
 
         // Call project registrar to set root node (this is an untrusted contract!)
         _projectRegistrar.setRootNode(projectNode);
-        projects.push(address(_projectRegistrar));
+        projects[address(_projectRegistrar)] = _nameHash;
 
         // NOTE: Checks are carried out on ChipRegistry to validate the project registrar
         chipRegistry.addProjectEnrollment(
@@ -137,11 +137,6 @@ contract DeveloperRegistrar is Ownable {
      */
     function removeProject(IProjectRegistrar _projectRegistrar) external onlyOwner() {
         chipRegistry.removeProjectEnrollment(_projectRegistrar);
-    }
-
-    /* ============ View Functions ============ */
-
-    function getProjects() external view returns(address[] memory) {
-        return projects;
+        delete projects[address(_projectRegistrar)];
     }
 }

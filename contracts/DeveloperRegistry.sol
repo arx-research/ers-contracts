@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import { AddressArrayUtils } from "./lib/AddressArrayUtils.sol";
 import { IERS } from "./interfaces/IERS.sol";
@@ -18,7 +18,7 @@ import { IDeveloperRegistrarFactory } from "./interfaces/IDeveloperRegistrarFact
  * governance. When creating a new Registrar the Developer is given a new [x].ers name. Governance has the ability to revoke Developer permissions
  * and reassign the ERS name to a new Developer.
  */
-contract DeveloperRegistry is Ownable {
+contract DeveloperRegistry is Ownable2Step {
 
     using AddressArrayUtils for address[];
 
@@ -55,7 +55,7 @@ contract DeveloperRegistry is Ownable {
     address[] internal developerRegistrars;
 
     /* ============ Constructor ============ */
-    constructor(address _governance) Ownable() {
+    constructor(address _governance) Ownable2Step() {
         transferOwnership(_governance);
     }
 

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import { ChipValidations } from "../lib/ChipValidations.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
@@ -18,7 +18,7 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
  * @notice Base contract for ProjectRegistrars. Contains common functionality for all ProjectRegistrars including setting the root node
  * and claiming chips.
  */
-contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
+contract BaseProjectRegistrar is Ownable2Step, IProjectRegistrar {
     using ChipValidations for address;
 
     /* ============ Events ============ */
@@ -49,7 +49,7 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         IERS _ers, 
         IDeveloperRegistrar _developerRegistrar
     ) 
-        Ownable() 
+        Ownable2Step() 
     {
         chipRegistry = _chipRegistry;
         ers = _ers;

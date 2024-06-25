@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -29,7 +29,7 @@ import { IPBT } from "./token/IPBT.sol";
  * chips are represented as tokens any physical chip transfers should also be completed on-chain in order to get full 
  * functionality for the chip.
  */
-contract ChipRegistry is Ownable, EIP712 {
+contract ChipRegistry is Ownable2Step, EIP712 {
     using SignatureChecker for address;
     using ECDSA for bytes;
     using StringArrayUtils for string[];
@@ -75,10 +75,10 @@ contract ChipRegistry is Ownable, EIP712 {
         bytes32 nameHash;
         IDeveloperRegistrar developerRegistrar;
         IServicesRegistry servicesRegistry;
+        bool chipsAdded;
         bytes32 serviceId;
         uint256 lockinPeriod;
         uint256 creationTimestamp;
-        bool chipsAdded;
     }
 
     struct ChipInfo {
@@ -118,7 +118,7 @@ contract ChipRegistry is Ownable, EIP712 {
         uint256 _maxLockinPeriod,
         address _migrationSigner
     )
-        Ownable()
+        Ownable2Step()
         EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
         manufacturerRegistry = _manufacturerRegistry;

@@ -74,6 +74,7 @@ export async function createNameApprovalProof(
   signer: Account,
   developerOwner: Address,
   nameHash: string,
+  proofTimestamp: number,
   chainId: number,
   verifyingContract: Address
 ): Promise<string> {
@@ -88,6 +89,7 @@ export async function createNameApprovalProof(
     NameApprovalProof: [
       { name: "developerOwner", type: "address" },
       { name: "developerName", type: "bytes32" },
+      { name: "proofTimestamp", type: "uint256" },
     ],
   };
 
@@ -96,6 +98,7 @@ export async function createNameApprovalProof(
   const value = {
     developerOwner,
     developerName: nameHash,
+    proofTimestamp,
   };
 
   return await signer.wallet._signTypedData(domainWithChainId, types, value);

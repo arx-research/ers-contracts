@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
  * 3. Read-only: manufacturers[_manufacturerId].registered = true && manufacturers[_manufacturerId].owner == address(0).
  *    Once a manufacturerId has been put in this state it CANNOT leave it.
  */
-contract ManufacturerRegistry is Ownable, EIP712 {
+contract ManufacturerRegistry is Ownable2Step, EIP712 {
 
     using SignatureChecker for address;
     using ECDSA for bytes;
@@ -55,10 +55,10 @@ contract ManufacturerRegistry is Ownable, EIP712 {
         uint256 manufacturerId;
         address manufacturerCertSigner;
         address authModel;                  // Address with implementation for validating chip signatures
+        bool active;                        // If enrollment can be used to validate chips        
         string chipValidationDataUri;       // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
         string bootloaderApp;               // Optional: Bootloader app for this enrollment
         string chipModel;                   // Description of chip
-        bool active;                        // If enrollment can be used to validate chips
     }
 
     struct ManufacturerInfo {
@@ -93,7 +93,7 @@ contract ManufacturerRegistry is Ownable, EIP712 {
      * @param _governance               Address of governance
      */
     constructor(address _governance) 
-        Ownable() 
+        Ownable2Step() 
         EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
         transferOwnership(_governance);

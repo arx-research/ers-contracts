@@ -41,7 +41,7 @@ import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe.only("ChipRegistry", () => {
+describe("ChipRegistry", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
