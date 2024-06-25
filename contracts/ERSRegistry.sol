@@ -210,21 +210,6 @@ contract ERSRegistry {
         emit Transfer(_node, _newOwner);
     }
 
-    /**
-     * @dev Sets a new resolver for a node. This function is used to set the owner of a chip node in the ERS
-     * when a chip is transferred. This function is called by the ChipRegistry when a chip is transferred.
-     *
-     * @param _node        The node
-     * @param _resolver    The address of the new resolver
-     */
-    function setChipResolver(bytes32 _node, address _resolver) external virtual {
-        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
-        require(_resolver != address(0), "New resolver cannot be null address");
-        require(recordExists(_node), "Node does not exist");
-
-        _setResolver(_node, _resolver);
-    }
-
     /* ============ View Functions ============ */
 
     /**
