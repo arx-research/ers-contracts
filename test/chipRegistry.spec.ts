@@ -268,13 +268,14 @@ describe("ChipRegistry", () => {
         await subject();
 
         const actualProjectInfo = await chipRegistry.projectEnrollments(subjectProjectRegistrar);
+        const projectCreationTimestamp = await blockchain.getCurrentTimestamp();
 
         expect(actualProjectInfo.nameHash).to.eq(subjectNameHash);
         expect(actualProjectInfo.developerRegistrar).to.eq(developerRegistrar.address);
         expect(actualProjectInfo.servicesRegistry).to.eq(servicesRegistry.address);
         expect(actualProjectInfo.serviceId).to.eq(subjectServiceId);
         expect(actualProjectInfo.lockinPeriod).to.eq(subjectLockinPeriod);
-        expect(actualProjectInfo.creationTimestamp).to.eq(await blockchain.getCurrentTimestamp());
+        expect(actualProjectInfo.creationTimestamp).to.eq(projectCreationTimestamp);
         expect(actualProjectInfo.chipsAdded).to.be.false;
       });
 
@@ -305,16 +306,6 @@ describe("ChipRegistry", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Service does not exist");
-        });
-      });
-
-      describe("when the project registrar does not implement IPBT", async () => {
-        beforeEach(async () => {
-          subjectProjectRegistrar = servicesRegistry.address;
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Does not implement IPBT");
         });
       });
 
@@ -393,11 +384,13 @@ describe("ChipRegistry", () => {
           BigNumber.from(5),
           transferPolicy
         );
+
         await projectRegistrarTwo.connect(owner.wallet).transferOwnership(developerTwo.address);
+        await projectRegistrarTwo.connect(developerTwo.wallet).acceptOwnership();
 
         const nameHash = calculateLabelHash("ProjectY");
 
-        lockinPeriod = (await blockchain.getCurrentTimestamp()).add(100);
+        lockinPeriod = BigNumber.from(100);
 
         await developerRegistrar.connect(developerTwo.wallet).addProject(
           projectRegistrarTwo.address,
@@ -464,9 +457,10 @@ describe("ChipRegistry", () => {
         await subject();
 
         const chipServices = await servicesRegistry.chipServices(subjectChipAddition[0].chipId);
+        const projectCreationTimestamp = (await chipRegistry.projectEnrollments(projectRegistrarTwo.address)).creationTimestamp;
 
         expect(chipServices.primaryService).to.eq(ethers.utils.formatBytes32String("Gucci-Flex"));
-        expect(chipServices.serviceTimelock).to.eq(lockinPeriod);
+        expect(chipServices.serviceTimelock).to.eq(lockinPeriod.add(projectCreationTimestamp));
       });
 
       it("should emit a ChipAdded event", async () => {
@@ -629,6 +623,7 @@ describe("ChipRegistry", () => {
 
     describe("#removeProjectEnrollment", async () => {
       let subjectProjectRegistrar: Address;
+      let subjectDeveloperRegistrar: DeveloperRegistrar;
       let subjectNameHash: string;
       let subjectCaller: Account;
       let subjectServiceId: string;
@@ -643,12 +638,12 @@ describe("ChipRegistry", () => {
         await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerOne.address, mockNameHash);
 
         await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
-        developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
+        subjectDeveloperRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
         projectRegistrarThree = await deployer.deployPBTSimpleProjectRegistrar(
           chipRegistry.address,
           ersRegistry.address,
-          developerRegistrar.address,
+          subjectDeveloperRegistrar.address,
           "ProjectA",
           "PRA",
           "https://projecta.com/",
@@ -670,7 +665,7 @@ describe("ChipRegistry", () => {
         };
         subjectCustodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
 
-        await developerRegistrar.connect(subjectCaller.wallet).addProject(
+        await subjectDeveloperRegistrar.connect(subjectCaller.wallet).addProject(
           subjectProjectRegistrar,
           subjectNameHash,
           subjectServiceId,
@@ -680,7 +675,7 @@ describe("ChipRegistry", () => {
       });
 
       async function subject(): Promise<any> {
-        return developerRegistrar.connect(subjectCaller.wallet).removeProject(subjectProjectRegistrar);
+        return subjectDeveloperRegistrar.connect(subjectCaller.wallet).removeProject(subjectProjectRegistrar);
       }
 
       async function subjectCallDirectly(): Promise<any> {
@@ -697,7 +692,7 @@ describe("ChipRegistry", () => {
 
       it("should emit the correct ProjectEnrollmentRemoved event", async () => {
         await expect(subject()).to.emit(chipRegistry, "ProjectEnrollmentRemoved").withArgs(
-          developerRegistrar.address,
+          subjectDeveloperRegistrar.address,
           subjectProjectRegistrar,
           subjectNameHash
         );
@@ -769,11 +764,11 @@ describe("ChipRegistry", () => {
             subjectServiceId,
             subjectLockinPeriod
           );
+          subjectDeveloperRegistrar = newDeveloperRegistrar;
         });
 
         it("should revert", async () => {
-          // TODO: actual revert should be Developer Registrar does not own project
-          await expect(subject()).to.be.revertedWith("Developer Registrar does not own project");
+          await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
 
@@ -810,6 +805,7 @@ describe("ChipRegistry", () => {
           developerRegistrar.address
         );
         await projectRegistrar.connect(owner.wallet).transferOwnership(developerTwo.address);
+        await projectRegistrar.connect(developerTwo.wallet).acceptOwnership();
 
         const nameHash = calculateLabelHash("ProjectY");
 
@@ -900,6 +896,7 @@ describe("ChipRegistry", () => {
           developerRegistrar.address
         );
         await projectRegistrar.connect(owner.wallet).transferOwnership(developerTwo.address);
+        await projectRegistrar.connect(developerTwo.wallet).acceptOwnership();
 
         const nameHash = calculateLabelHash("ProjectY");
 
@@ -911,6 +908,7 @@ describe("ChipRegistry", () => {
           serviceId,
           lockinPeriod
         );
+
 
         const manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
@@ -977,6 +975,7 @@ describe("ChipRegistry", () => {
           developerRegistrar.address
         );
         await projectRegistrar.connect(owner.wallet).transferOwnership(developerTwo.address);
+        await projectRegistrar.connect(developerTwo.wallet).acceptOwnership();
 
         const nameHash = calculateLabelHash("ProjectY");
 
@@ -1046,6 +1045,7 @@ describe("ChipRegistry", () => {
           developerRegistrar.address
         );
         await projectRegistrar.connect(owner.wallet).transferOwnership(developerTwo.address);
+        await projectRegistrar.connect(developerTwo.wallet).acceptOwnership();
 
         const nameHash = calculateLabelHash("ProjectY");
 

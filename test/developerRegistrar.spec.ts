@@ -96,14 +96,14 @@ describe("DeveloperRegistrar", () => {
   addSnapshotBeforeRestoreAfterEach();
 
   describe("#constructor", async () => {
-    let subjectOwner: Address;
+    let subjectOwner: Account;
     let subjectChipRegistry: Address;
     let subjectErsRegistry: Address;
     let subjectDeveloperRegistry: Address;
     let subjectServicesRegistry: Address;
 
     beforeEach(async () => {
-      subjectOwner = developerOne.address;
+      subjectOwner = developerOne;
       subjectChipRegistry = chipRegistry.address;
       subjectErsRegistry = ersRegistry.address;
       subjectDeveloperRegistry = developerRegistry.address;
@@ -143,7 +143,7 @@ describe("DeveloperRegistrar", () => {
 
     beforeEach(async () => {
       developerRegistrar = await deployer.deployDeveloperRegistrar(
-        developerOne.address,
+        developerOne,
         chipRegistry.address,
         ersRegistry.address,
         fakeDeveloperRegistry.address,

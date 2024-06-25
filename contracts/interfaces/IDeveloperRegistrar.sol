@@ -23,5 +23,7 @@ interface IDeveloperRegistrar {
         IProjectRegistrar _projectRegistrar
     )
         external;
+
+    function getProjects() external view returns (address[] memory);
      
 }

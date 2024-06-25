@@ -84,14 +84,14 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrar(
-    owner: Address,
+    owner: Account,
     chipRegistry: Address,
     ersRegistry: Address,
     developerRegistry: Address,
     servicesRegistry: Address
   ): Promise<DeveloperRegistrar> {
     const developerRegistrar = await new DeveloperRegistrar__factory(this._deployerSigner).deploy(
-      owner,
+      owner.address,
       chipRegistry,
       ersRegistry,
       developerRegistry,

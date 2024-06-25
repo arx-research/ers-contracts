@@ -215,7 +215,7 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         IProjectRegistrar projectRegistrar = IProjectRegistrar(msg.sender);
         ProjectInfo memory projectInfo = projectEnrollments[projectRegistrar];
 
-        // Verify the chip is set to non-zero address
+        // Verify the chip owner is set to non-zero address
         require(_chipId != address(0), "Invalid chip");
     
         // Verify the chip owner is set to non-zero address
@@ -250,8 +250,8 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         });
        
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
-        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.lockinPeriod ?
-            projectInfo.lockinPeriod :
+        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.creationTimestamp + projectInfo.lockinPeriod ?
+            projectInfo.creationTimestamp + projectInfo.lockinPeriod :
             projectInfo.creationTimestamp + maxLockinPeriod;
 
         // Set primaryService on ServicesRegistry

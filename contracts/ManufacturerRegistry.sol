@@ -96,7 +96,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
         Ownable2Step() 
         EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
-        transferOwnership(_governance);
+        _transferOwnership(_governance);
     }
 
     /* ============ External Functions ============ */
