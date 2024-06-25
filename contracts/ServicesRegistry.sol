@@ -6,7 +6,9 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-import { Bytes32ArrayUtils } from "./lib/Bytes32ArrayUtils.sol"; 
+import { Bytes32ArrayUtils } from "./lib/Bytes32ArrayUtils.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 
@@ -24,7 +26,7 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
  * Primary services have a timelock that must expire before the primary service can be changed. Secondary services can be
  * added and removed at any time. The primary service cannot be one of the chip's secondary services.
  */
-contract ServicesRegistry is IServicesRegistry, EIP712 {
+contract ServicesRegistry is IServicesRegistry, ERC165, EIP712 {
     using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes;
     using SignatureChecker for address;
@@ -534,9 +536,11 @@ contract ServicesRegistry is IServicesRegistry, EIP712 {
         public
         view
         virtual
+        override(ERC165)
         returns (bool)
     {
-        return _interfaceId == type(IServicesRegistry).interfaceId;
+        return _interfaceId == type(IServicesRegistry).interfaceId ||
+        super.supportsInterface(_interfaceId);
     }
 
     /* ============ Internal Functions ============ */

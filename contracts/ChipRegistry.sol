@@ -6,7 +6,7 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
@@ -16,7 +16,6 @@ import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
 import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
-import { IPBT } from "./token/IPBT.sol";
 
 /**
  * @title ChipRegistry
@@ -29,7 +28,7 @@ import { IPBT } from "./token/IPBT.sol";
  * chips are represented as tokens any physical chip transfers should also be completed on-chain in order to get full 
  * functionality for the chip.
  */
-contract ChipRegistry is Ownable2Step, EIP712 {
+contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
     using SignatureChecker for address;
     using ECDSA for bytes;
     using StringArrayUtils for string[];
@@ -83,7 +82,7 @@ contract ChipRegistry is Ownable2Step, EIP712 {
 
     struct ChipInfo {
         bytes32 nameHash;
-        address projectRegistrar; // projectRegistrars are both IPBT and IProjectRegistrar
+        address projectRegistrar; // projectRegistrars are IProjectRegistrar and typically assumed to be IPBT
         bytes32 manufacturerEnrollmentId;     // enrollmentId of the chip's manufacturer
         bool chipEnrolled;
     }
@@ -157,7 +156,6 @@ contract ChipRegistry is Ownable2Step, EIP712 {
 
         // Verify that the project registrar implements the necessary interfaces
         IERC165 checker = IERC165(address(_projectRegistrar));
-        require(checker.supportsInterface(type(IPBT).interfaceId), "Does not implement IPBT");
         require(checker.supportsInterface(type(IProjectRegistrar).interfaceId), "Does not implement IProjectRegistrar");
 
         // Verify that the project isn't already enrolled
@@ -217,7 +215,7 @@ contract ChipRegistry is Ownable2Step, EIP712 {
         IProjectRegistrar projectRegistrar = IProjectRegistrar(msg.sender);
         ProjectInfo memory projectInfo = projectEnrollments[projectRegistrar];
 
-        // Verify the chip owner is set to non-zero address
+        // Verify the chip is set to non-zero address
         require(_chipId != address(0), "Invalid chip");
     
         // Verify the chip owner is set to non-zero address
@@ -427,10 +425,25 @@ contract ChipRegistry is Ownable2Step, EIP712 {
      */
     function ownerOf(address _chipId) public view virtual returns (address) {
         require(chipEnrollments[_chipId].chipEnrolled, "Chip not added");
-        IPBT projectRegistrar = IPBT(chipEnrollments[_chipId].projectRegistrar);
+        IProjectRegistrar projectRegistrar = IProjectRegistrar(chipEnrollments[_chipId].projectRegistrar);
 
         return projectRegistrar.ownerOf(_chipId);
     } 
+
+        /**
+     * 
+     * @param _interfaceId The interface ID to check for
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        virtual
+        override(ERC165)
+        returns (bool)
+    {
+        return _interfaceId == type(IChipRegistry).interfaceId ||
+        super.supportsInterface(_interfaceId);
+    }
 
     /* ============ Internal Functions ============ */
 

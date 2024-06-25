@@ -42,6 +42,13 @@ interface IERS {
         pure
         returns (bytes32);
 
+    function getOwner(
+        bytes32 _node
+    )
+        external
+        view
+        returns (address);
+
     function getSubnodeOwner(
         bytes32 _node,
         bytes32 _nameHash

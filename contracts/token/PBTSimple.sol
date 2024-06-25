@@ -215,16 +215,6 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
     }
 
     /**
-     * @dev Returns the owner of a given chipId
-     *
-     * @param _chipId       The chipId to get the owner for
-     * @return address      The owner of the given chipId
-     */
-    function ownerOf(address _chipId) public view override returns (address) {
-        return ownerOf(tokenIdFor(_chipId));
-    }
-
-    /**
      * 
      * @param _interfaceId The interface ID to check for
      */

@@ -9,7 +9,7 @@ import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
 import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /**
  * @title BaseProjectRegistrar
@@ -18,7 +18,7 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
  * @notice Base contract for ProjectRegistrars. Contains common functionality for all ProjectRegistrars including setting the root node
  * and claiming chips.
  */
-contract BaseProjectRegistrar is Ownable2Step, IProjectRegistrar {
+contract BaseProjectRegistrar is Ownable2Step, ERC165, IProjectRegistrar {
     using ChipValidations for address;
 
     /* ============ Events ============ */
@@ -71,13 +71,31 @@ contract BaseProjectRegistrar is Ownable2Step, IProjectRegistrar {
 
     /* ============ External Functions ============ */
 
+    /**
+     * @notice Lookup a chip owner via ERS; adding on ProjectRegistrar enforces that collections
+     * must (1) allow ownership lookups and (2) increase the probability ownership truth is 
+     * contained in ERS.
+     * 
+     * @param _chipId                   Address of the chip being claimed
+     */
+    function ownerOf(address _chipId) 
+        external 
+        view 
+        returns (address) 
+    {
+        bytes32 chipNode = chipRegistry.node(_chipId);
+        return ers.getOwner(chipNode);
+    }
+
     function supportsInterface(bytes4 _interfaceId)
         public
         view
         virtual
+        override(ERC165)
         returns (bool)
     {
-        return _interfaceId == type(IProjectRegistrar).interfaceId;
+        return _interfaceId == type(IProjectRegistrar).interfaceId ||
+        super.supportsInterface(_interfaceId);
     }
 
     /* ============ Internal Functions ============ */
