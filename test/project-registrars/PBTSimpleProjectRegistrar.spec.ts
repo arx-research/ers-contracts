@@ -15,6 +15,7 @@ import {
   DeveloperRegistrarFactory,
   DeveloperRegistry,
   ERSRegistry,
+  EnrollmentSECP256k1Model,
   InterfaceIdGetterMock,
   ManufacturerRegistry,
   OpenTransferPolicy,
@@ -41,7 +42,7 @@ import { Blockchain } from "@utils/common";
 import { BigNumber } from "ethers";
 const expect = getWaffleExpect();
 
-describe("PBTSimpleProjectRegistrar", () => {
+describe.only("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
@@ -54,6 +55,7 @@ describe("PBTSimpleProjectRegistrar", () => {
 
   let projectRegistrar: PBTSimpleProjectRegistrar;
   let manufacturerRegistry: ManufacturerRegistry;
+  let enrollmentAuthModel: EnrollmentSECP256k1Model;
   let ersRegistry: ERSRegistry;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let developerRegistry: DeveloperRegistry;
@@ -64,7 +66,6 @@ describe("PBTSimpleProjectRegistrar", () => {
   let transferPolicy: OpenTransferPolicy;
   let newTransferPolicy: Account;
   let developerRegistrar: DeveloperRegistrar;
-
 
   let manufacturerId: string;
   let serviceId: string;
@@ -114,6 +115,7 @@ describe("PBTSimpleProjectRegistrar", () => {
     // 2. Add example manufacture to Manufacturer Registry
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
     await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
+    enrollmentAuthModel = await deployer.deployEnrollmentSECP256k1Model();
 
     developerChipsEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
 
@@ -130,6 +132,7 @@ describe("PBTSimpleProjectRegistrar", () => {
       manufacturerId,
       manufacturerCertSigner,
       manufacturerChipAuthModel,
+      enrollmentAuthModel.address,
       manufacturerValidationUri,
       manufacturerBootloaderApp,
       manufacturerChipModel
@@ -204,6 +207,7 @@ describe("PBTSimpleProjectRegistrar", () => {
     );
 
     await projectRegistrar.connect(owner.wallet).transferOwnership(developerOne.address);
+    await projectRegistrar.connect(developerOne.wallet).acceptOwnership();
 
     // 15. Create example service for project
 
@@ -266,7 +270,8 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       const manufacturerValidationOne = {
         enrollmentId: developerChipsEnrollmentId,
-        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+        payload: "0x",
       } as ManufacturerValidationInfo;
 
       const chipIdTwo = chipTwo.address;
@@ -274,7 +279,8 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       const manufacturerValidationTwo = {
         enrollmentId: developerChipsEnrollmentId,
-        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address, manufacturerRegistry.address),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address, enrollmentAuthModel.address),
+        payload: "0x",
       } as ManufacturerValidationInfo;
 
       subjectAdditionData = [
@@ -283,14 +289,14 @@ describe("PBTSimpleProjectRegistrar", () => {
           chipOwner: developerOne.address,
           nameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
-          custodyProof: await createDeveloperCustodyProof(chipOne, developerOne.address),
+          custodyProof: await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address),
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
           chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
-          custodyProof: await createMigrationProof(owner, chipTwo.address),
+          custodyProof: await createMigrationProof(owner, chipTwo.address, chainId, chipRegistry.address),
         } as ProjectChipAddition,
       ];
       subjectCaller = developerOne;
@@ -347,14 +353,14 @@ describe("PBTSimpleProjectRegistrar", () => {
           chipOwner: developerOne.address,
           nameHash: nameHashOne,
           manufacturerValidation: manufacturerValidationOne,
-          custodyProof: await createDeveloperCustodyProof(chipOne, developerOne.address),
+          custodyProof: await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address),
         } as ProjectChipAddition,
         {
           chipId: chipIdTwo,
           chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
-          custodyProof: await createMigrationProof(owner, chipTwo.address),
+          custodyProof: await createMigrationProof(owner, chipTwo.address, chainId, chipRegistry.address),
         } as ProjectChipAddition,
       ];
 
@@ -371,9 +377,11 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       beforeEach(async () => {
         subjectChipId = chipOne.address;
-        const anchorBlock = await blockchain._provider.getBlock("latest");
+        const anchorBlock = await ethers.provider.getBlock('latest');
+
         subjectBlockNumberUsedInSig = BigNumber.from(anchorBlock.number);
         subjectUseSafeTranfer = false;
+
         subjectPayload = ethers.utils.zeroPad(subjectBlockNumberUsedInSig.toHexString(), 32);
         subjectCaller = developerTwo;
         const msgContents = ethers.utils.solidityPack(
