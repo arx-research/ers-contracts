@@ -2,10 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { IEnrollmentAuthModel } from "./interfaces/IEnrollmentAuthModel.sol";
 
 /**
  * @title ManufacturerRegistry
@@ -20,10 +18,7 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
  * 3. Read-only: manufacturers[_manufacturerId].registered = true && manufacturers[_manufacturerId].owner == address(0).
  *    Once a manufacturerId has been put in this state it CANNOT leave it.
  */
-contract ManufacturerRegistry is Ownable2Step, EIP712 {
-
-    using SignatureChecker for address;
-    using ECDSA for bytes;
+contract ManufacturerRegistry is Ownable2Step {
 
     /* ============ Events ============ */
     event ManufacturerAdded(                // Called in addManufacturer
@@ -34,14 +29,15 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
         bytes32 indexed manufacturerId
     );
 
-    event EnrollmentAdded(                  // Called in addChipEnrollment
-        bytes32 indexed manufacturerId,     // Manufacturer identifier
-        bytes32 indexed enrollmentId,       // Enrollment identifier
-        address manufacturerCertSigner,     // Address of certificate signer for this enrollment
-        address authModel,                  // Address of contract that implements example signature validation for a chip
-        string chipValidationDataUri,       // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
-        string bootloaderApp,               // Optional: Bootloader app for this enrollment
-        string chipModel                    // Chip model for this enrollment
+    event EnrollmentAdded(                        // Called in addChipEnrollment
+        bytes32 indexed manufacturerId,           // Manufacturer identifier
+        bytes32 indexed enrollmentId,             // Enrollment identifier
+        address manufacturerCertSigner,           // Address of certificate signer for this enrollment
+        address authModel,                        // Address of contract that implements example signature validation for a chip
+        IEnrollmentAuthModel enrollmentAuthModel, // Address of contract that implements example signature validation for manufacturerCertificates
+        string chipValidationDataUri,             // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
+        string bootloaderApp,                     // Optional: Bootloader app for this enrollment
+        string chipModel                          // Chip model for this enrollment
     );
 
     event ManufacturerOwnerUpdated(         // Called in updateManufacturerOwner
@@ -54,11 +50,12 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
     struct EnrollmentInfo {
         uint256 manufacturerId;
         address manufacturerCertSigner;
-        address authModel;                  // Address with implementation for validating chip signatures
-        bool active;                        // If enrollment can be used to validate chips        
-        string chipValidationDataUri;       // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
-        string bootloaderApp;               // Optional: Bootloader app for this enrollment
-        string chipModel;                   // Description of chip
+        address authModel;                          // Address with implementation for validating chip signatures
+        IEnrollmentAuthModel enrollmentAuthModel;   // Address with implementation for validating manufacturerCertificates in an enrollment
+        bool active;                                // If enrollment can be used to validate chips        
+        string chipValidationDataUri;               // Optional: URI pointing to location of off-chain manufacturer enrollment validation data
+        string bootloaderApp;                       // Optional: Bootloader app for this enrollment
+        string chipModel;                           // Description of chip
     }
 
     struct ManufacturerInfo {
@@ -76,12 +73,6 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
         _;
     }
 
-    /* ============ Constants ============ */
-    // Match signature version to project version.
-    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
-    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
-
-
     /* ============ State Variables ============ */
     mapping(bytes32 => EnrollmentInfo) internal enrollments;
     mapping(bytes32 => ManufacturerInfo) internal manufacturers;
@@ -93,8 +84,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
      * @param _governance               Address of governance
      */
     constructor(address _governance) 
-        Ownable2Step() 
-        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
+        Ownable2Step()
     {
         _transferOwnership(_governance);
     }
@@ -108,6 +98,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
      * @param _manufacturerId               Bytes32 identifier for manufacturer (i.e. could be hash of manufacturer name)
      * @param _certSigner                   Address of certificate signer for this enrollment
      * @param _authModel                    Address of contract that implements example signature validation for a chip
+     * @param _enrollmentAuthModel          Address of contract that implements example signature validation for manufacturerCertificates
      * @param _chipValidationDataUri        URI pointing to location of off-chain data required to validate chip is part of manufacturer enrollment
      * @param _bootloaderApp                Bootloader app for this enrollment
      * @param _chipModel                    Chip model for this enrollment
@@ -118,6 +109,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
         bytes32 _manufacturerId,
         address _certSigner,
         address _authModel,
+        IEnrollmentAuthModel _enrollmentAuthModel,
         string calldata _chipValidationDataUri,
         string calldata _bootloaderApp,
         string calldata _chipModel
@@ -128,6 +120,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
     {
         require(_certSigner != address(0), "Invalid certificate signer address");
         require(_authModel != address(0), "Invalid auth model address");
+        require(address(_enrollmentAuthModel) != address(0), "Invalid enrollment auth model address");
 
         enrollmentId = keccak256(abi.encodePacked(_manufacturerId, manufacturers[_manufacturerId].nonce));
 
@@ -135,6 +128,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
             manufacturerId: uint256(_manufacturerId),
             manufacturerCertSigner: _certSigner,
             authModel: _authModel,
+            enrollmentAuthModel: _enrollmentAuthModel,
             chipValidationDataUri: _chipValidationDataUri,
             bootloaderApp: _bootloaderApp,
             chipModel: _chipModel,
@@ -149,6 +143,7 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
             enrollmentId,
             _certSigner,
             _authModel,
+            _enrollmentAuthModel,
             _chipValidationDataUri,
             _bootloaderApp,
             _chipModel
@@ -233,18 +228,20 @@ contract ManufacturerRegistry is Ownable2Step, EIP712 {
     function isEnrolledChip(
         bytes32 _enrollmentId,
         address _chipId,
-        bytes calldata _manufacturerCertificate
+        bytes calldata _manufacturerCertificate,
+        bytes calldata _payload
     )
         external
         view
+        virtual
         returns (bool)
     {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("ManufacturerCertificate(address chipId)"),
-            _chipId
-        )));
-
-        return enrollments[_enrollmentId].manufacturerCertSigner.isValidSignatureNow(digest, _manufacturerCertificate);
+        IEnrollmentAuthModel authModel = enrollments[_enrollmentId].enrollmentAuthModel;
+        return authModel.verifyManufacturerCertificate(
+            _chipId, enrollments[_enrollmentId].manufacturerCertSigner, 
+            _manufacturerCertificate,
+            _payload
+        );
     }
 
     function isValidEnrollment(bytes32 _enrollmentId) external view returns (bool) {

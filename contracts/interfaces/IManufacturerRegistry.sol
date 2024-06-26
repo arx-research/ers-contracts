@@ -6,7 +6,8 @@ interface IManufacturerRegistry {
     function isEnrolledChip(
         bytes32 _enrollmentId,
         address _chipId,
-        bytes calldata _chipCertificate        
+        bytes calldata _manufacturerCertificate,
+        bytes calldata _payload     
     )
         external
         view

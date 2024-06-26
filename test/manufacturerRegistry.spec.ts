@@ -17,6 +17,7 @@ import {
 
 import { createManufacturerCertificate } from "@utils/protocolUtils";
 import { calculateEnrollmentId } from "@utils/index";
+import { EnrollmentSECP256k1Model } from "@typechain/index";
 
 const expect = getWaffleExpect();
 
@@ -26,6 +27,7 @@ describe("ManufacturerRegistry", () => {
   let manufacturerTwo: Account;
   let authModel: Account;
   let manufacturerRegistry: ManufacturerRegistry;
+  let enrollmentAuthModel: EnrollmentSECP256k1Model;
   let chipOne: Account;
   let invalidChip: Account;
   let deployer: DeployHelper;
@@ -47,6 +49,7 @@ describe("ManufacturerRegistry", () => {
     chainId = await blockchain.getChainId();
 
     manufacturerRegistry = await deployer.deployManufacturerRegistry(governance.address);
+    enrollmentAuthModel = await deployer.deployEnrollmentSECP256k1Model();
   });
 
   addSnapshotBeforeRestoreAfterEach();
@@ -154,6 +157,7 @@ describe("ManufacturerRegistry", () => {
         subjectManufacturerId,
         subjectCertSigner,
         subjectAuthModel,
+        enrollmentAuthModel.address,
         subjectChipValidationDataUri,
         subjectBootloaderApp,
         subjectChipModel
@@ -199,6 +203,7 @@ describe("ManufacturerRegistry", () => {
         expectedEnrollmentId,
         subjectCertSigner,
         subjectAuthModel,
+        enrollmentAuthModel.address,
         subjectChipValidationDataUri,
         subjectBootloaderApp,
         subjectChipModel
@@ -271,6 +276,7 @@ describe("ManufacturerRegistry", () => {
         manufacturerIdTwo,
         certSignerTwo,
         authModel.address,
+        enrollmentAuthModel.address,
         "ipfs://ipfsHash",
         "https://bootloader.app",
         "SuperCool ChipModel"
@@ -280,6 +286,7 @@ describe("ManufacturerRegistry", () => {
         subjectManufacturerId,
         certSigner,
         authModel.address,
+        enrollmentAuthModel.address,
         "ipfs://ipfsHash",
         "https://bootloader.app",
         "SuperCool ChipModel"
@@ -450,12 +457,13 @@ describe("ManufacturerRegistry", () => {
         manufacturerId,
         certSigner,
         chipAuthModel,
+        enrollmentAuthModel.address,
         chipValidationDataUri,
         bootloaderApp,
         chipModel
       );
 
-      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+      subjectManufacturerCertificate = await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
       subjectEnrollmentId = calculateEnrollmentId(manufacturerId, ZERO);
       subjectChipId = chipOne.address;
     });
@@ -464,7 +472,8 @@ describe("ManufacturerRegistry", () => {
       return await manufacturerRegistry.isEnrolledChip(
         subjectEnrollmentId,
         subjectChipId,
-        subjectManufacturerCertificate
+        subjectManufacturerCertificate,
+        []
       );
     }
 
@@ -505,6 +514,7 @@ describe("ManufacturerRegistry", () => {
         manufacturerId,
         certSigner,
         chipAuthModel,
+        enrollmentAuthModel.address,
         chipValidationDataUri,
         bootloaderApp,
         chipModel

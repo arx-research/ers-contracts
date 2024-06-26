@@ -19,7 +19,8 @@ import {
   DeveloperRegistryMock,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
-  PBTSimpleProjectRegistrar
+  PBTSimpleProjectRegistrar,
+  EnrollmentSECP256k1Model
 } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE, ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
@@ -52,6 +53,7 @@ describe("ChipRegistry", () => {
   let migrationSigner: Account;
 
   let manufacturerRegistry: ManufacturerRegistry;
+  let enrollmentAuthModel: EnrollmentSECP256k1Model;
   let ersRegistry: ERSRegistry;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let developerRegistry: DeveloperRegistryMock;
@@ -89,6 +91,7 @@ describe("ChipRegistry", () => {
     chainId = await blockchain.getChainId();
 
     manufacturerRegistry = await deployer.deployManufacturerRegistry(owner.address);
+    enrollmentAuthModel = await deployer.deployEnrollmentSECP256k1Model();
 
     chipRegistry = await deployer.deployChipRegistry(
       manufacturerRegistry.address,
@@ -119,6 +122,7 @@ describe("ChipRegistry", () => {
       manufacturerId,
       manufacturerOne.address,
       manufacturerOne.address,      // Placeholder
+      enrollmentAuthModel.address,
       "ipfs://QmQmQmQmQmQmQmQmQmQmQmQmQmQmQm",
       "https://bootloader.app",
       "SuperCool ChipModel"
@@ -401,7 +405,8 @@ describe("ChipRegistry", () => {
 
         const manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+          payload: "0x",
         };
         const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
         subjectChipAddition = [
@@ -520,7 +525,8 @@ describe("ChipRegistry", () => {
 
           const manufacturerValidationTwo = {
             enrollmentId: chipsEnrollmentId,
-            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address, manufacturerRegistry.address),
+            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address, enrollmentAuthModel.address),
+            payload: "0x",
           };
           subjectCaller = developerTwo;
 
@@ -599,7 +605,8 @@ describe("ChipRegistry", () => {
         beforeEach(async () => {
           subjectChipAddition[0].manufacturerValidation = {
             enrollmentId: chipsEnrollmentId,
-            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, owner.address, manufacturerRegistry.address),
+            manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, owner.address, enrollmentAuthModel.address),
+            payload: "0x",
           };
         });
 
@@ -661,7 +668,8 @@ describe("ChipRegistry", () => {
         subjectChipId = chipOne.address;
         subjectManufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipId, manufacturerRegistry.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipId, enrollmentAuthModel.address),
+          payload: "0x",
         };
         subjectCustodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
 
@@ -820,7 +828,8 @@ describe("ChipRegistry", () => {
 
         const manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+          payload: "0x",
         };
         const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
         const chipAddition = [
@@ -912,7 +921,8 @@ describe("ChipRegistry", () => {
 
         const manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+          payload: "0x",
         };
         const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
         const chipAddition = [
@@ -990,7 +1000,8 @@ describe("ChipRegistry", () => {
 
         const manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+          payload: "0x",
         };
         const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
         const chipAddition = [
@@ -1060,7 +1071,8 @@ describe("ChipRegistry", () => {
 
         const manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+          payload: "0x",
         };
         const custodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
         const chipAddition = [

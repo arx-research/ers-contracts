@@ -18,6 +18,7 @@ export {
   PBTSimpleProjectRegistrar,
   ProjectRegistrarMock,
   SECP256k1Model,
+  EnrollmentSECP256k1Model,
   ServicesRegistry,
   TransferPolicyMock
 } from "../../typechain";

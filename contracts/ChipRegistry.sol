@@ -120,6 +120,10 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         Ownable2Step()
         EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
+        require(address(_manufacturerRegistry) != address(0), "Invalid manufacturer registry address");
+        require(_maxLockinPeriod <= 315569520, "maxLockinPeriod cannot exceed 10 years");
+        require(_migrationSigner != address(0), "Invalid migration signer address");
+
         manufacturerRegistry = _manufacturerRegistry;
         maxLockinPeriod = _maxLockinPeriod;
         migrationSigner = _migrationSigner;
@@ -500,7 +504,8 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
             _manufacturerValidation.enrollmentId,
             chipId,
-            _manufacturerValidation.manufacturerCertificate
+            _manufacturerValidation.manufacturerCertificate,
+            _manufacturerValidation.payload
         );
         bool isValidEnrollment = manufacturerRegistry.isValidEnrollment(_manufacturerValidation.enrollmentId);
         require(isValidEnrollment, "Expired manufacturer enrollment");
