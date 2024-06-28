@@ -2,10 +2,10 @@ import "module-alias/register";
 
 import { ethers, network } from "hardhat";
 import { BigNumber } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address"; // eslint-disable-line
 
 import {
-  Address,
+  Address
 } from "@utils/types";
 import {
   AccountMock,
@@ -329,7 +329,7 @@ describe("PBTSimple", () => {
     it("should mint the token to the correct address and update owner balances", async () => {
       await subject();
 
-      const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
+      const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
       const actualOwnerBalance = await PBTSimple.balanceOf(subjectTo);
       expect(actualOwner).to.eq(subjectTo);
       expect(actualOwnerBalance).to.eq(ONE);
@@ -409,6 +409,8 @@ describe("PBTSimple", () => {
       let subjectUseSafeTransfer: boolean;
       let subjectPayload: Uint8Array;
       let subjectCaller: Account;
+      let subjectErsNode: string;
+      let subjectTokenId: string;
 
       beforeEach(async () => {
         const anchorBlock = await blockchain._provider.getBlock("latest");
@@ -417,6 +419,9 @@ describe("PBTSimple", () => {
         subjectChipId = chip.address;
         subjectCaller = newOwner;
         subjectPayload = ethers.utils.zeroPad(subjectBlockNumberUsedInSig.toHexString(), 32);
+
+        subjectErsNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
+        subjectTokenId = BigNumber.from(subjectErsNode).toString();
 
         const msgContents = ethers.utils.solidityPack(
           ["address", "bytes32", "bytes"],
@@ -441,7 +446,7 @@ describe("PBTSimple", () => {
         await subject();
 
         // Need to use this hacky way to access since the ownerOf function is overloaded
-        const actualOwner = (await PBTSimple.functions["ownerOf(address)"](chip.address))[0];
+        const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
         expect(actualOwner).to.eq(newOwner.address);
       });
 
@@ -482,7 +487,7 @@ describe("PBTSimple", () => {
             ["address", "bytes32", "bytes"],
             [accountMock.address, anchorBlock.hash, subjectPayload]
           );
-  
+
           subjectSignatureFromChip = await chip.wallet.signMessage(ethers.utils.arrayify(msgContents));
           subjectUseSafeTransfer = true;
         });
@@ -501,7 +506,7 @@ describe("PBTSimple", () => {
           await accountSubject();
 
           // Need to use this hacky way to access since the ownerOf function is overloaded
-          const actualOwner = (await PBTSimple.functions["ownerOf(address)"](chip.address))[0];
+          const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
           expect(actualOwner).to.eq(accountMock.address);
         });
 
@@ -517,7 +522,7 @@ describe("PBTSimple", () => {
               value: ethers.utils.parseEther("1.0"), // Sends exactly 1.0 ether
             });
 
-            const signer = await ethers.getSigner(transferPolicy.address) as SignerWithAddress;
+            const signer = await ethers.getSigner(transferPolicy.address) ;
             subjectCaller = {
               wallet: signer,
               address: await signer.getAddress(),
@@ -626,7 +631,7 @@ describe("PBTSimple", () => {
       it("should update the owner of the token", async () => {
         await subject();
 
-        const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
+        const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
         expect(actualOwner).to.eq(subjectNewOwner);
       });
 
@@ -662,7 +667,7 @@ describe("PBTSimple", () => {
         it("should update the owner of the token", async () => {
           await subject();
 
-          const actualOwner = (await PBTSimple.functions["ownerOf(uint256)"](subjectTokenId))[0];
+          const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
           expect(actualOwner).to.eq(subjectNewOwner);
         });
 
@@ -792,7 +797,7 @@ describe("PBTSimple", () => {
 
     describe("#tokenUri(address)", async() => {
       let subjectChipId: Address;
-      let subjectErsNode: string;      
+      let subjectErsNode: string;
 
       beforeEach(async () => {
         subjectChipId = chip.address;

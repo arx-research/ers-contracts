@@ -42,7 +42,7 @@ import { Blockchain } from "@utils/common";
 import { BigNumber } from "ethers";
 const expect = getWaffleExpect();
 
-describe.only("PBTSimpleProjectRegistrar", () => {
+describe("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
@@ -336,7 +336,8 @@ describe.only("PBTSimpleProjectRegistrar", () => {
 
       const manufacturerValidationOne = {
         enrollmentId: developerChipsEnrollmentId,
-        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, manufacturerRegistry.address),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipOne.address, enrollmentAuthModel.address),
+        payload: "0x",
       } as ManufacturerValidationInfo;
 
       const chipIdTwo = chipTwo.address;
@@ -344,7 +345,8 @@ describe.only("PBTSimpleProjectRegistrar", () => {
 
       const manufacturerValidationTwo = {
         enrollmentId: developerChipsEnrollmentId,
-        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address, manufacturerRegistry.address),
+        manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipTwo.address, enrollmentAuthModel.address),
+        payload: "0x",
       } as ManufacturerValidationInfo;
 
       const additionData = [
@@ -371,17 +373,15 @@ describe.only("PBTSimpleProjectRegistrar", () => {
       let subjectChipId: Address;
       let subjectSignatureFromChip: string;
       let subjectBlockNumberUsedInSig: BigNumber;
-      let subjectUseSafeTranfer: boolean;
+      let subjectUseSafeTransfer: boolean;
       let subjectPayload: Uint8Array;
       let subjectCaller: Account;
 
       beforeEach(async () => {
         subjectChipId = chipOne.address;
-        const anchorBlock = await ethers.provider.getBlock('latest');
-
+        const anchorBlock = await blockchain._provider.getBlock("latest");
         subjectBlockNumberUsedInSig = BigNumber.from(anchorBlock.number);
-        subjectUseSafeTranfer = false;
-
+        subjectUseSafeTransfer = false;
         subjectPayload = ethers.utils.zeroPad(subjectBlockNumberUsedInSig.toHexString(), 32);
         subjectCaller = developerTwo;
         const msgContents = ethers.utils.solidityPack(
@@ -397,7 +397,7 @@ describe.only("PBTSimpleProjectRegistrar", () => {
           subjectChipId,
           subjectSignatureFromChip,
           subjectBlockNumberUsedInSig,
-          subjectUseSafeTranfer,
+          subjectUseSafeTransfer,
           subjectPayload
         );
       }

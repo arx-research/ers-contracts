@@ -50,6 +50,7 @@ describe("BaseProjectRegistrar", () => {
     );
 
     await projectRegistrar.connect(owner.wallet).transferOwnership(developerOne.address);
+    await projectRegistrar.connect(developerOne.wallet).acceptOwnership();
   });
 
   describe("#constructor", async() => {
