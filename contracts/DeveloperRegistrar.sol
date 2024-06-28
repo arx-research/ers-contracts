@@ -45,14 +45,12 @@ contract DeveloperRegistrar is Ownable2Step {
     /**
      * @notice Constructor for DeveloperRegistrar. Sets the owner and ChipRegistry.
      *
-     * @param _owner                Owner of the DeveloperRegistrar. This address is responsible for adding new projects
      * @param _chipRegistry         ChipRegistry contract
      * @param _ers                  ERS registry
      * @param _developerRegistry    DeveloperRegistry contract
      * @param _servicesRegistry     ServicesRegistry contract used by all Projects deployed by this Registrar
      */
     constructor(
-        address _owner,
         IChipRegistry _chipRegistry,
         IERS _ers,
         IDeveloperRegistry _developerRegistry,
@@ -64,7 +62,6 @@ contract DeveloperRegistrar is Ownable2Step {
         ers = _ers;
         developerRegistry = _developerRegistry;
         servicesRegistry = _servicesRegistry;
-        _transferOwnership(_owner);
     }
 
     /* ============ External Functions ============ */
@@ -75,10 +72,11 @@ contract DeveloperRegistrar is Ownable2Step {
      *
      * @param _rootNode         Root node of the Developer
      */
-    function initialize(bytes32 _rootNode) external {
+    function initialize(address _owner, bytes32 _rootNode) external {
         require(IDeveloperRegistry(msg.sender) == developerRegistry, "Caller must be DeveloperRegistry");
         require(!initialized, "Contract already initialized");
         
+        _transferOwnership(_owner);
         rootNode = _rootNode;
         initialized = true;
         emit RegistrarInitialized(_rootNode);

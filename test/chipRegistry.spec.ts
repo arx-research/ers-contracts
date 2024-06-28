@@ -59,6 +59,7 @@ describe("ChipRegistry", () => {
   let developerRegistry: DeveloperRegistryMock;
   let servicesRegistry: ServicesRegistry;
   let chipRegistry: ChipRegistry;
+  let developerRegistrarImpl: DeveloperRegistrar;
   let developerRegistrar: DeveloperRegistrar;
   let projectRegistrarOne: PBTSimpleProjectRegistrar;
   let projectRegistrarTwo: PBTSimpleProjectRegistrar;
@@ -110,11 +111,16 @@ describe("ChipRegistry", () => {
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
     await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
 
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+    developerRegistrarImpl = await deployer.deployDeveloperRegistrar(
       chipRegistry.address,
       ersRegistry.address,
       developerRegistry.address,
       servicesRegistry.address
+    );
+
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+      developerRegistrarImpl.address,
+      developerRegistry.address
     );
     await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
 

@@ -66,16 +66,12 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrarFactory(
-    chipRegistry: Address,
-    ersRegistry: Address,
-    developerRegistry: Address,
-    servicesRegistry: Address
+    developerRegistrar: Address,
+    developerRegistry: Address
   ): Promise<DeveloperRegistrarFactory> {
     const developerRegistrarFactory = await new DeveloperRegistrarFactory__factory(this._deployerSigner).deploy(
-      chipRegistry,
-      ersRegistry,
-      developerRegistry,
-      servicesRegistry
+      developerRegistrar,
+      developerRegistry
     );
     return developerRegistrarFactory;
   }
@@ -86,14 +82,12 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrar(
-    owner: Account,
     chipRegistry: Address,
     ersRegistry: Address,
     developerRegistry: Address,
     servicesRegistry: Address
   ): Promise<DeveloperRegistrar> {
     const developerRegistrar = await new DeveloperRegistrar__factory(this._deployerSigner).deploy(
-      owner.address,
       chipRegistry,
       ersRegistry,
       developerRegistry,
