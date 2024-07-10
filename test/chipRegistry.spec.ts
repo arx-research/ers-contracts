@@ -157,12 +157,64 @@ describe("ChipRegistry", () => {
   addSnapshotBeforeRestoreAfterEach();
 
   describe("#constructor", async () => {
+    let subjectManufacturerRegistry: Address;
+    let subjectMaxLockinPeriod: BigNumber;
+    let subjectMigrationSigner: Address;
+
+    beforeEach(async () => {
+      subjectManufacturerRegistry = manufacturerRegistry.address;
+      subjectMaxLockinPeriod = BigNumber.from(1000);
+      subjectMigrationSigner = migrationSigner.address;
+    });
+
+    async function subject(): Promise<any> {
+      return deployer.deployChipRegistry(
+        subjectManufacturerRegistry,
+        subjectMaxLockinPeriod,
+        subjectMigrationSigner
+      );
+    }
+
     it("should set the correct initial state", async () => {
-      const actualManufacturerRegistry = await chipRegistry.manufacturerRegistry();
-      const actualMaxLockinPeriod = await chipRegistry.maxLockinPeriod();
+      const chipRegistryDeploy: ChipRegistry = await subject();
+
+      const actualManufacturerRegistry = await chipRegistryDeploy.manufacturerRegistry();
+      const actualMaxLockinPeriod = await chipRegistryDeploy.maxLockinPeriod();
+      const actualMigrationSigner = await chipRegistryDeploy.migrationSigner();
 
       expect(actualManufacturerRegistry).to.eq(manufacturerRegistry.address);
       expect(actualMaxLockinPeriod).to.eq(BigNumber.from(1000));
+      expect(actualMigrationSigner).to.eq(migrationSigner.address);
+    });
+
+    describe("when the passed manufacturerRegistry address is the zero address", async () => {
+      beforeEach(async () => {
+        subjectManufacturerRegistry = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid manufacturer registry address");
+      });
+    });
+
+    describe("when the max lockin period is greater than 10 years", async () => {
+      beforeEach(async () => {
+        subjectMaxLockinPeriod = BigNumber.from(315569521);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("maxLockinPeriod cannot exceed 10 years");
+      });
+    });
+
+    describe("when the passed migrationSigner address is the zero address", async () => {
+      beforeEach(async () => {
+        subjectMigrationSigner = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid migration signer address");
+      });
     });
   });
 
@@ -618,6 +670,20 @@ describe("ChipRegistry", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Chip not enrolled with ManufacturerRegistry");
+        });
+      });
+
+      describe("when the manufacturer enrollment is expired", async () => {
+        beforeEach(async () => {
+          await manufacturerRegistry.connect(manufacturerOne.wallet).updateChipEnrollment(
+            manufacturerId,
+            false,
+            chipsEnrollmentId
+          );
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Expired manufacturer enrollment");
         });
       });
 
