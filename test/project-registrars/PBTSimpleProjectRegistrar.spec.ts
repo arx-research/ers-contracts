@@ -42,7 +42,7 @@ import { Blockchain } from "@utils/common";
 import { BigNumber } from "ethers";
 const expect = getWaffleExpect();
 
-describe.only("PBTSimpleProjectRegistrar", () => {
+describe("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
