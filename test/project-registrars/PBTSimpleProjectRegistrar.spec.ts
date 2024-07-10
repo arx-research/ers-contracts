@@ -42,7 +42,7 @@ import { Blockchain } from "@utils/common";
 import { BigNumber } from "ethers";
 const expect = getWaffleExpect();
 
-describe("PBTSimpleProjectRegistrar", () => {
+describe.only("PBTSimpleProjectRegistrar", () => {
   let owner: Account;
   let developerOne: Account;
   let developerTwo: Account;
@@ -65,6 +65,7 @@ describe("PBTSimpleProjectRegistrar", () => {
   let chipRegistry: ChipRegistryMock;
   let transferPolicy: OpenTransferPolicy;
   let newTransferPolicy: Account;
+  let developerRegistrarImpl: DeveloperRegistrar;
   let developerRegistrar: DeveloperRegistrar;
 
   let manufacturerId: string;
@@ -152,11 +153,15 @@ describe("PBTSimpleProjectRegistrar", () => {
     servicesRegistry = await deployer.deployServicesRegistry(chipRegistry.address);
 
     // 8. Deploy Developer Registrar Factory
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+    developerRegistrarImpl = await deployer.deployDeveloperRegistrar(
       chipRegistry.address,
       ersRegistry.address,
       developerRegistry.address,
       servicesRegistry.address
+    );
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+      developerRegistrarImpl.address,
+      developerRegistry.address
     );
 
     // 9. Initialize Chip Registry
