@@ -33,6 +33,7 @@ describe("DeveloperRegistrar", () => {
   let ersRegistry: ERSRegistry;
   let developerRegistry: DeveloperRegistry;
   let chipRegistry: ChipRegistry;
+  let developerRegistrarImpl: DeveloperRegistrar;
   let developerRegistrar: DeveloperRegistrar;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let fakeDeveloperRegistry: Account;
@@ -63,11 +64,16 @@ describe("DeveloperRegistrar", () => {
     ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+    developerRegistrarImpl = await deployer.deployDeveloperRegistrar(
       chipRegistry.address,
       ersRegistry.address,
       developerRegistry.address,
       servicesRegistry.address
+    );
+
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+      developerRegistrarImpl.address,
+      developerRegistry.address
     );
     await developerRegistry.initialize(ersRegistry.address, [developerRegistrarFactory.address], owner.address);
 
@@ -96,14 +102,12 @@ describe("DeveloperRegistrar", () => {
   addSnapshotBeforeRestoreAfterEach();
 
   describe("#constructor", async () => {
-    let subjectOwner: Account;
     let subjectChipRegistry: Address;
     let subjectErsRegistry: Address;
     let subjectDeveloperRegistry: Address;
     let subjectServicesRegistry: Address;
 
     beforeEach(async () => {
-      subjectOwner = developerOne;
       subjectChipRegistry = chipRegistry.address;
       subjectErsRegistry = ersRegistry.address;
       subjectDeveloperRegistry = developerRegistry.address;
@@ -112,7 +116,6 @@ describe("DeveloperRegistrar", () => {
 
     async function subject(): Promise<any> {
       return await deployer.deployDeveloperRegistrar(
-        subjectOwner,
         subjectChipRegistry,
         subjectErsRegistry,
         subjectDeveloperRegistry,
@@ -129,7 +132,7 @@ describe("DeveloperRegistrar", () => {
       const actualDeveloperRegistry = await developerRegistrar.developerRegistry();
       const actualServicesRegistry = await developerRegistrar.servicesRegistry();
 
-      expect(actualOwner).to.eq(developerOne.address);
+      expect(actualOwner).to.eq(owner.address);
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualErsRegistry).to.eq(ersRegistry.address);
       expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
@@ -138,24 +141,25 @@ describe("DeveloperRegistrar", () => {
   });
 
   describe("#initialize", async () => {
+    let subjectOwner: Address;
     let subjectRootNode: string;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       developerRegistrar = await deployer.deployDeveloperRegistrar(
-        developerOne,
         chipRegistry.address,
         ersRegistry.address,
         fakeDeveloperRegistry.address,
         servicesRegistry.address
       );
 
+      subjectOwner = developerOne.address;
       subjectRootNode = calculateSubnodeHash("gucci.ers");
       subjectCaller = fakeDeveloperRegistry;
     });
 
     async function subject(): Promise<any> {
-      return developerRegistrar.connect(subjectCaller.wallet).initialize(subjectRootNode);
+      return developerRegistrar.connect(subjectCaller.wallet).initialize(subjectOwner, subjectRootNode);
     }
 
     it("should initialize rootNode and set contract to initialized", async () => {
