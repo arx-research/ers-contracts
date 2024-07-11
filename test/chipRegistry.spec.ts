@@ -818,7 +818,7 @@ describe("ChipRegistry", () => {
         });
       });
 
-      describe.only("should not remove a project enrolled by another developer", async () => {
+      describe("should not remove a project enrolled by another developer", async () => {
         beforeEach(async () => {
           const newDeveloperRegistrar = await deployer.mocks.deployDeveloperRegistrarMock(
             chipRegistry.address,
