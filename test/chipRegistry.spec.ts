@@ -699,7 +699,7 @@ describe("ChipRegistry", () => {
 
     });
 
-    describe("#removeProjectEnrollment", async () => {
+    describe.only("#removeProjectEnrollment", async () => {
       let subjectProjectRegistrar: Address;
       let subjectCaller: Account;
 
@@ -810,7 +810,32 @@ describe("ChipRegistry", () => {
 
       describe("when the passed project registrar is not enrolled", async () => {
         beforeEach(async () => {
-          subjectProjectRegistrar = chipRegistry.address;
+          const newDeveloperRegistrar = await deployer.mocks.deployDeveloperRegistrarMock(
+            chipRegistry.address,
+            ersRegistry.address,
+            developerRegistry.address,
+            servicesRegistry.address
+          );
+
+          const projectRegistrarFour = await deployer.deployPBTSimpleProjectRegistrar(
+            chipRegistry.address,
+            ersRegistry.address,
+            newDeveloperRegistrar.address,
+            "ProjectB",
+            "PRB",
+            "https://projectb.com/",
+            BigNumber.from(5),
+            ADDRESS_ZERO
+          );
+          await developerRegistry.addMockRegistrar(newDeveloperRegistrar.address, calculateLabelHash("nike"));
+
+          await newDeveloperRegistrar.connect(owner.wallet).addMaliciousProject(
+            projectRegistrarFour.address,
+            nameHash
+          );
+          testDeveloperRegistrar = newDeveloperRegistrar;
+          subjectProjectRegistrar = projectRegistrarFour.address;
+          subjectCaller = owner;
         });
 
         it("should revert", async () => {
@@ -833,7 +858,7 @@ describe("ChipRegistry", () => {
             projectRegistrarThree.address,
             nameHash
           );
-          developerRegistrar = newDeveloperRegistrar;
+          testDeveloperRegistrar = newDeveloperRegistrar;
           subjectCaller = owner;
         });
 
