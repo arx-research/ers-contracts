@@ -292,7 +292,7 @@ describe("ChipRegistry", () => {
         const mockNameHash = calculateLabelHash("mockDeveloper");
         await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerOne.address, mockNameHash);
 
-        await developerRegistry.addMockRegistrar(owner.address, mockNameHash);
+        await developerRegistry.addMockRegistrarEOA(owner.address, mockNameHash);
 
         developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
@@ -654,7 +654,7 @@ describe("ChipRegistry", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Project not enrolled");
+          await expect(subject()).to.be.revertedWith("ChipRegistry: Project not enrolled");
         });
       });
 

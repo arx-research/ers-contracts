@@ -20,4 +20,11 @@ contract DeveloperRegistryMock is DeveloperRegistry {
         isDeveloperRegistrar[_newRegistrar] = true;
         developerRegistrars.push(_newRegistrar);
     }
+
+    function addMockRegistrarEOA(address _newRegistrar, bytes32 _nameHash) external {
+        ersRegistry.createSubnodeRecord(ROOT_NODE, _nameHash, _newRegistrar, _newRegistrar);
+
+        isDeveloperRegistrar[_newRegistrar] = true;
+        developerRegistrars.push(_newRegistrar);
+    }
 }
