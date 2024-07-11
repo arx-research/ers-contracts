@@ -226,7 +226,7 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         require(_chipOwner != address(0), "Invalid chip owner");
 
         // Verify the chip is being added by an enrolled project
-        require(projectInfo.creationTimestamp != 0, "Project not enrolled");
+        require(projectInfo.creationTimestamp != 0, "ChipRegistry: Project not enrolled");
 
         // Verify that the chip doesn't exist yet
         require(!chipEnrollments[_chipId].chipEnrolled, "Chip already added");

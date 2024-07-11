@@ -2,11 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import { DeveloperRegistrar } from "./DeveloperRegistrar.sol";
-import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
-import { IERS } from "./interfaces/IERS.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
-import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 
 /**
  * @title DeveloperRegistrarFactory
@@ -17,31 +15,27 @@ import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 contract DeveloperRegistrarFactory {
 
     /* ============ Events ============ */
-    event DeveloperRegistrarDeployed(address indexed developerRegistrar, address indexed owner);
+    event DeveloperRegistrarDeployed(address indexed developerRegistrar);
 
     /* ============ State Variables ============ */
-    IChipRegistry public immutable chipRegistry;
-    IERS public immutable ers;
+    address public immutable developerRegistrar;
     IDeveloperRegistry public immutable developerRegistry;
-    IServicesRegistry public immutable servicesRegistry;
 
     /* ============ Constructor ============ */
-    constructor(IChipRegistry _chipRegistry, IERS _ers, IDeveloperRegistry _developerRegistry, IServicesRegistry _servicesRegistry) {
-        chipRegistry = _chipRegistry;
-        ers = _ers;
+    constructor(address _developerRegistrar, IDeveloperRegistry _developerRegistry) {
+        developerRegistrar = _developerRegistrar;
         developerRegistry = _developerRegistry;
-        servicesRegistry = _servicesRegistry;
     }
 
     /* ============ External Functions ============ */
-    function deployDeveloperRegistrar(address _owner)
+    function deployDeveloperRegistrar()
         external
         returns(address)
     {
         require(IDeveloperRegistry(msg.sender) == developerRegistry, "Caller must be DeveloperRegistry");
 
-        DeveloperRegistrar newRegistrar = new DeveloperRegistrar(_owner, chipRegistry, ers, developerRegistry, servicesRegistry);
-        emit DeveloperRegistrarDeployed(address(newRegistrar), _owner);
+        address newRegistrar = Clones.clone(developerRegistrar);
+        emit DeveloperRegistrarDeployed(address(newRegistrar));
         return address(newRegistrar);
     }
 }

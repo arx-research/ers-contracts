@@ -59,11 +59,11 @@ describe("ChipRegistry", () => {
   let developerRegistry: DeveloperRegistryMock;
   let servicesRegistry: ServicesRegistry;
   let chipRegistry: ChipRegistry;
+  let developerRegistrarImpl: DeveloperRegistrar;
   let developerRegistrar: DeveloperRegistrar;
   let projectRegistrarOne: PBTSimpleProjectRegistrar;
   let projectRegistrarTwo: PBTSimpleProjectRegistrar;
   let projectRegistrarThree: PBTSimpleProjectRegistrar;
-  let projectRegistrarFour: PBTSimpleProjectRegistrar;
 
   let manufacturerId: string;
   let serviceId: string;
@@ -110,11 +110,16 @@ describe("ChipRegistry", () => {
     manufacturerId = ethers.utils.formatBytes32String("manufacturerOne");
     await manufacturerRegistry.addManufacturer(manufacturerId, manufacturerOne.address);
 
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+    developerRegistrarImpl = await deployer.deployDeveloperRegistrar(
       chipRegistry.address,
       ersRegistry.address,
       developerRegistry.address,
       servicesRegistry.address
+    );
+
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+      developerRegistrarImpl.address,
+      developerRegistry.address
     );
     await developerRegistry.addRegistrarFactory(developerRegistrarFactory.address);
 
@@ -151,12 +156,64 @@ describe("ChipRegistry", () => {
   addSnapshotBeforeRestoreAfterEach();
 
   describe("#constructor", async () => {
+    let subjectManufacturerRegistry: Address;
+    let subjectMaxLockinPeriod: BigNumber;
+    let subjectMigrationSigner: Address;
+
+    beforeEach(async () => {
+      subjectManufacturerRegistry = manufacturerRegistry.address;
+      subjectMaxLockinPeriod = BigNumber.from(1000);
+      subjectMigrationSigner = migrationSigner.address;
+    });
+
+    async function subject(): Promise<any> {
+      return deployer.deployChipRegistry(
+        subjectManufacturerRegistry,
+        subjectMaxLockinPeriod,
+        subjectMigrationSigner
+      );
+    }
+
     it("should set the correct initial state", async () => {
-      const actualManufacturerRegistry = await chipRegistry.manufacturerRegistry();
-      const actualMaxLockinPeriod = await chipRegistry.maxLockinPeriod();
+      const chipRegistryDeploy: ChipRegistry = await subject();
+
+      const actualManufacturerRegistry = await chipRegistryDeploy.manufacturerRegistry();
+      const actualMaxLockinPeriod = await chipRegistryDeploy.maxLockinPeriod();
+      const actualMigrationSigner = await chipRegistryDeploy.migrationSigner();
 
       expect(actualManufacturerRegistry).to.eq(manufacturerRegistry.address);
       expect(actualMaxLockinPeriod).to.eq(BigNumber.from(1000));
+      expect(actualMigrationSigner).to.eq(migrationSigner.address);
+    });
+
+    describe("when the passed manufacturerRegistry address is the zero address", async () => {
+      beforeEach(async () => {
+        subjectManufacturerRegistry = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid manufacturer registry address");
+      });
+    });
+
+    describe("when the max lockin period is greater than 10 years", async () => {
+      beforeEach(async () => {
+        subjectMaxLockinPeriod = BigNumber.from(315569521);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("maxLockinPeriod cannot exceed 10 years");
+      });
+    });
+
+    describe("when the passed migrationSigner address is the zero address", async () => {
+      beforeEach(async () => {
+        subjectMigrationSigner = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid migration signer address");
+      });
     });
   });
 
@@ -235,7 +292,7 @@ describe("ChipRegistry", () => {
         const mockNameHash = calculateLabelHash("mockDeveloper");
         await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerOne.address, mockNameHash);
 
-        await developerRegistry.addMockRegistrar(owner.address, mockNameHash);
+        await developerRegistry.addMockRegistrarEOA(owner.address, mockNameHash);
 
         developerRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
@@ -597,7 +654,7 @@ describe("ChipRegistry", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Project not enrolled");
+          await expect(subject()).to.be.revertedWith("ChipRegistry: Project not enrolled");
         });
       });
 
@@ -612,6 +669,20 @@ describe("ChipRegistry", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Chip not enrolled with ManufacturerRegistry");
+        });
+      });
+
+      describe("when the manufacturer enrollment is expired", async () => {
+        beforeEach(async () => {
+          await manufacturerRegistry.connect(manufacturerOne.wallet).updateChipEnrollment(
+            manufacturerId,
+            false,
+            chipsEnrollmentId
+          );
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Expired manufacturer enrollment");
         });
       });
 
@@ -630,27 +701,28 @@ describe("ChipRegistry", () => {
 
     describe("#removeProjectEnrollment", async () => {
       let subjectProjectRegistrar: Address;
-      let subjectDeveloperRegistrar: DeveloperRegistrar;
-      let subjectNameHash: string;
       let subjectCaller: Account;
-      let subjectServiceId: string;
-      let subjectLockinPeriod: BigNumber;
-      let subjectChipId: Address;
-      let subjectChipOwner: Address;
-      let subjectManufacturerValidation: ManufacturerValidationInfo;
-      let subjectCustodyProofChip: string;
+
+      let testDeveloperRegistrar: DeveloperRegistrar;
+      let nameHash: string;
+      let projectServiceId: string;
+      let lockinPeriod: BigNumber;
+      let chipId: Address;
+      let chipOwner: Address;
+      let manufacturerValidation: ManufacturerValidationInfo;
+      let custodyProofChip: string;
 
       beforeEach(async () => {
         const mockNameHash = calculateLabelHash("mockDeveloper3");
         await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerOne.address, mockNameHash);
 
         await developerRegistry.connect(developerOne.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
-        subjectDeveloperRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
+        testDeveloperRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[0]);
 
         projectRegistrarThree = await deployer.deployPBTSimpleProjectRegistrar(
           chipRegistry.address,
           ersRegistry.address,
-          subjectDeveloperRegistrar.address,
+          testDeveloperRegistrar.address,
           "ProjectA",
           "PRA",
           "https://projecta.com/",
@@ -658,32 +730,32 @@ describe("ChipRegistry", () => {
           ADDRESS_ZERO
         );
 
-        subjectNameHash = calculateLabelHash("ProjectA");
-        subjectProjectRegistrar = projectRegistrarThree.address;
-        subjectServiceId = serviceId;
-        subjectLockinPeriod = (await blockchain.getCurrentTimestamp()).add(100);
-        subjectCaller = developerOne;
-        subjectChipOwner = developerOne.address;
+        nameHash = calculateLabelHash("ProjectA");
+        projectServiceId = serviceId;
+        lockinPeriod = (await blockchain.getCurrentTimestamp()).add(100);
+        chipOwner = developerOne.address;
 
-        subjectChipId = chipOne.address;
-        subjectManufacturerValidation = {
+        chipId = chipOne.address;
+        manufacturerValidation = {
           enrollmentId: chipsEnrollmentId,
-          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, subjectChipId, enrollmentAuthModel.address),
+          manufacturerCertificate: await createManufacturerCertificate(manufacturerOne, chainId, chipId, enrollmentAuthModel.address),
           payload: "0x",
         };
-        subjectCustodyProofChip = await createDeveloperCustodyProof(chipOne, developerRegistrar.address, chainId, chipRegistry.address);
+        custodyProofChip = await createDeveloperCustodyProof(chipOne, testDeveloperRegistrar.address, chainId, chipRegistry.address);
 
-        await subjectDeveloperRegistrar.connect(subjectCaller.wallet).addProject(
+        subjectProjectRegistrar = projectRegistrarThree.address;
+        subjectCaller = developerOne;
+
+        await testDeveloperRegistrar.connect(subjectCaller.wallet).addProject(
           subjectProjectRegistrar,
-          subjectNameHash,
-          subjectServiceId,
-          subjectLockinPeriod
+          nameHash,
+          projectServiceId,
+          lockinPeriod
         );
-
       });
 
       async function subject(): Promise<any> {
-        return subjectDeveloperRegistrar.connect(subjectCaller.wallet).removeProject(subjectProjectRegistrar);
+        return testDeveloperRegistrar.connect(subjectCaller.wallet).removeProject(subjectProjectRegistrar);
       }
 
       async function subjectCallDirectly(): Promise<any> {
@@ -700,9 +772,9 @@ describe("ChipRegistry", () => {
 
       it("should emit the correct ProjectEnrollmentRemoved event", async () => {
         await expect(subject()).to.emit(chipRegistry, "ProjectEnrollmentRemoved").withArgs(
-          subjectDeveloperRegistrar.address,
+          testDeveloperRegistrar.address,
           subjectProjectRegistrar,
-          subjectNameHash
+          nameHash
         );
       });
 
@@ -711,11 +783,11 @@ describe("ChipRegistry", () => {
           await projectRegistrarThree.connect(owner.wallet).addChips(
             [
               {
-                chipId: subjectChipId,
-                chipOwner: subjectChipOwner,
-                nameHash: calculateLabelHash(subjectChipId),
-                manufacturerValidation: subjectManufacturerValidation,
-                custodyProof: subjectCustodyProofChip,
+                chipId,
+                chipOwner,
+                nameHash: calculateLabelHash(chipId),
+                manufacturerValidation,
+                custodyProof: custodyProofChip,
               } as ProjectChipAddition,
             ]
           );
@@ -738,22 +810,14 @@ describe("ChipRegistry", () => {
 
       describe("when the passed project registrar is not enrolled", async () => {
         beforeEach(async () => {
-          subjectProjectRegistrar = chipRegistry.address;
-        });
+          const newDeveloperRegistrar = await deployer.mocks.deployDeveloperRegistrarMock(
+            chipRegistry.address,
+            ersRegistry.address,
+            developerRegistry.address,
+            servicesRegistry.address
+          );
 
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Project not enrolled");
-        });
-      });
-
-      describe("should not remove a project enrolled by another developer", async () => {
-        beforeEach(async () => {
-          await developerRegistry.connect(nameGovernor.wallet).addAllowedDeveloper(developerTwo.address, calculateLabelHash("nike"));
-          await developerRegistry.connect(developerTwo.wallet).createNewDeveloperRegistrar(developerRegistrarFactory.address);
-
-          const newDeveloperRegistrar = await deployer.getDeveloperRegistrar((await developerRegistry.getDeveloperRegistrars())[1]);
-
-          projectRegistrarFour = await deployer.deployPBTSimpleProjectRegistrar(
+          const projectRegistrarFour = await deployer.deployPBTSimpleProjectRegistrar(
             chipRegistry.address,
             ersRegistry.address,
             newDeveloperRegistrar.address,
@@ -763,20 +827,43 @@ describe("ChipRegistry", () => {
             BigNumber.from(5),
             ADDRESS_ZERO
           );
+          await developerRegistry.addMockRegistrar(newDeveloperRegistrar.address, calculateLabelHash("nike"));
 
-          subjectProjectRegistrar = projectRegistrarFour.address;
-
-          await newDeveloperRegistrar.connect(developerTwo.wallet).addProject(
-            subjectProjectRegistrar,
-            subjectNameHash,
-            subjectServiceId,
-            subjectLockinPeriod
+          await newDeveloperRegistrar.connect(owner.wallet).addMaliciousProject(
+            projectRegistrarFour.address,
+            nameHash
           );
-          subjectDeveloperRegistrar = newDeveloperRegistrar;
+          testDeveloperRegistrar = newDeveloperRegistrar;
+          subjectProjectRegistrar = projectRegistrarFour.address;
+          subjectCaller = owner;
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+          await expect(subject()).to.be.revertedWith("Project not enrolled");
+        });
+      });
+
+      describe("should not remove a project enrolled by another developer", async () => {
+        beforeEach(async () => {
+          const newDeveloperRegistrar = await deployer.mocks.deployDeveloperRegistrarMock(
+            chipRegistry.address,
+            ersRegistry.address,
+            developerRegistry.address,
+            servicesRegistry.address
+          );
+
+          await developerRegistry.addMockRegistrar(newDeveloperRegistrar.address, calculateLabelHash("nike"));
+
+          await newDeveloperRegistrar.connect(owner.wallet).addMaliciousProject(
+            projectRegistrarThree.address,
+            nameHash
+          );
+          testDeveloperRegistrar = newDeveloperRegistrar;
+          subjectCaller = owner;
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Developer Registrar does not own project");
         });
       });
 

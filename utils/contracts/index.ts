@@ -7,6 +7,7 @@ export {
   DeveloperNameGovernor,
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
+  DeveloperRegistrarMock,
   DeveloperRegistry,
   DeveloperRegistryMock,
   ERSRegistry,
