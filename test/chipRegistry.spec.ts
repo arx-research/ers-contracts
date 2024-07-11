@@ -699,7 +699,7 @@ describe("ChipRegistry", () => {
 
     });
 
-    describe.only("#removeProjectEnrollment", async () => {
+    describe("#removeProjectEnrollment", async () => {
       let subjectProjectRegistrar: Address;
       let subjectCaller: Account;
 
