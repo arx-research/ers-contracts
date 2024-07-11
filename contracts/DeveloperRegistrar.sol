@@ -38,7 +38,7 @@ contract DeveloperRegistrar is Ownable2Step {
     bool public initialized;
     bytes32 public rootNode;                          // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
     address[] public projects;                        // Array of project addresses for enumeration
-    mapping(address => uint256) private projectIndex; // Maps project addresses to their indices in the array
+    mapping(address => uint256) internal projectIndex; // Maps project addresses to their indices in the array
 
     /* ============ Constructor ============ */
 
@@ -142,7 +142,7 @@ contract DeveloperRegistrar is Ownable2Step {
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
 
         uint index = projectIndex[address(_projectRegistrar)];
-        require(index != 0 || projects[0] == address(_projectRegistrar), "Project not enrolled");
+        require(index != 0 || projects[0] == address(_projectRegistrar), "DeveloperRegistrar: Project not enrolled");
 
         uint lastIndex = projects.length - 1;
         address lastProject = projects[lastIndex];

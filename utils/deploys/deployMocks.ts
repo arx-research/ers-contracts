@@ -9,6 +9,7 @@ import {
   InterfaceIdGetterMock__factory,
   ProjectRegistrarMock__factory,
   TransferPolicyMock__factory,
+  DeveloperRegistrarMock__factory,
   DeveloperRegistryMock__factory,
   PBTSimpleMock__factory
 } from "../../typechain/factories/contracts/mocks";
@@ -21,6 +22,7 @@ import {
   InterfaceIdGetterMock,
   ProjectRegistrarMock,
   TransferPolicyMock,
+  DeveloperRegistrarMock,
   DeveloperRegistryMock
 } from "../contracts";
 import { ADDRESS_ZERO } from "..";
@@ -37,6 +39,21 @@ export default class DeployMocks {
   ): Promise<DeveloperRegistryMock> {
     const developerRegistry = await new DeveloperRegistryMock__factory(this._deployerSigner).deploy(owner);
     return developerRegistry;
+  }
+
+  public async deployDeveloperRegistrarMock(
+    chipRegistry: Address,
+    ersRegistry: Address,
+    developerRegistry: Address,
+    servicesRegistry: Address
+  ): Promise<DeveloperRegistrarMock> {
+    const developerRegistrar = await new DeveloperRegistrarMock__factory(this._deployerSigner).deploy(
+      chipRegistry,
+      ersRegistry,
+      developerRegistry,
+      servicesRegistry
+    );
+    return developerRegistrar;
   }
 
   public async deployPBTSimpleMock(
