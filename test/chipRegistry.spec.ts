@@ -20,7 +20,8 @@ import {
   DeveloperRegistrar,
   DeveloperRegistrarFactory,
   PBTSimpleProjectRegistrar,
-  EnrollmentSECP256k1Model
+  EnrollmentSECP256k1Model,
+  InterfaceIdGetterMock
 } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE, ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
@@ -1281,6 +1282,40 @@ describe("ChipRegistry", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#supportsInterface", async () => {
+    let subjectInterfaceId: string;
+
+    let interfaceIdGetter: InterfaceIdGetterMock;
+
+    beforeEach(async () => {
+      interfaceIdGetter = await deployer.mocks.deployInterfaceIdGetterMock();
+
+      subjectInterfaceId = await interfaceIdGetter.getChipRegistryInterfaceId();
+    });
+
+    async function subject(): Promise<any> {
+      return chipRegistry.supportsInterface(subjectInterfaceId);
+    }
+
+    it("should return true",  async() => {
+      const isInterfaceSupported = await subject();
+
+      expect(isInterfaceSupported).to.be.true;
+    });
+
+    describe("when the interface is the IProjectRegistrar interface", async() => {
+      beforeEach(async () => {
+        subjectInterfaceId = await interfaceIdGetter.getProjectRegistrarInterfaceId();
+      });
+
+      it("should return false",  async() => {
+        const isInterfaceSupported = await subject();
+
+        expect(isInterfaceSupported).to.be.false;
       });
     });
   });
