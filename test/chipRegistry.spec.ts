@@ -559,7 +559,13 @@ describe("ChipRegistry", () => {
 
       describe("when the custody proof is invalid", async () => {
         beforeEach(async () => {
-          subjectChipAddition[0].custodyProof = await createMigrationProof(migrationSigner, chipOne.address, chainId, chipRegistry.address);
+          subjectChipAddition[0].custodyProof = await createMigrationProof(
+            migrationSigner,
+            chipOne.address,
+            developerRegistrar.address,
+            chainId,
+            chipRegistry.address
+          );
         });
 
         it("should emit a ChipAdded event with isDeveloperCustodyProof false", async () => {

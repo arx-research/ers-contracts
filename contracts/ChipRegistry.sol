@@ -536,8 +536,9 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
             _developerRegistrar
         )));
         bytes32 migrationDigest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("MigrationProof(address chipId)"),
-            _chipId
+            keccak256("MigrationProof(address chipId,address developerRegistrar)"),
+            _chipId,
+            _developerRegistrar
         )));
 
         // If the developer signed the developer address, return 

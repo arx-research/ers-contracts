@@ -47,7 +47,13 @@ export async function createDeveloperCustodyProof(chipId: Account, developerRegi
   return await chipId.wallet._signTypedData(domainWithChainId, types, value);
 }
 
-export async function createMigrationProof(signer: Account, chipId: Address, chainId: number, verifyingContract: Address): Promise<string> {
+export async function createMigrationProof(
+  signer: Account,
+  chipId: Address,
+  developerRegistrar: Address,
+  chainId: number,
+  verifyingContract: Address
+): Promise<string> {
   const domain = {
     name: "ERS",
     version: "1.0.0",
@@ -58,6 +64,7 @@ export async function createMigrationProof(signer: Account, chipId: Address, cha
   const types = {
     MigrationProof: [
       { name: "chipId", type: "address" },
+      { name: "developerRegistrar", type: "address" },
     ],
   };
 
@@ -65,6 +72,7 @@ export async function createMigrationProof(signer: Account, chipId: Address, cha
 
   const value = {
     chipId,
+    developerRegistrar,
   };
 
   return await signer.wallet._signTypedData(domainWithChainId, types, value);

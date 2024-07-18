@@ -301,7 +301,7 @@ describe("PBTSimpleProjectRegistrar", () => {
           chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
-          custodyProof: await createMigrationProof(owner, chipTwo.address, chainId, chipRegistry.address),
+          custodyProof: await createMigrationProof(owner, chipTwo.address, developerRegistrar.address, chainId, chipRegistry.address),
         } as ProjectChipAddition,
       ];
       subjectCaller = developerOne;
@@ -367,7 +367,7 @@ describe("PBTSimpleProjectRegistrar", () => {
           chipOwner: developerOne.address,
           nameHash: nameHashTwo,
           manufacturerValidation: manufacturerValidationTwo,
-          custodyProof: await createMigrationProof(owner, chipTwo.address, chainId, chipRegistry.address),
+          custodyProof: await createMigrationProof(owner, chipTwo.address, developerRegistrar.address, chainId, chipRegistry.address),
         } as ProjectChipAddition,
       ];
 
