@@ -4,11 +4,15 @@ pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-import { Bytes32ArrayUtils } from "./lib/Bytes32ArrayUtils.sol"; 
-import { ChipValidations } from "./lib/ChipValidations.sol";
+import { Bytes32ArrayUtils } from "./lib/Bytes32ArrayUtils.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
+
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
  * @title ServicesRegistry
@@ -22,10 +26,10 @@ import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
  * Primary services have a timelock that must expire before the primary service can be changed. Secondary services can be
  * added and removed at any time. The primary service cannot be one of the chip's secondary services.
  */
-contract ServicesRegistry is IServicesRegistry {
+contract ServicesRegistry is IServicesRegistry, ERC165, EIP712 {
     using Bytes32ArrayUtils for bytes32[];
-    using ChipValidations for address;
     using ECDSA for bytes;
+    using SignatureChecker for address;
 
     /* ============ Events ============ */
 
@@ -81,6 +85,11 @@ contract ServicesRegistry is IServicesRegistry {
         _;
     }
 
+    /* ============ Constants ============ */
+    // Match signature version to project version.
+    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
+    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
+
     /* ============ State Variables ============ */
 
     IChipRegistry public immutable chipRegistry;
@@ -99,7 +108,9 @@ contract ServicesRegistry is IServicesRegistry {
      * @param _chipRegistry         Address of the ChipRegistry contract
      * @param _maxBlockWindow       The maximum amount of blocks a signature used for updating chip table is valid for
     */
-    constructor(IChipRegistry _chipRegistry, uint256 _maxBlockWindow) {
+    constructor(IChipRegistry _chipRegistry, uint256 _maxBlockWindow) 
+        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
+    {
         chipRegistry = _chipRegistry;
         maxBlockWindow = _maxBlockWindow;
     }
@@ -284,11 +295,18 @@ contract ServicesRegistry is IServicesRegistry {
         require(!enrolledServices[_chipId][_serviceId], "Primary service cannot be secondary service");
         require(_serviceId != oldPrimaryService, "Service already set as primary service");
 
-        bytes memory payload = abi.encodePacked(_commitBlock, _serviceId, _newTimelock);
-        _chipId.validateSignatureAndExpiration(
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("SetNewPrimaryService(uint256 commitBlock,bytes32 serviceId,uint256 newTimelock)"),
+            _commitBlock,
+            _serviceId,
+            _newTimelock
+        )));
+        
+        _validateSignatureAndExpiration(
+            digest,
+            _chipId,
             _commitBlock,
             maxBlockWindow,
-            payload,
             _signature
         );
 
@@ -326,11 +344,17 @@ contract ServicesRegistry is IServicesRegistry {
         require(!enrolledServices[_chipId][_serviceId], "Service already enrolled");
         require(_serviceId != chipServices[_chipId].primaryService, "Service already set as primary service");
 
-        bytes memory payload = abi.encodePacked(_commitBlock, _serviceId);
-        _chipId.validateSignatureAndExpiration(
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("AddSecondaryService(uint256 commitBlock,bytes32 serviceId)"),
+            _commitBlock,
+            _serviceId
+        )));
+        
+        _validateSignatureAndExpiration(
+            digest,
+            _chipId,
             _commitBlock,
             maxBlockWindow,
-            payload,
             _signature
         );
 
@@ -366,11 +390,17 @@ contract ServicesRegistry is IServicesRegistry {
         require(isService(_serviceId), "Service does not exist");
         require(enrolledServices[_chipId][_serviceId], "Service not enrolled");
 
-        bytes memory payload = abi.encodePacked(_commitBlock, _serviceId);
-        _chipId.validateSignatureAndExpiration(
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("RemoveSecondaryService(uint256 commitBlock,bytes32 serviceId)"),
+            _commitBlock,
+            _serviceId
+        )));
+        
+        _validateSignatureAndExpiration(
+            digest,
+            _chipId,   
             _commitBlock,
             maxBlockWindow,
-            payload,
             _signature
         );
 
@@ -506,9 +536,11 @@ contract ServicesRegistry is IServicesRegistry {
         public
         view
         virtual
+        override(ERC165)
         returns (bool)
     {
-        return _interfaceId == type(IServicesRegistry).interfaceId;
+        return _interfaceId == type(IServicesRegistry).interfaceId ||
+        super.supportsInterface(_interfaceId);
     }
 
     /* ============ Internal Functions ============ */
@@ -547,5 +579,21 @@ contract ServicesRegistry is IServicesRegistry {
         // Must convert to string first then to bytes otherwise interpreters will try to convert address to a utf8 string
         string memory stringChipId = Strings.toHexString(_chipId);
         return _appendId ? bytes.concat(_content, bytes(stringChipId)) : _content;
+    }
+
+    function _validateSignatureAndExpiration(
+        bytes32 _digest,
+        address _chipId,
+        uint256 _commitBlock,
+        uint256 _maxBlockWindow,
+        bytes memory _signature
+    )
+        internal
+        view
+    {        
+        require(_chipId.isValidSignatureNow(_digest, _signature), "Invalid signature");
+
+        // Check that the signature was generated within the maxBlockWindow
+        require(block.number <= _commitBlock + _maxBlockWindow, "Signature expired");
     }
 }

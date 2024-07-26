@@ -8,9 +8,11 @@ import { IServicesRegistry } from "./IServicesRegistry.sol";
 interface IChipRegistry {
     function servicesRegistry() external view returns (address);
 
-    struct ManufacturerValidation {
+    struct ManufacturerValidation
+     {
         bytes32 enrollmentId;
         bytes manufacturerCertificate;
+        bytes payload;
     }
 
     function addProjectEnrollment(

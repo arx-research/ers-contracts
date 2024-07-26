@@ -9,4 +9,6 @@ interface IProjectRegistrar {
         bytes32 _rootNode
     )
         external;
+
+    function ownerOf(address _chipId) external view returns (address);
 }

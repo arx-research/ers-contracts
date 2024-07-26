@@ -2,7 +2,7 @@
   "name": "@arx-research/ers-contracts",
   "author": "Arx Research",
   "license": "MIT",
-  "version": "2.0.0-alpha",
+  "version": "1.0.0",
   "description": "",
   "keywords": [],
   "main": "dist/index.js",
@@ -62,11 +62,13 @@
     "typechain": "^8.1.1"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.11",
     "@openzeppelin/contracts": "^4.9.2",
     "@typechain/ethers-v5": "^11.1.2",
     "@typechain/hardhat": "^8.0.0",
     "dotenv": "^16.3.1",
     "hardhat-gas-reporter": "^2.0.2",
+    "npm": "^10.8.1",
     "solhint": "^3.3.7",
     "solidity-docgen": "^0.6.0-beta.35",
     "typescript": "^4.9.4",

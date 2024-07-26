@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
@@ -18,11 +18,14 @@ import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
  * with a .ers subnode in the ERS registry ([developer].ers). When adding a new project a subnode under the developer.ers sub-
  * domain is added ([projectName].developer.ers) and the project is enrolled in the ChipRegistry.
  */
-contract DeveloperRegistrar is Ownable {
+contract DeveloperRegistrar is Ownable2Step {
 
     event ProjectAdded(
         address indexed projectRegistrar,
         bytes32 projectRootNode
+    );
+        event ProjectRemoved(
+        address indexed projectRegistrar
     );
     event RegistrarInitialized(bytes32 rootNode);
 
@@ -33,34 +36,32 @@ contract DeveloperRegistrar is Ownable {
     IServicesRegistry public immutable servicesRegistry;
 
     bool public initialized;
-    bytes32 public rootNode;        // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
-    address[] public projects;
+    bytes32 public rootNode;                          // Node off which all Developer project names will branch (ie [projectName].[developerName].ers)
+    address[] public projects;                        // Array of project addresses for enumeration
+    mapping(address => uint256) internal projectIndex; // Maps project addresses to their indices in the array
 
     /* ============ Constructor ============ */
 
     /**
      * @notice Constructor for DeveloperRegistrar. Sets the owner and ChipRegistry.
      *
-     * @param _owner                Owner of the DeveloperRegistrar. This address is responsible for adding new projects
      * @param _chipRegistry         ChipRegistry contract
      * @param _ers                  ERS registry
      * @param _developerRegistry    DeveloperRegistry contract
      * @param _servicesRegistry     ServicesRegistry contract used by all Projects deployed by this Registrar
      */
     constructor(
-        address _owner,
         IChipRegistry _chipRegistry,
         IERS _ers,
         IDeveloperRegistry _developerRegistry,
         IServicesRegistry _servicesRegistry
     )
-        Ownable()
+        Ownable2Step()
     {
         chipRegistry = _chipRegistry;
         ers = _ers;
         developerRegistry = _developerRegistry;
         servicesRegistry = _servicesRegistry;
-        transferOwnership(_owner);
     }
 
     /* ============ External Functions ============ */
@@ -71,10 +72,11 @@ contract DeveloperRegistrar is Ownable {
      *
      * @param _rootNode         Root node of the Developer
      */
-    function initialize(bytes32 _rootNode) external {
+    function initialize(address _owner, bytes32 _rootNode) external {
         require(IDeveloperRegistry(msg.sender) == developerRegistry, "Caller must be DeveloperRegistry");
         require(!initialized, "Contract already initialized");
         
+        _transferOwnership(_owner);
         rootNode = _rootNode;
         initialized = true;
         emit RegistrarInitialized(_rootNode);
@@ -88,7 +90,7 @@ contract DeveloperRegistrar is Ownable {
      * @param _nameHash                     Namehash of the project
      * @param _projectRegistrar             ProjectRegistrar contract
      * @param _serviceId                    Service ID of the project
-     * @param _lockinPeriod                 Lockup period of the project
+     * @param _lockinPeriod                 Lockin period of the project
      */
 
     function addProject(
@@ -100,8 +102,8 @@ contract DeveloperRegistrar is Ownable {
         external
         onlyOwner()
     {
-        // Ensure the project registrar is a valid address
         require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
+        require(projectIndex[address(_projectRegistrar)] == 0, "Project already added");
 
         bytes32 projectNode = ers.createSubnodeRecord(
             rootNode,
@@ -110,11 +112,11 @@ contract DeveloperRegistrar is Ownable {
             address(_projectRegistrar)
         );
 
-        // Call project registrar to set root node (this is an untrusted contract!)
         _projectRegistrar.setRootNode(projectNode);
-        projects.push(address(_projectRegistrar));
 
-        // NOTE: Checks are carried out on ChipRegistry to validate the project registrar
+        projects.push(address(_projectRegistrar));
+        projectIndex[address(_projectRegistrar)] = projects.length - 1;
+
         chipRegistry.addProjectEnrollment(
             _projectRegistrar,
             _nameHash,
@@ -124,7 +126,7 @@ contract DeveloperRegistrar is Ownable {
         );
 
         emit ProjectAdded(
-            address(_projectRegistrar),
+            address(_projectRegistrar), 
             projectNode
         );
     }
@@ -135,8 +137,25 @@ contract DeveloperRegistrar is Ownable {
      *
      * @param _projectRegistrar     ProjectRegistrar contract
      */
+
     function removeProject(IProjectRegistrar _projectRegistrar) external onlyOwner() {
+        require(address(_projectRegistrar) != address(0), "Invalid project registrar address");
+
+        uint index = projectIndex[address(_projectRegistrar)];
+        require(index != 0 || projects[0] == address(_projectRegistrar), "DeveloperRegistrar: Project not enrolled");
+
+        uint lastIndex = projects.length - 1;
+        address lastProject = projects[lastIndex];
+
+        projects[index] = lastProject;
+        projectIndex[lastProject] = index;
+
+        projects.pop();
+        delete projectIndex[address(_projectRegistrar)];
+
         chipRegistry.removeProjectEnrollment(_projectRegistrar);
+
+        emit ProjectRemoved(address(_projectRegistrar));
     }
 
     /* ============ View Functions ============ */
@@ -144,4 +163,5 @@ contract DeveloperRegistrar is Ownable {
     function getProjects() external view returns(address[] memory) {
         return projects;
     }
+
 }

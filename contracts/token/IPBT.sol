@@ -34,8 +34,6 @@ interface IPBT is IERC721Metadata {
         bytes calldata payload
     ) external;
 
-    function ownerOf(address _chipId) external view returns (address);
-
     /// @notice Emitted when a token is minted.
     event PBTMint(uint256 indexed tokenId, address indexed chipAddress);
 

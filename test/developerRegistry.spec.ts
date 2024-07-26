@@ -2,7 +2,7 @@ import "module-alias/register";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { ERSRegistry, DeveloperRegistrarFactory, DeveloperRegistry } from "@utils/contracts";
+import { ERSRegistry, DeveloperRegistrar, DeveloperRegistrarFactory, DeveloperRegistry } from "@utils/contracts";
 import { ADDRESS_ZERO, NULL_NODE } from "@utils/constants";
 import DeployHelper from "@utils/deploys";
 
@@ -25,6 +25,7 @@ describe("DeveloperRegistry", () => {
   let developerRegistry: DeveloperRegistry;
   let chipRegistry: Account;
   let servicesRegistry: Account;
+  let developerRegistrarImpl: DeveloperRegistrar;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let deployer: DeployHelper;
 
@@ -45,7 +46,17 @@ describe("DeveloperRegistry", () => {
     ersRegistry = await deployer.deployERSRegistry(chipRegistry.address, developerRegistry.address);
     await ersRegistry.connect(owner.wallet).createSubnodeRecord(NULL_NODE, calculateLabelHash("ers"), developerRegistry.address, developerRegistry.address);
 
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(chipRegistry.address, ersRegistry.address, developerRegistry.address, servicesRegistry.address);
+    developerRegistrarImpl = await deployer.deployDeveloperRegistrar(
+      chipRegistry.address,
+      ersRegistry.address,
+      developerRegistry.address,
+      servicesRegistry.address
+    );
+
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+      developerRegistrarImpl.address,
+      developerRegistry.address
+    );
   });
 
   addSnapshotBeforeRestoreAfterEach();

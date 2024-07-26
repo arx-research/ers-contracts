@@ -18,7 +18,8 @@ import {
   PBTSimpleProjectRegistrar__factory
 } from "../../typechain/factories/contracts/project-registrars";
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
-import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
+import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models/chip";
+import { EnrollmentSECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models/enrollment";
 import {
   BaseProjectRegistrar,
   ChipRegistry,
@@ -29,6 +30,7 @@ import {
   ERSRegistry,
   ManufacturerRegistry,
   PBTSimpleProjectRegistrar,
+  EnrollmentSECP256k1Model,
   SECP256k1Model,
   ServicesRegistry
 } from "../contracts";
@@ -64,16 +66,12 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrarFactory(
-    chipRegistry: Address,
-    ersRegistry: Address,
-    developerRegistry: Address,
-    servicesRegistry: Address
+    developerRegistrar: Address,
+    developerRegistry: Address
   ): Promise<DeveloperRegistrarFactory> {
     const developerRegistrarFactory = await new DeveloperRegistrarFactory__factory(this._deployerSigner).deploy(
-      chipRegistry,
-      ersRegistry,
-      developerRegistry,
-      servicesRegistry
+      developerRegistrar,
+      developerRegistry
     );
     return developerRegistrarFactory;
   }
@@ -84,14 +82,12 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrar(
-    owner: Address,
     chipRegistry: Address,
     ersRegistry: Address,
     developerRegistry: Address,
     servicesRegistry: Address
   ): Promise<DeveloperRegistrar> {
     const developerRegistrar = await new DeveloperRegistrar__factory(this._deployerSigner).deploy(
-      owner,
       chipRegistry,
       ersRegistry,
       developerRegistry,
@@ -198,5 +194,10 @@ export default class DeployHelper {
   public async deploySECP256k1Model(): Promise<SECP256k1Model> {
     const secp256k1Model = await new SECP256k1Model__factory(this._deployerSigner).deploy();
     return secp256k1Model;
+  }
+
+  public async deployEnrollmentSECP256k1Model(): Promise<EnrollmentSECP256k1Model> {
+    const enrollmentSECP256k1Model = await new EnrollmentSECP256k1Model__factory(this._deployerSigner).deploy();
+    return enrollmentSECP256k1Model;
   }
 }

@@ -3,10 +3,11 @@
 pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { StringArrayUtils } from "./lib/StringArrayUtils.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IERS } from "./interfaces/IERS.sol";
@@ -15,7 +16,6 @@ import { IServicesRegistry } from "./interfaces/IServicesRegistry.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
 import { IDeveloperRegistrar } from "./interfaces/IDeveloperRegistrar.sol";
 import { IProjectRegistrar } from "./interfaces/IProjectRegistrar.sol";
-import { IPBT } from "./token/IPBT.sol";
 
 /**
  * @title ChipRegistry
@@ -28,7 +28,7 @@ import { IPBT } from "./token/IPBT.sol";
  * chips are represented as tokens any physical chip transfers should also be completed on-chain in order to get full 
  * functionality for the chip.
  */
-contract ChipRegistry is Ownable {
+contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
     using SignatureChecker for address;
     using ECDSA for bytes;
     using StringArrayUtils for string[];
@@ -74,18 +74,23 @@ contract ChipRegistry is Ownable {
         bytes32 nameHash;
         IDeveloperRegistrar developerRegistrar;
         IServicesRegistry servicesRegistry;
+        bool chipsAdded;
         bytes32 serviceId;
         uint256 lockinPeriod;
         uint256 creationTimestamp;
-        bool chipsAdded;
     }
 
     struct ChipInfo {
         bytes32 nameHash;
-        address projectRegistrar; // projectRegistrars are both IPBT and IProjectRegistrar
+        address projectRegistrar; // projectRegistrars are IProjectRegistrar and typically assumed to be IPBT
         bytes32 manufacturerEnrollmentId;     // enrollmentId of the chip's manufacturer
         bool chipEnrolled;
     }
+
+    /* ============ Constants ============ */
+    // Match signature version to project version.
+    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
+    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
 
     /* ============ State Variables ============ */
     IManufacturerRegistry public immutable manufacturerRegistry;
@@ -112,8 +117,13 @@ contract ChipRegistry is Ownable {
         uint256 _maxLockinPeriod,
         address _migrationSigner
     )
-        Ownable()
+        Ownable2Step()
+        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
+        require(address(_manufacturerRegistry) != address(0), "Invalid manufacturer registry address");
+        require(_maxLockinPeriod <= 315569520, "maxLockinPeriod cannot exceed 10 years");
+        require(_migrationSigner != address(0), "Invalid migration signer address");
+
         manufacturerRegistry = _manufacturerRegistry;
         maxLockinPeriod = _maxLockinPeriod;
         migrationSigner = _migrationSigner;
@@ -150,7 +160,6 @@ contract ChipRegistry is Ownable {
 
         // Verify that the project registrar implements the necessary interfaces
         IERC165 checker = IERC165(address(_projectRegistrar));
-        require(checker.supportsInterface(type(IPBT).interfaceId), "Does not implement IPBT");
         require(checker.supportsInterface(type(IProjectRegistrar).interfaceId), "Does not implement IProjectRegistrar");
 
         // Verify that the project isn't already enrolled
@@ -217,7 +226,7 @@ contract ChipRegistry is Ownable {
         require(_chipOwner != address(0), "Invalid chip owner");
 
         // Verify the chip is being added by an enrolled project
-        require(projectInfo.creationTimestamp != 0, "Project not enrolled");
+        require(projectInfo.creationTimestamp != 0, "ChipRegistry: Project not enrolled");
 
         // Verify that the chip doesn't exist yet
         require(!chipEnrollments[_chipId].chipEnrolled, "Chip already added");
@@ -226,7 +235,7 @@ contract ChipRegistry is Ownable {
         _validateManufacturerCertificate(_chipId, _manufacturerValidation);
 
         // Validate the custody proof and determine if it is a developer custody proof or migration proof; will revert if invalid proof for both cases
-        bool hasDeveloperCustodyProof = _isDeveloperCustodyProofAndValid(_chipId, projectInfo.developerRegistrar.owner(), _custodyProof);
+        bool hasDeveloperCustodyProof = _isDeveloperCustodyProofAndValid(_chipId, address(projectInfo.developerRegistrar), _custodyProof);
 
         // Create the chip subnode record in the ERS
         bytes32 ersNode = _createChipSubnode(
@@ -245,8 +254,8 @@ contract ChipRegistry is Ownable {
         });
        
         // Lockin Period is min of the lockinPeriod specified by the Developer and the max time period specified by governance
-        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.lockinPeriod ?
-            projectInfo.lockinPeriod :
+        uint256 lockinPeriod = projectInfo.creationTimestamp + maxLockinPeriod > projectInfo.creationTimestamp + projectInfo.lockinPeriod ?
+            projectInfo.creationTimestamp + projectInfo.lockinPeriod :
             projectInfo.creationTimestamp + maxLockinPeriod;
 
         // Set primaryService on ServicesRegistry
@@ -420,10 +429,25 @@ contract ChipRegistry is Ownable {
      */
     function ownerOf(address _chipId) public view virtual returns (address) {
         require(chipEnrollments[_chipId].chipEnrolled, "Chip not added");
-        IPBT projectRegistrar = IPBT(chipEnrollments[_chipId].projectRegistrar);
+        IProjectRegistrar projectRegistrar = IProjectRegistrar(chipEnrollments[_chipId].projectRegistrar);
 
         return projectRegistrar.ownerOf(_chipId);
     } 
+
+        /**
+     * 
+     * @param _interfaceId The interface ID to check for
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        virtual
+        override(ERC165)
+        returns (bool)
+    {
+        return _interfaceId == type(IChipRegistry).interfaceId ||
+        super.supportsInterface(_interfaceId);
+    }
 
     /* ============ Internal Functions ============ */
 
@@ -480,7 +504,8 @@ contract ChipRegistry is Ownable {
         bool isEnrolledChip = manufacturerRegistry.isEnrolledChip(
             _manufacturerValidation.enrollmentId,
             chipId,
-            _manufacturerValidation.manufacturerCertificate
+            _manufacturerValidation.manufacturerCertificate,
+            _manufacturerValidation.payload
         );
         bool isValidEnrollment = manufacturerRegistry.isValidEnrollment(_manufacturerValidation.enrollmentId);
         require(isValidEnrollment, "Expired manufacturer enrollment");
@@ -492,13 +517,13 @@ contract ChipRegistry is Ownable {
      * @notice Validate the developer custody proof for a chip; should return true if the developer signed the developer address, 
      * false if the migration signer signed the chipId and should revert if the proof is invalid for either case.
      * 
-     * @param _chipId           The chip public key
-     * @param _developer       The developer's address
-     * @param _custodyProof    The developer's custody proof or migration proof
+     * @param _chipId                 The chip public key
+     * @param _developerRegistrar     The developer's registrar address
+     * @param _custodyProof           The developer's custody proof or migration proof
      */
     function _isDeveloperCustodyProofAndValid(
         address _chipId,
-        address _developer,
+        address _developerRegistrar,
         bytes memory _custodyProof
     )
         internal
@@ -506,13 +531,20 @@ contract ChipRegistry is Ownable {
         returns (bool)
     {
         // For developer custody proofs, the chip signs the developer address. For migration proofs the migration signer signs the chipId
-        bytes32 developerMsgHash = abi.encodePacked(_developer).toEthSignedMessageHash();
-        bytes32 migrationMsgHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+        bytes32 developerDigest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("DeveloperCustodyProof(address developerRegistrar)"),
+            _developerRegistrar
+        )));
+        bytes32 migrationDigest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("MigrationProof(address chipId,address developerRegistrar)"),
+            _chipId,
+            _developerRegistrar
+        )));
 
         // If the developer signed the developer address, return 
-        if(_chipId.isValidSignatureNow(developerMsgHash, _custodyProof))
+        if(_chipId.isValidSignatureNow(developerDigest, _custodyProof))
             return true;
-        else if(migrationSigner.isValidSignatureNow(migrationMsgHash, _custodyProof))
+        else if(migrationSigner.isValidSignatureNow(migrationDigest, _custodyProof))
             return false;
         else
             revert("Invalid custody proof");

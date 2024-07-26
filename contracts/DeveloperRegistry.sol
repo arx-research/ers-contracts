@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import { AddressArrayUtils } from "./lib/AddressArrayUtils.sol";
 import { IERS } from "./interfaces/IERS.sol";
@@ -18,7 +18,7 @@ import { IDeveloperRegistrarFactory } from "./interfaces/IDeveloperRegistrarFact
  * governance. When creating a new Registrar the Developer is given a new [x].ers name. Governance has the ability to revoke Developer permissions
  * and reassign the ERS name to a new Developer.
  */
-contract DeveloperRegistry is Ownable {
+contract DeveloperRegistry is Ownable2Step {
 
     using AddressArrayUtils for address[];
 
@@ -55,7 +55,7 @@ contract DeveloperRegistry is Ownable {
     address[] internal developerRegistrars;
 
     /* ============ Constructor ============ */
-    constructor(address _governance) Ownable() {
+    constructor(address _governance) Ownable2Step() {
         transferOwnership(_governance);
     }
 
@@ -105,11 +105,11 @@ contract DeveloperRegistry is Ownable {
         delete pendingDevelopers[msg.sender];
 
         // Passing the owner of the new Registrar to the Factory. Caller is set as owner. This can be transferred to a multisig later.
-        address newRegistrar = IDeveloperRegistrarFactory(_factory).deployDeveloperRegistrar(msg.sender);
+        address newRegistrar = IDeveloperRegistrarFactory(_factory).deployDeveloperRegistrar();
         bytes32 registrarRootNode = ersRegistry.createSubnodeRecord(ROOT_NODE, nameHash, newRegistrar, newRegistrar);
 
         // Registrar is a trusted contract that we initialize with a root node
-        IDeveloperRegistrar(newRegistrar).initialize(registrarRootNode);
+        IDeveloperRegistrar(newRegistrar).initialize(msg.sender, registrarRootNode);
 
         isDeveloperRegistrar[newRegistrar] = true;
         developerRegistrars.push(newRegistrar);

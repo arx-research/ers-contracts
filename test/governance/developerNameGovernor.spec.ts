@@ -17,10 +17,11 @@ import {
 } from "@utils/test/index";
 import { calculateLabelHash, createNameApprovalProof } from "../../utils/protocolUtils";
 import { ethers } from "hardhat";
+import { Blockchain } from "@utils/common";
 
 const expect = getWaffleExpect();
 
-describe("DeveloperRegistry", () => {
+describe("DeveloperNameGovernor", () => {
   let owner: Account;
   let nameCoordinator: Account;
   let developerOne: Account;
@@ -31,6 +32,9 @@ describe("DeveloperRegistry", () => {
   let developerRegistry: DeveloperRegistry;
   let chipRegistry: Account;
   let deployer: DeployHelper;
+  let chainId: number;
+
+  const blockchain = new Blockchain(ethers.provider);
 
   beforeEach(async () => {
     [
@@ -40,6 +44,8 @@ describe("DeveloperRegistry", () => {
       attacker,
       chipRegistry,
     ] = await getAccounts();
+
+    chainId = await blockchain.getChainId();
 
     deployer = new DeployHelper(owner.wallet);
 
@@ -71,16 +77,19 @@ describe("DeveloperRegistry", () => {
     let subjectDeveloperName: string;
     let subjectApprovalProof: string;
     let subjectCaller: Account;
+    let subjectRecentTimestamp: number;
 
     beforeEach(async () => {
       subjectDeveloperName = ethers.utils.formatBytes32String("testName");
       subjectCaller = developerOne;
-      subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectCaller.address, subjectDeveloperName);
+      subjectRecentTimestamp = (await ethers.provider.getBlock('latest')).timestamp - 1;
+      subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectCaller.address, subjectDeveloperName, subjectRecentTimestamp, chainId, developerNameGovernor.address);
     });
 
     async function subject(): Promise<any> {
       return await developerNameGovernor.connect(subjectCaller.wallet).claimName(
         subjectDeveloperName,
+        subjectRecentTimestamp,
         subjectApprovalProof
       );
     }
@@ -90,6 +99,16 @@ describe("DeveloperRegistry", () => {
 
       const developerName = await developerRegistry.pendingDevelopers(subjectCaller.address);
       expect(developerName).to.eq(subjectDeveloperName);
+    });
+
+    describe("when an expired name proof is provided", async () => {
+      beforeEach(async () => {
+        subjectRecentTimestamp = (await ethers.provider.getBlock('latest')).timestamp - (24 * 60 * 60 + 1);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Expired signature");
+      });
     });
 
     describe("when an invalid name proof is provided", async () => {
@@ -107,14 +126,19 @@ describe("DeveloperRegistry", () => {
     let subjectDeveloperOwner: Address;
     let subjectCaller: Account;
     let developerName: string;
+    let subjectBlockTimestamp: number;
 
     beforeEach(async () => {
+      const block = await ethers.provider.getBlock('latest');
+      subjectBlockTimestamp = block.timestamp;
+
       subjectDeveloperOwner = developerOne.address;
       developerName = ethers.utils.formatBytes32String("testName");
-      const subjectApprovalProof = await createNameApprovalProof(nameCoordinator, developerOne.address, developerName);
+      const subjectApprovalProof = await createNameApprovalProof(nameCoordinator, subjectDeveloperOwner, developerName, subjectBlockTimestamp, chainId, developerNameGovernor.address);
 
       await developerNameGovernor.connect(developerOne.wallet).claimName(
         developerName,
+        subjectBlockTimestamp,
         subjectApprovalProof
       );
 
