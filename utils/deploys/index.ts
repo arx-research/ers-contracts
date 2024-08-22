@@ -20,6 +20,7 @@ import {
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
 import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models/chip";
 import { EnrollmentSECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models/enrollment";
+import { EnrollmentEIP191Model__factory } from "../../typechain/factories/contracts/auth-models/enrollment";
 import {
   BaseProjectRegistrar,
   ChipRegistry,
@@ -31,6 +32,7 @@ import {
   ManufacturerRegistry,
   PBTSimpleProjectRegistrar,
   EnrollmentSECP256k1Model,
+  EnrollmentEIP191Model,
   SECP256k1Model,
   ServicesRegistry
 } from "../contracts";
@@ -199,5 +201,10 @@ export default class DeployHelper {
   public async deployEnrollmentSECP256k1Model(): Promise<EnrollmentSECP256k1Model> {
     const enrollmentSECP256k1Model = await new EnrollmentSECP256k1Model__factory(this._deployerSigner).deploy();
     return enrollmentSECP256k1Model;
+  }
+
+  public async deployEnrollmentEIP191Model(): Promise<EnrollmentEIP191Model> {
+    const enrollmentEIP191Model = await new EnrollmentEIP191Model__factory(this._deployerSigner).deploy();
+    return enrollmentEIP191Model;
   }
 }

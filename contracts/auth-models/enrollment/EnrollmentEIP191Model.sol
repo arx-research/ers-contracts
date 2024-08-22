@@ -5,32 +5,20 @@ pragma solidity ^0.8.24;
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { IEnrollmentAuthModel } from "../../interfaces/IEnrollmentAuthModel.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
- * @title EnrollmentSECP256k1Model
+ * @title EnrollmentEIP191Model
  * @author Arx
  *
  * @notice Enrollment Auth model contract that encodes an implementation of the curve used to sign manufacturer 
  * enrollment messages.
  */
-contract EnrollmentSECP256k1Model is EIP712, IEnrollmentAuthModel {
+contract EnrollmentEIP191Model is IEnrollmentAuthModel {
 
     using SignatureChecker for address;
-    using ECDSA for bytes32;
-
-    /* ============ Constants ============ */
-    // Match signature version to project version.
-    string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
-    string public constant EIP712_SIGNATURE_VERSION = "2.0.0";
-
-    /* ============ Constructor ============ */
-    /**
-     * @dev Constructor for EnrollmentSECP256k1Model. Sets the owner and EIP712 domain.
-     */   
-    constructor() 
-        EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
-    {}
+    using ECDSA for bytes;
+ 
+    constructor() {}
 
     /**
      * @notice Verifies a signature against a message and signer address
@@ -49,11 +37,7 @@ contract EnrollmentSECP256k1Model is EIP712, IEnrollmentAuthModel {
         view
         returns (bool)
     {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("ManufacturerCertificate(address chipId)"),
-            _chipId
-        )));
-
-        return _manufacturerCertSigner.isValidSignatureNow(digest, _manufacturerCertificate);
+        bytes32 messageHash = abi.encodePacked(_chipId).toEthSignedMessageHash();
+        return _manufacturerCertSigner.isValidSignatureNow(messageHash, _manufacturerCertificate);
     }
 }

@@ -49,7 +49,7 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         bytes32 nameHash
     );
 
-    event ChipAdded(                              // Emitted during claimChip
+    event ChipAdded(                              // Emitted during addChip
         address indexed chipId,
         address indexed projectRegistrar,
         bytes32 indexed manufacturerEnrollmentId,
@@ -90,7 +90,7 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
     /* ============ Constants ============ */
     // Match signature version to project version.
     string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
-    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
+    string public constant EIP712_SIGNATURE_VERSION = "2.0.0";
 
     /* ============ State Variables ============ */
     IManufacturerRegistry public immutable manufacturerRegistry;
