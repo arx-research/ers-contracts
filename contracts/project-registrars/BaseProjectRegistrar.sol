@@ -1,14 +1,15 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import { ChipValidations } from "../lib/ChipValidations.sol";
 import { IChipRegistry } from "../interfaces/IChipRegistry.sol";
 import { IERS } from "../interfaces/IERS.sol";
 import { IProjectRegistrar } from "../interfaces/IProjectRegistrar.sol";
 import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /**
  * @title BaseProjectRegistrar
@@ -17,7 +18,7 @@ import { IDeveloperRegistrar } from "../interfaces/IDeveloperRegistrar.sol";
  * @notice Base contract for ProjectRegistrars. Contains common functionality for all ProjectRegistrars including setting the root node
  * and claiming chips.
  */
-contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
+contract BaseProjectRegistrar is Ownable2Step, ERC165, IProjectRegistrar {
     using ChipValidations for address;
 
     /* ============ Events ============ */
@@ -39,20 +40,17 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
 
     /* ============ Constructor ============ */
     /**
-     * @param _projectManager           The address that will be set as the owner
      * @param _chipRegistry             The chip registry of the ERS system being used
      * @param _ers                      The ERS registry of the ERS system being used
      * @param _developerRegistrar       The DeveloperRegistrar that made this project
      */
     constructor(
-        address _projectManager, 
         IChipRegistry _chipRegistry, 
         IERS _ers, 
         IDeveloperRegistrar _developerRegistrar
     ) 
-        Ownable() 
+        Ownable2Step() 
     {
-        _transferOwnership(_projectManager);
         chipRegistry = _chipRegistry;
         ers = _ers;
         developerRegistrar = _developerRegistrar;
@@ -71,46 +69,61 @@ contract BaseProjectRegistrar is Ownable, IProjectRegistrar {
         emit RootNodeSet(_rootNode);
     }
 
+    /* ============ External Functions ============ */
+
+    /**
+     * @notice Lookup a chip owner via ERS; adding on ProjectRegistrar enforces that collections
+     * must (1) allow ownership lookups and (2) increase the probability ownership truth is 
+     * contained in ERS.
+     * 
+     * @param _chipId                   Address of the chip being claimed
+     */
+    function ownerOf(address _chipId) 
+        external 
+        view 
+        returns (address) 
+    {
+        bytes32 chipNode = chipRegistry.node(_chipId);
+        return ers.getOwner(chipNode);
+    }
+
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        virtual
+        override(ERC165)
+        returns (bool)
+    {
+        return _interfaceId == type(IProjectRegistrar).interfaceId ||
+        super.supportsInterface(_interfaceId);
+    }
+
     /* ============ Internal Functions ============ */
 
     /**
-     * @notice Allow a chip holder to name chip to the ERS and enroll it to the Chip Registry. Chip owner will be
-     * set as the msg.sender. Will revert if invalid proof of ownership is given or ownership proof is expired.
-     * Will revert if chip is msg.sender since it cannot own itself.
+     * @notice Allow a chip holder to name chip to the ERS and enroll it to the Chip Registry
      * 
      * @param _chipId                   Address of the chip being claimed
-     * @param _nameHash                 Keccak256 hash of the human-readable name for the chip being claimed
      * @param _chipOwner                Intended owner of the chip being claimed
-     * @param _claimData                Struct containing chip info
      * @param _manufacturerValidation   Struct with needed info for chip's manufacturer validation
-     * @param _developerInclusionProof  Chip's public key/ID signed by the projectPublicKey, indicates Developer approves chip as part of project
-     * @param _developerCustodyProof    Proof that the chip was in custody of the Developer, the projectPublicKey signed by the chip
+     * @param _custodyProof             Proof of custody for the chip
      */
-    function _createSubnodeAndClaimChip(
+    function _addChip(
         address _chipId,
-        bytes32 _nameHash,
         address _chipOwner,
-        IChipRegistry.DeveloperMerkleInfo memory _claimData,
+        bytes32 _nameHash,
         IChipRegistry.ManufacturerValidation memory _manufacturerValidation,
-        bytes memory _developerInclusionProof,
-        bytes memory _developerCustodyProof
+        bytes memory _custodyProof
     ) 
         internal
     {
-        // Call createSubnodeRecord from the ERS Registry to create a subnode with the chip as the resolver
-        // and the caller as the owner.
-        bytes32 ersNode = ers.createSubnodeRecord(rootNode, _nameHash, _chipOwner, _chipId);
-
-        IChipRegistry.ChipClaim memory chipClaim = IChipRegistry.ChipClaim({
-            owner: _chipOwner,
-            ersNode: ersNode,
-            developerMerkleInfo: _claimData
-        });
-
-        // Registrar calls the claimChip function on the ChipRegistry
-        chipRegistry.claimChip(_chipId, chipClaim, _manufacturerValidation, _developerInclusionProof, _developerCustodyProof);
+        // Registrar calls the addChip function on the ChipRegistry
+        chipRegistry.addChip(
+            _chipId, 
+            _chipOwner, 
+            _nameHash,
+            _manufacturerValidation, 
+            _custodyProof
+        );
     }
 }
-
-
-

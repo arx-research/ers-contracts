@@ -1,11 +1,10 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
-import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
-import { IERS } from "./interfaces/IERS.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
-import { DeveloperRegistrar } from "./DeveloperRegistrar.sol";
 
 /**
  * @title DeveloperRegistrarFactory
@@ -16,29 +15,27 @@ import { DeveloperRegistrar } from "./DeveloperRegistrar.sol";
 contract DeveloperRegistrarFactory {
 
     /* ============ Events ============ */
-    event DeveloperRegistrarDeployed(address indexed developerRegistrar, address indexed owner);
+    event DeveloperRegistrarDeployed(address indexed developerRegistrar);
 
     /* ============ State Variables ============ */
-    IChipRegistry public immutable chipRegistry;
-    IERS public immutable ers;
+    address public immutable developerRegistrar;
     IDeveloperRegistry public immutable developerRegistry;
 
     /* ============ Constructor ============ */
-    constructor(IChipRegistry _chipRegistry, IERS _ers, IDeveloperRegistry _developerRegistry) {
-        chipRegistry = _chipRegistry;
-        ers = _ers;
+    constructor(address _developerRegistrar, IDeveloperRegistry _developerRegistry) {
+        developerRegistrar = _developerRegistrar;
         developerRegistry = _developerRegistry;
     }
 
     /* ============ External Functions ============ */
-    function deployRegistrar(address _owner)
+    function deployDeveloperRegistrar()
         external
         returns(address)
     {
         require(IDeveloperRegistry(msg.sender) == developerRegistry, "Caller must be DeveloperRegistry");
 
-        DeveloperRegistrar newRegistrar = new DeveloperRegistrar(_owner, chipRegistry, ers, developerRegistry);
-        emit DeveloperRegistrarDeployed(address(newRegistrar), _owner);
+        address newRegistrar = Clones.clone(developerRegistrar);
+        emit DeveloperRegistrarDeployed(address(newRegistrar));
         return address(newRegistrar);
     }
 }

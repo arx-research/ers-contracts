@@ -6,23 +6,26 @@ import {
   AccountMock__factory,
   ChipRegistryMock__factory,
   ChipValidationsMock__factory,
-  ClaimedPBTMock__factory,
   InterfaceIdGetterMock__factory,
   ProjectRegistrarMock__factory,
   TransferPolicyMock__factory,
-  DeveloperRegistryMock__factory
+  DeveloperRegistrarMock__factory,
+  DeveloperRegistryMock__factory,
+  PBTSimpleMock__factory
 } from "../../typechain/factories/contracts/mocks";
 
 import {
   AccountMock,
   ChipRegistryMock,
   ChipValidationsMock,
-  ClaimedPBTMock,
+  PBTSimpleMock,
   InterfaceIdGetterMock,
   ProjectRegistrarMock,
   TransferPolicyMock,
+  DeveloperRegistrarMock,
   DeveloperRegistryMock
 } from "../contracts";
+import { ADDRESS_ZERO } from "..";
 
 export default class DeployMocks {
   private _deployerSigner: Signer;
@@ -38,17 +41,36 @@ export default class DeployMocks {
     return developerRegistry;
   }
 
-  public async deployClaimedPBTMock(
+  public async deployDeveloperRegistrarMock(
+    chipRegistry: Address,
+    ersRegistry: Address,
+    developerRegistry: Address,
+    servicesRegistry: Address
+  ): Promise<DeveloperRegistrarMock> {
+    const developerRegistrar = await new DeveloperRegistrarMock__factory(this._deployerSigner).deploy(
+      chipRegistry,
+      ersRegistry,
+      developerRegistry,
+      servicesRegistry
+    );
+    return developerRegistrar;
+  }
+
+  public async deployPBTSimpleMock(
     name: string,
     symbol: string,
-    maxBlockWindow: BigNumber
-  ): Promise<ClaimedPBTMock> {
-    const claimedPBTMock = await new ClaimedPBTMock__factory(this._deployerSigner).deploy(
+    baseURI: string,
+    maxBlockWindow: BigNumber,
+    transferPolicy: Address
+  ): Promise<PBTSimpleMock> {
+    const pbtSimpleMock = await new PBTSimpleMock__factory(this._deployerSigner).deploy(
       name,
       symbol,
-      maxBlockWindow
+      baseURI,
+      maxBlockWindow,
+      transferPolicy
     );
-    return claimedPBTMock;
+    return pbtSimpleMock;
   }
 
   public async deployAccountMock(
@@ -61,11 +83,13 @@ export default class DeployMocks {
 
   public async deployProjectRegistrarMock(
     chipRegistry: Address,
-    ersRegistry: Address
+    ersRegistry: Address,
+    developerRegistrar: Address = ADDRESS_ZERO
   ): Promise<ProjectRegistrarMock> {
     const registrarMock = await new ProjectRegistrarMock__factory(this._deployerSigner).deploy(
       chipRegistry,
-      ersRegistry
+      ersRegistry,
+      developerRegistrar
     );
     return registrarMock;
   }
@@ -77,15 +101,13 @@ export default class DeployMocks {
 
   public async deployChipRegistryMock(
     manufacturerRegistry: Address,
-    gatewayUrls: string[],
-    maxBlockWindow: BigNumber = BigNumber.from(5),
-    maxLockinPeriod: BigNumber = BigNumber.from(1000)
+    maxLockinPeriod: BigNumber = BigNumber.from(1000),
+    migrationSigner: Address
   ): Promise<ChipRegistryMock>{
     const chipRegistryMock = await new ChipRegistryMock__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      gatewayUrls,
-      maxBlockWindow,
-      maxLockinPeriod
+      maxLockinPeriod,
+      migrationSigner
     );
     return chipRegistryMock;
   }

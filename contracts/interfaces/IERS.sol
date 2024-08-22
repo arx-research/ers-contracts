@@ -1,14 +1,28 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
+
 
 interface IERS {
+
+    function createChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash,
+        address _owner,
+        address _resolver
+    ) external returns(bytes32);
+
     function createSubnodeRecord(
         bytes32 _node,
         bytes32 _nameHash,
         address _owner,
         address _resolver
     ) external returns(bytes32);
+
+    function deleteChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash
+    ) external;
 
     function deleteSubnodeRecord(
         bytes32 _node,
@@ -20,12 +34,6 @@ interface IERS {
         address _owner
     ) external;
 
-    function isValidChipState(
-        bytes32 _node,
-        address _chipId,
-        address _owner
-    ) external view returns(bool);
-
     function getSubnodeHash(
         bytes32 _node,
         bytes32 _nameHash
@@ -34,6 +42,13 @@ interface IERS {
         pure
         returns (bytes32);
 
+    function getOwner(
+        bytes32 _node
+    )
+        external
+        view
+        returns (address);
+
     function getSubnodeOwner(
         bytes32 _node,
         bytes32 _nameHash
@@ -41,4 +56,18 @@ interface IERS {
         external
         view
         returns (address);
+
+    function getResolver(
+        bytes32 _node
+    )
+        external
+        view
+        returns (address);
+
+    function recordExists(
+        bytes32 _node
+    )
+        external
+        view
+        returns (bool);
 }

@@ -1,49 +1,62 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
-import { IPBT } from "../token/IPBT.sol";
 import { IProjectRegistrar } from "./IProjectRegistrar.sol";
-import { ITransferPolicy } from "./ITransferPolicy.sol";
+import { IServicesRegistry } from "./IServicesRegistry.sol";
 
-interface IChipRegistry is IPBT {
+interface IChipRegistry {
+    function servicesRegistry() external view returns (address);
 
-    struct DeveloperMerkleInfo {
-        uint256 developerIndex;
-        bytes32 serviceId;
-        uint256 lockinPeriod;
-        string tokenUri;
-        bytes32[] developerProof;
-    }
-
-    struct ChipClaim {
-        address owner;
-        bytes32 ersNode;
-        DeveloperMerkleInfo developerMerkleInfo;
-    }
-
-    struct ManufacturerValidation {
+    struct ManufacturerValidation
+     {
         bytes32 enrollmentId;
-        uint256 mIndex;
-        bytes32[] manufacturerProof;
+        bytes manufacturerCertificate;
+        bytes payload;
     }
 
     function addProjectEnrollment(
         IProjectRegistrar _projectRegistrar,
-        address _projectPublicKey,
-        ITransferPolicy _transferPolicy,
-        bytes32 _merkleRoot,
-        bytes calldata _signature,
-        string calldata _projectClaimDataUri
+        bytes32 _nameHash,
+        IServicesRegistry _servicesRegistry,
+        bytes32 _serviceId,
+        uint256 _lockinPeriod
     )
         external;
-    
-    function claimChip(
+
+    function addChip(
         address _chipId,
-        ChipClaim calldata _chipClaim,
+        address _owner,
+        bytes32 _nameHash,
         ManufacturerValidation calldata _manufacturerValidation,
-        bytes calldata _developerInclusionProof,
-        bytes calldata _developerCustodyProof
+        bytes calldata _custodyProof
     )
         external;
+
+    function removeProjectEnrollment(
+        IProjectRegistrar _projectRegistrar
+    )
+        external;
+
+    function setChipNodeOwner(
+        address _chipId,
+        address _newOwner
+    )
+        external;
+
+    function resolveChip(
+        bytes32 _nameHash
+    )
+        external view returns (address);
+
+    function node(
+        address _chipId
+    )
+        external view returns (bytes32);
+
+    function ownerOf(
+        address _chipId
+    )
+        external view returns (address);
+
 }

@@ -1,8 +1,7 @@
 import "module-alias/register";
 
-import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { DeveloperRegistrarFactory } from "@utils/contracts";
+import { DeveloperRegistrar, DeveloperRegistrarFactory } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
 import {
@@ -18,6 +17,8 @@ describe("DeveloperRegistrarFactory", () => {
   let developerRegistry: Account;
   let chipRegistry: Account;
   let ersRegistry: Account;
+  let servicesRegistry: Account;
+  let developerRegistrarImpl: DeveloperRegistrar;
   let developerRegistrarFactory: DeveloperRegistrarFactory;
   let deployer: DeployHelper;
 
@@ -27,13 +28,20 @@ describe("DeveloperRegistrarFactory", () => {
       developerRegistry,
       chipRegistry,
       ersRegistry,
+      servicesRegistry,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
 
-    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+    developerRegistrarImpl = await deployer.deployDeveloperRegistrar(
       chipRegistry.address,
       ersRegistry.address,
+      developerRegistry.address,
+      servicesRegistry.address
+    );
+
+    developerRegistrarFactory = await deployer.deployDeveloperRegistrarFactory(
+      developerRegistrarImpl.address,
       developerRegistry.address
     );
   });
@@ -42,31 +50,27 @@ describe("DeveloperRegistrarFactory", () => {
 
   describe("#constructor", async () => {
     it("should set all the state correctly", async () => {
-      const actualChipRegistry = await developerRegistrarFactory.chipRegistry();
-      const actualErsRegistry = await developerRegistrarFactory.ers();
+      const actualDeveloperRegistrar = await developerRegistrarFactory.developerRegistrar();
       const actualDeveloperRegistry = await developerRegistrarFactory.developerRegistry();
 
-      expect(actualChipRegistry).to.eq(chipRegistry.address);
-      expect(actualErsRegistry).to.eq(ersRegistry.address);
+      expect(actualDeveloperRegistrar).to.eq(developerRegistrarImpl.address);
       expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
     });
   });
 
-  describe("#deployRegistrar", async () => {
-    let subjectOwner: Address;
+  describe("#deployDeveloperRegistrar", async () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectOwner = owner.address;
       subjectCaller = developerRegistry;
     });
 
     async function subject(): Promise<any> {
-      return await developerRegistrarFactory.connect(subjectCaller.wallet).deployRegistrar(subjectOwner);
+      return await developerRegistrarFactory.connect(subjectCaller.wallet).deployDeveloperRegistrar();
     }
 
     async function subjectCall(): Promise<any> {
-      return await developerRegistrarFactory.connect(subjectCaller.wallet).callStatic.deployRegistrar(subjectOwner);
+      return await developerRegistrarFactory.connect(subjectCaller.wallet).callStatic.deployDeveloperRegistrar();
     }
 
     it("should set the state correctly on the newly deployed DeveloperRegistrar", async () => {
@@ -79,19 +83,16 @@ describe("DeveloperRegistrarFactory", () => {
       const actualChipRegistry = await developerRegistrar.chipRegistry();
       const actualErsRegistry = await developerRegistrar.ers();
       const actualDeveloperRegistry = await developerRegistrar.developerRegistry();
-      const actualOwner = await developerRegistrar.owner();
 
       expect(actualChipRegistry).to.eq(chipRegistry.address);
       expect(actualErsRegistry).to.eq(ersRegistry.address);
       expect(actualDeveloperRegistry).to.eq(developerRegistry.address);
-      expect(actualOwner).to.eq(subjectOwner);
     });
 
     it("should emit the correct DeveloperRegistrarDeployed event", async () => {
       const expectedRegistrarAddress = await subjectCall();
       await expect(subject()).to.emit(developerRegistrarFactory, "DeveloperRegistrarDeployed").withArgs(
-        expectedRegistrarAddress,
-        subjectOwner
+        expectedRegistrarAddress
       );
     });
 

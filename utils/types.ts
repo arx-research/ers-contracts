@@ -11,39 +11,31 @@ export interface DeveloperClaimTreeInfo {
 }
 
 export interface DeveloperMerkleProofInfo {
-  developerIndex: BigNumber;          // When generating a merkle tree you input an array of leaves this is the index of the leaf in that array
+  developerIndex: BigNumber;    // When generating a merkle tree you input an array of leaves this is the index of the leaf in that array
   serviceId: string;            // The id of the primary service the Developer specifies for the chip owner
   lockinPeriod: BigNumber;      // Length of time before the chip owner can change the primary service
   tokenUri: string;             // tokenUri like in ERC-721
-  developerProof: string[];           // The merkle proof used to prove that the chip is part of a tree
 }
 
-export interface ChipClaimInfo {
+export interface ChipAdditionInfo {
   owner: Address;
-  ersNode: string;
+  rootNode: string;
+  nameHash: string;
   developerMerkleInfo: DeveloperMerkleProofInfo;
 }
 
 export interface ManufacturerValidationInfo {
   enrollmentId: string;             // id of manufacturer enrollment the chip belongs to
-  mIndex: BigNumber;                // When generating a merkle tree you input an array of leaves this is the index of the leaf in that array
-  manufacturerProof: string[];      // The merkle proof used to prove that the chip is part of a tree
+  manufacturerCertificate: string;  // The chip certificate signed by the manufacturer
+  payload: string;                  // The optional payload used in the ManufacturerCertificate
 }
 
-export interface ClaimedPBTChipInfo {
-  tokenId: BigNumber;
-  transferPolicy: Address;
-  tokenUri: string;
-  tokenData: string;
-}
-
-export interface ProjectChipClaim {
+export interface ProjectChipAddition {
   chipId: Address;
-  chipNameHash: string;
-  developerMerkleInfo: DeveloperMerkleProofInfo;
+  chipOwner: Address;
+  nameHash: string;
   manufacturerValidation: ManufacturerValidationInfo;
-  developerInclusionProof: string;
-  developerCustodyProof: string;
+  custodyProof: string;
 }
 
 export interface ServiceRecord{

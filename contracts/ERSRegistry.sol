@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import { IChipRegistry } from "./interfaces/IChipRegistry.sol";
 import { IDeveloperRegistry } from "./interfaces/IDeveloperRegistry.sol";
@@ -65,12 +65,69 @@ contract ERSRegistry {
     /* ============ External Functions ============ */
 
     /**
-     * @dev Sets the record for a new subnode. May only be called by owner of node (checked in _setSubnodeOwner).
+     * @dev ONLY CHIP REGISTRY: Sets the record on behalf of a new chip or project subnode. Note that ChipRegistry is not the node owner.
      *
      * @param _node     The parent node.
      * @param _nameHash The hash of the nameHash specifying the subnode.
      * @param _owner    The address of the new owner.
-     * @param _resolver The address of the resolver.
+     * @param _resolver The address that the new nameHash resolves to.
+     * @return The newly created subnode hash
+     */
+    function createChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash,
+        address _owner,
+        address _resolver
+    )
+        external
+        virtual
+        returns(bytes32)
+    {
+        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
+        bytes32 subnode = _calculateSubnode(_node, _nameHash);
+        require(_owner != address(0), "New owner cannot be null address");
+        require(!recordExists(subnode), "Subnode already exists");
+
+        _setOwner(subnode, _owner);
+        _setResolver(subnode, _resolver);
+
+        emit NewOwner(_node, subnode, _nameHash, _owner);
+        return subnode;
+    }
+
+     /**
+     * @dev ONLY CHIP REGISTRY: Delete the record for a project subnode. Note that ChipRegistry is not the node owner.
+     *
+     * @param _node     The parent node.
+     * @param _nameHash The hash of the nameHash specifying the subnode.
+     */
+    function deleteChipRegistrySubnodeRecord(
+        bytes32 _node,
+        bytes32 _nameHash
+    )
+        external
+        virtual
+    {
+        // Note: we're expecting ChipRegistry to validate that the DeveloperRegistrar is the owner of the Project who created the node.
+        require(msg.sender == address(chipRegistry), "Caller must be ChipRegistry");
+        
+        bytes32 subnode = _calculateSubnode(_node, _nameHash);
+        require(recordExists(subnode), "Subnode does not exist");
+
+        _setOwner(subnode, address(0));
+        _setResolver(subnode, address(0));
+
+        emit NewOwner(_node, subnode, _nameHash, address(0));
+    }
+
+    /**
+     * @dev ONLY DEPLOYER, DEVELOPER REGISTRY or DEVELOPER REGISTRAR: Sets the record for a new subnode. May only be called by owner of node (checked
+     * in _setSubnodeOwner).
+     *
+     * @param _node     The parent node.
+     * @param _nameHash The hash of the nameHash specifying the subnode.
+     * @param _owner    The address of the new owner.
+     * @param _resolver The address that the new nameHash resolves to.
      * @return The newly created subnode hash
      */
     function createSubnodeRecord(
@@ -84,6 +141,14 @@ contract ERSRegistry {
         authorised(_node)
         returns(bytes32)
     {
+        address deployerCaller = records[0x0].owner;
+
+        // Check to see if caller is the ERS deployer, DeveloperRegistry or a DeveloperRegistrar
+        require(
+            msg.sender == deployerCaller || msg.sender == address(developerRegistry) || developerRegistry.isDeveloperRegistrar(msg.sender),
+            "Caller must be Deployer or DeveloperRegistry"
+        );
+        
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         require(_owner != address(0), "New owner cannot be null address");
         require(!recordExists(subnode), "Subnode already exists");
@@ -148,28 +213,6 @@ contract ERSRegistry {
     /* ============ View Functions ============ */
 
     /**
-     * @dev Validate that state has been correctly set for a chip. Used by ChipRegistry to validate that a ProjectRegistrar has
-     * set the correct state for a chip.
-     *
-     * @param _node     The specified node.
-     * @param _chipId   The specified chipId.
-     * @param _owner    The specified owner.
-     * @return bool indicating whether state is valid
-     */
-    function isValidChipState(
-        bytes32 _node,
-        address _chipId,
-        address _owner
-    )
-        external
-        virtual
-        view
-        returns(bool)
-    {
-        return (records[_node].owner == _owner && records[_node].resolver == _chipId);
-    }
-
-    /**
      * @dev Returns the address that owns the specified node.
      *
      * @param _node     The specified node.
@@ -186,7 +229,7 @@ contract ERSRegistry {
      * @param _nameHash     The specified nameHash.
      * @return address of the owner.
      */
-    function getSubnodeOwner(bytes32 _node, bytes32 _nameHash) external view virtual returns (address) {
+    function getSubnodeOwner(bytes32 _node, bytes32 _nameHash) public view virtual returns (address) {
         bytes32 subnode = _calculateSubnode(_node, _nameHash);
         return getOwner(subnode);
     }

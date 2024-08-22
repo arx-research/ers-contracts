@@ -1,13 +1,20 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 interface IManufacturerRegistry {
     function isEnrolledChip(
         bytes32 _enrollmentId,
-        uint256 _index,
         address _chipId,
-        bytes32[] calldata _merkleProof
+        bytes calldata _manufacturerCertificate,
+        bytes calldata _payload     
+    )
+        external
+        view
+        returns (bool);
+
+    function isValidEnrollment (
+        bytes32 _enrollmentId
     )
         external
         view

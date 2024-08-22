@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
@@ -14,7 +14,7 @@ interface IPBT is IERC721Metadata {
 
     function tokenIdFor(address chipAddress) external view returns (uint256);
 
-    function isChipSignatureForToken(address chipId, bytes calldata payload, bytes calldata signature)
+    function isChipSignatureForToken(uint256 tokenId, bytes calldata payload, bytes calldata signature)
         external
         view
         returns (bool);
@@ -33,8 +33,6 @@ interface IPBT is IERC721Metadata {
         bool useSafeTransferFrom,
         bytes calldata payload
     ) external;
-
-    function ownerOf(address _chipId) external view returns (address);
 
     /// @notice Emitted when a token is minted.
     event PBTMint(uint256 indexed tokenId, address indexed chipAddress);

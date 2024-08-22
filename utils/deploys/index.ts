@@ -4,7 +4,6 @@ import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 
 import {
-  ArxProjectEnrollmentManager__factory,
   ChipRegistry__factory,
   DeveloperRegistrar__factory,
   DeveloperRegistrarFactory__factory,
@@ -15,14 +14,14 @@ import {
 } from "../../typechain/factories/contracts";
 
 import {
-  AuthenticityProjectRegistrar__factory,
-  RedirectProjectRegistrar__factory
+  BaseProjectRegistrar__factory,
+  PBTSimpleProjectRegistrar__factory
 } from "../../typechain/factories/contracts/project-registrars";
 import { DeveloperNameGovernor__factory } from "../../typechain/factories/contracts/governance";
-import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models";
+import { SECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models/chip";
+import { EnrollmentSECP256k1Model__factory } from "../../typechain/factories/contracts/auth-models/enrollment";
 import {
-  ArxProjectEnrollmentManager,
-  AuthenticityProjectRegistrar,
+  BaseProjectRegistrar,
   ChipRegistry,
   DeveloperNameGovernor,
   DeveloperRegistrar,
@@ -30,7 +29,8 @@ import {
   DeveloperRegistry,
   ERSRegistry,
   ManufacturerRegistry,
-  RedirectProjectRegistrar,
+  PBTSimpleProjectRegistrar,
+  EnrollmentSECP256k1Model,
   SECP256k1Model,
   ServicesRegistry
 } from "../contracts";
@@ -66,13 +66,11 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrarFactory(
-    chipRegistry: Address,
-    ersRegistry: Address,
+    developerRegistrar: Address,
     developerRegistry: Address
   ): Promise<DeveloperRegistrarFactory> {
     const developerRegistrarFactory = await new DeveloperRegistrarFactory__factory(this._deployerSigner).deploy(
-      chipRegistry,
-      ersRegistry,
+      developerRegistrar,
       developerRegistry
     );
     return developerRegistrarFactory;
@@ -84,16 +82,16 @@ export default class DeployHelper {
   }
 
   public async deployDeveloperRegistrar(
-    owner: Address,
     chipRegistry: Address,
     ersRegistry: Address,
-    developerRegistry: Address
+    developerRegistry: Address,
+    servicesRegistry: Address
   ): Promise<DeveloperRegistrar> {
     const developerRegistrar = await new DeveloperRegistrar__factory(this._deployerSigner).deploy(
-      owner,
       chipRegistry,
       ersRegistry,
-      developerRegistry
+      developerRegistry,
+      servicesRegistry
     );
     return developerRegistrar;
   }
@@ -119,15 +117,13 @@ export default class DeployHelper {
 
   public async deployChipRegistry(
     manufacturerRegistry: Address,
-    gatewayUrls: string[] = [],
-    maxBlockWindow: BigNumber = BigNumber.from(5),
-    maxLockinPeriod: BigNumber = BigNumber.from(1000)
+    maxLockinPeriod: BigNumber = BigNumber.from(1000),
+    migrationSigner: Address
   ): Promise<ChipRegistry> {
     const chipRegistry = await new ChipRegistry__factory(this._deployerSigner).deploy(
       manufacturerRegistry,
-      gatewayUrls,
-      maxBlockWindow,
-      maxLockinPeriod
+      maxLockinPeriod,
+      migrationSigner
     );
     return chipRegistry;
   }
@@ -141,32 +137,36 @@ export default class DeployHelper {
     return servicesRegistry;
   }
 
-  public async deployAuthenticityProjectRegistrar(
-    projectManager: Address,
+  public async deployPBTSimpleProjectRegistrar(
     chipRegistry: Address,
     ersRegistry: Address,
     developerRegistrar: Address,
-    maxBlockWindow: BigNumber = BigNumber.from(5)
-  ): Promise<AuthenticityProjectRegistrar> {
-    const projectRegistrar = await new AuthenticityProjectRegistrar__factory(this._deployerSigner).deploy(
-      projectManager,
+    name: string,
+    symbol: string,
+    baseURI: string,
+    maxBlockWindow: BigNumber,
+    transferPolicy: Address
+  ): Promise<PBTSimpleProjectRegistrar> {
+    const projectRegistrar = await new PBTSimpleProjectRegistrar__factory(this._deployerSigner).deploy(
       chipRegistry,
       ersRegistry,
       developerRegistrar,
-      maxBlockWindow
+      name,
+      symbol,
+      baseURI,
+      maxBlockWindow,
+      transferPolicy
     );
 
     return projectRegistrar;
   }
 
-  public async deployRedirectProjectRegistrar(
-    projectManager: Address,
+  public async deployBaseProjectRegistrar(
     chipRegistry: Address,
     ersRegistry: Address,
     developerRegistrar: Address
-  ): Promise<RedirectProjectRegistrar> {
-    const projectRegistrar = await new RedirectProjectRegistrar__factory(this._deployerSigner).deploy(
-      projectManager,
+  ): Promise<BaseProjectRegistrar> {
+    const projectRegistrar = await new BaseProjectRegistrar__factory(this._deployerSigner).deploy(
       chipRegistry,
       ersRegistry,
       developerRegistrar
@@ -175,28 +175,8 @@ export default class DeployHelper {
     return projectRegistrar;
   }
 
-  public async getAuthenticityProjectRegistrar(registrarAddress: Address): Promise<AuthenticityProjectRegistrar> {
-    return new AuthenticityProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
-  }
-
-  public async deployArxProjectEnrollmentManager(
-    chipRegistry: Address,
-    developerRegistrar: Address,
-    ers: Address,
-    manufacturerRegistry: Address,
-    transferPolicy: Address,
-    maxBlockWindow: BigNumber = BigNumber.from(5)
-  ): Promise<ArxProjectEnrollmentManager>{
-    const arxProjectEnrollmentManager = await new ArxProjectEnrollmentManager__factory(this._deployerSigner).deploy(
-      chipRegistry,
-      developerRegistrar,
-      ers,
-      manufacturerRegistry,
-      transferPolicy,
-      maxBlockWindow
-    );
-
-    return arxProjectEnrollmentManager;
+  public async getPBTSimpleProjectRegistrar(registrarAddress: Address): Promise<PBTSimpleProjectRegistrar> {
+    return new PBTSimpleProjectRegistrar__factory(this._deployerSigner).attach(registrarAddress);
   }
 
   public async deployDeveloperNameGovernor(
@@ -214,5 +194,10 @@ export default class DeployHelper {
   public async deploySECP256k1Model(): Promise<SECP256k1Model> {
     const secp256k1Model = await new SECP256k1Model__factory(this._deployerSigner).deploy();
     return secp256k1Model;
+  }
+
+  public async deployEnrollmentSECP256k1Model(): Promise<EnrollmentSECP256k1Model> {
+    const enrollmentSECP256k1Model = await new EnrollmentSECP256k1Model__factory(this._deployerSigner).deploy();
+    return enrollmentSECP256k1Model;
   }
 }

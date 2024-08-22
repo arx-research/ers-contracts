@@ -1,51 +1,113 @@
-import { BigNumber, ethers } from "ethers";
-
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 
-export async function createProjectOwnershipProof(
+export async function createManufacturerCertificate(signer: Account, chainId: number, chipId: Address, verifyingContract: Address): Promise<string> {
+  const domain = {
+    name: "ERS",
+    version: "1.0.0",
+    chainId,
+    verifyingContract,
+  };
+
+  const types = {
+    ManufacturerCertificate: [
+      { name: "chipId", type: "address" },
+    ],
+  };
+
+  const domainWithChainId = { ...domain, chainId };
+
+  const value = {
+    chipId,
+  };
+
+  return await signer.wallet._signTypedData(domainWithChainId, types, value);
+}
+
+export async function createDeveloperCustodyProof(chipId: Account, developerRegistrar: Address, chainId: number, verifyingContract: Address): Promise<string> {
+  const domain = {
+    name: "ERS",
+    version: "1.0.0",
+    chainId,
+    verifyingContract,
+  };
+
+  const types = {
+    DeveloperCustodyProof: [
+      { name: "developerRegistrar", type: "address" },
+    ],
+  };
+
+  const domainWithChainId = { ...domain, chainId };
+
+  const value = {
+    developerRegistrar,
+  };
+
+  return await chipId.wallet._signTypedData(domainWithChainId, types, value);
+}
+
+export async function createMigrationProof(
   signer: Account,
-  projectRegistrarAddress: Address,
-  chainId: number
+  chipId: Address,
+  developerRegistrar: Address,
+  chainId: number,
+  verifyingContract: Address
 ): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(["uint256", "address"], [chainId, projectRegistrarAddress]);
-  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-}
+  const domain = {
+    name: "ERS",
+    version: "1.0.0",
+    chainId,
+    verifyingContract,
+  };
 
-export async function createDeveloperInclusionProof(signer: Account, chipId: Address): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(["address"], [chipId]);
-  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-}
+  const types = {
+    MigrationProof: [
+      { name: "chipId", type: "address" },
+      { name: "developerRegistrar", type: "address" },
+    ],
+  };
 
-export async function createDeveloperCustodyProof(signer: Account, projectPublicKey: Address): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(["address"], [projectPublicKey]);
-  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-}
+  const domainWithChainId = { ...domain, chainId };
 
-export async function createProvingChipOwnershipProof(signer: Account, chipHolder: Address, chainId: number): Promise<string> {
-  const packedChipOwnershipMessage = ethers.utils.solidityPack(["uint256", "address"], [chainId, chipHolder]);
-  return await signer.wallet.signMessage(ethers.utils.arrayify(packedChipOwnershipMessage));
+  const value = {
+    chipId,
+    developerRegistrar,
+  };
+
+  return await signer.wallet._signTypedData(domainWithChainId, types, value);
 }
 
 export async function createNameApprovalProof(
   signer: Account,
   developerOwner: Address,
-  nameHash: string
-): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(["address", "bytes32"], [developerOwner, nameHash]);
-  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-}
-
-export async function createChipOwnershipProof(
-  signer: Account,
-  chainId: number,
-  commitBlock: BigNumber,
   nameHash: string,
-  caller: Address
+  proofTimestamp: number,
+  chainId: number,
+  verifyingContract: Address
 ): Promise<string> {
-  const packedMsg = ethers.utils.solidityPack(
-    ["uint256", "uint256", "bytes32", "address"],
-    [chainId, commitBlock, nameHash, caller]
-  );
-  return signer.wallet.signMessage(ethers.utils.arrayify(packedMsg));
+  const domain = {
+    name: "ERS",
+    version: "1.0.0",
+    chainId,
+    verifyingContract,
+  };
+
+  const types = {
+    NameApprovalProof: [
+      { name: "developerOwner", type: "address" },
+      { name: "developerName", type: "bytes32" },
+      { name: "proofTimestamp", type: "uint256" },
+    ],
+  };
+
+  const domainWithChainId = { ...domain, chainId };
+
+  const value = {
+    developerOwner,
+    developerName: nameHash,
+    proofTimestamp,
+  };
+
+  return await signer.wallet._signTypedData(domainWithChainId, types, value);
 }
