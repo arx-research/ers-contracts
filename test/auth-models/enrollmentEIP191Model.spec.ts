@@ -18,12 +18,13 @@ const expect = getWaffleExpect();
 describe("EnrollmentEIP191Model", () => {
   let owner: Account;
   let chipOne: Account;
+  let chipTwo: Account;
   let manufacturerOne: Account;
   let deployer: DeployHelper;
   let enrollmentAuthModel: EnrollmentEIP191Model;
 
   before(async () => {
-    [owner, chipOne, manufacturerOne] = await getAccounts();
+    [owner, chipOne, chipTwo, manufacturerOne] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
 
