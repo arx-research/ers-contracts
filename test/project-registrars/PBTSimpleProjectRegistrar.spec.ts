@@ -563,6 +563,37 @@ describe("PBTSimpleProjectRegistrar", () => {
     });
   });
 
+  describe("#setBaseURI", async () => {
+    let newBaseURI: string;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      newBaseURI = "https://new.api.projecty.com/";
+      subjectCaller = developerOne;
+    });
+
+    async function subject(): Promise<any> {
+      return projectRegistrar.connect(subjectCaller.wallet).setBaseURI(newBaseURI);
+    }
+
+    it("should update the base URI", async () => {
+      await subject();
+      const actualBaseURI = await projectRegistrar.baseURI();
+      expect(actualBaseURI).to.eq(newBaseURI);
+    });
+
+    describe("when the caller is not the contract owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = owner;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+
   describe("#transferTokenWithChip", async () => {
     let subjectSignatureFromChip: string;
     let subjectBlockNumberUsedInSig: BigNumber;

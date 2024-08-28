@@ -73,6 +73,15 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
         _setTransferPolicy(_newPolicy);
     }
 
+    /**
+     * @notice ONLY OWNER: Allows the contract owner to update the base URI for the PBT tokens.
+     *
+     * @param updatedBaseURI The new base URI to set for the tokens.
+     */
+    function setBaseURI(string memory updatedBaseURI) public onlyOwner {
+        baseURI = updatedBaseURI;
+    }
+
     /* ============ External Functions ============ */
 
     /**
