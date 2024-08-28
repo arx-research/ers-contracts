@@ -1,5 +1,11 @@
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
+import { ethers } from "ethers";
+
+export async function createEIP191ManufacturerCertificate(signer: Account, chipId: Address): Promise<string> {
+  const messageHash = ethers.utils.arrayify(chipId);
+  return await signer.wallet.signMessage(messageHash);
+}
 
 export async function createManufacturerCertificate(signer: Account, chainId: number, chipId: Address, verifyingContract: Address): Promise<string> {
   const domain = {
