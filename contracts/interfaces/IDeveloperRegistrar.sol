@@ -10,12 +10,10 @@ interface IDeveloperRegistrar {
     function owner() external view returns (address);
 
     function addProject(
-        bytes32 _nameHash,
         IProjectRegistrar _projectRegistrar,
-        address _projectPublicKey,
+        bytes32 _nameHash,
         bytes32 _serviceId,
-        uint256 _lockinPeriod,
-        bytes calldata _ownershipProof
+        uint256 _lockinPeriod
     )
         external;
 

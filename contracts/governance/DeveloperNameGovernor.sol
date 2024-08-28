@@ -26,7 +26,7 @@ contract DeveloperNameGovernor is Ownable2Step, EIP712 {
     /* ============ Constants ============ */
     // Match signature version to project version.
     string public constant EIP712_SIGNATURE_DOMAIN = "ERS";
-    string public constant EIP712_SIGNATURE_VERSION = "1.0.0";
+    string public constant EIP712_SIGNATURE_VERSION = "2.0.0";
 
     /* ============ State Variables ============ */
     IDeveloperRegistry public immutable developerRegistry;

@@ -4,7 +4,7 @@ import { Account } from "@utils/test/types";
 export async function createManufacturerCertificate(signer: Account, chainId: number, chipId: Address, verifyingContract: Address): Promise<string> {
   const domain = {
     name: "ERS",
-    version: "1.0.0",
+    version: "2.0.0",
     chainId,
     verifyingContract,
   };
@@ -27,7 +27,7 @@ export async function createManufacturerCertificate(signer: Account, chainId: nu
 export async function createDeveloperCustodyProof(chipId: Account, developerRegistrar: Address, chainId: number, verifyingContract: Address): Promise<string> {
   const domain = {
     name: "ERS",
-    version: "1.0.0",
+    version: "2.0.0",
     chainId,
     verifyingContract,
   };
@@ -56,7 +56,7 @@ export async function createMigrationProof(
 ): Promise<string> {
   const domain = {
     name: "ERS",
-    version: "1.0.0",
+    version: "2.0.0",
     chainId,
     verifyingContract,
   };
@@ -88,7 +88,7 @@ export async function createNameApprovalProof(
 ): Promise<string> {
   const domain = {
     name: "ERS",
-    version: "1.0.0",
+    version: "2.0.0",
     chainId,
     verifyingContract,
   };
