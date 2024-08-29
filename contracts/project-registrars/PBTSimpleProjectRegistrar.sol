@@ -78,7 +78,12 @@ contract PBTSimpleProjectRegistrar is BaseProjectRegistrar, PBTSimple {
      *
      * @param updatedBaseURI The new base URI to set for the tokens.
      */
-    function setBaseURI(string memory updatedBaseURI) public onlyOwner {
+    function setBaseURI(
+        string memory updatedBaseURI
+    ) 
+        public 
+        onlyOwner() 
+    {
         baseURI = updatedBaseURI;
     }
 

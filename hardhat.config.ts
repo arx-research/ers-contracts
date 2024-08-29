@@ -37,10 +37,10 @@ const config: HardhatUserConfig = {
       gas: 12000000,
       blockGasLimit: 12000000,
     },
-    goerli: {
-      url: "https://goerli.infura.io/v3/" + process.env.INFURA_TOKEN,
+    sepolia: {
+      url: "https://sepolia.infura.io/v3/" + process.env.INFURA_TOKEN,
       // @ts-ignore
-      accounts: [`0x${process.env.GOERLI_DEPLOY_PRIVATE_KEY}`],
+      accounts: [`0x${process.env.SEPOLIA_DEPLOY_PRIVATE_KEY}`],
     },
   },
   // @ts-ignore
