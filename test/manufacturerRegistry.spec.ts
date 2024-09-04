@@ -356,7 +356,7 @@ describe("ManufacturerRegistry", () => {
 
       const mInfo = await manufacturerRegistry.getManufacturerInfo(subjectManufacturerId);
 
-      expect(mInfo.owner).to.eq(ethers.constants.AddressZero);
+      expect(mInfo.owner).to.eq(ADDRESS_ZERO);
       expect(mInfo.registered).to.be.true;
     });
 
