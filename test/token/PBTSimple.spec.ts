@@ -477,7 +477,7 @@ describe("PBTSimple", () => {
 
           // Need to use this hacky way to access since the ownerOf function is overloaded
           const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
-          expect(actualOwner).to.eq(accountMock.address);
+          expect(actualOwner).to.eq(subjectCaller.address);
         });
 
         describe("when the receiver hasn't implemented onERC721Received", async () => {
