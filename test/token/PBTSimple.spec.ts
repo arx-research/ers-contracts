@@ -342,8 +342,8 @@ describe("PBTSimple", () => {
       expect(actualTokenId).to.eq(subjectTokenId);
     });
 
-    it("should emit the correct PBTMint event", async () => {
-      await expect(subject()).to.emit(PBTSimple, "PBTMint").withArgs(
+    it("should emit the correct ChipSet event", async () => {
+      await expect(subject()).to.emit(PBTSimple, "ChipSet").withArgs(
         subjectTokenId,
         subjectChipId
       );
@@ -368,38 +368,6 @@ describe("PBTSimple", () => {
 
       await PBTSimple.testMint(ownerAddress, chip.address, chipErsNode);
       await PBTSimple.testMint(ownerAddress, chipAccount.address, chipErsNodeAccount);
-    });
-
-    describe("#transferTokenWithChip", async () => {
-      let subjectBlockNumberUsedInSig: BigNumber;
-      let subjectSignatureFromChip: string;
-      let subjectUseSafeTransfer: boolean;
-      let subjectCaller: Account;
-
-      beforeEach(async () => {
-        const anchorBlock = await blockchain._provider.getBlock("latest");
-        subjectBlockNumberUsedInSig = BigNumber.from(anchorBlock.number);
-        subjectCaller = newOwner;
-        const msgContents = ethers.utils.solidityPack(
-          ["address", "bytes32"],
-          [subjectCaller.address, anchorBlock.hash]
-        );
-
-        subjectSignatureFromChip = await chip.wallet.signMessage(ethers.utils.arrayify(msgContents));
-        subjectUseSafeTransfer = false;
-      });
-
-      async function subject(): Promise<any> {
-        return PBTSimple.connect(subjectCaller.wallet).transferTokenWithChip(
-          subjectSignatureFromChip,
-          subjectBlockNumberUsedInSig,
-          subjectUseSafeTransfer
-        );
-      }
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Not implemented");
-      });
     });
 
     describe("#transferToken", async() => {
@@ -434,6 +402,7 @@ describe("PBTSimple", () => {
 
       async function subject(): Promise<any> {
         return await PBTSimple.connect(subjectCaller.wallet).transferToken(
+          subjectCaller.address,
           subjectChipId,
           subjectSignatureFromChip,
           subjectBlockNumberUsedInSig,
@@ -494,6 +463,7 @@ describe("PBTSimple", () => {
 
         async function accountSubject(): Promise<any> {
           return accountMock.connect(subjectCaller.wallet).transferToken(
+            subjectCaller.address,
             subjectChipId,
             subjectSignatureFromChip,
             subjectBlockNumberUsedInSig,
@@ -590,141 +560,6 @@ describe("PBTSimple", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Chip must be minted");
-        });
-      });
-    });
-
-    describe("#setOwner", async() => {
-      let subjectChipId: Address;
-      let subjectNewOwner: Address;
-      let subjectCommitBlock: BigNumber;
-      let subjectSignature: string;
-      let subjectCaller: Account;
-      let subjectErsNode: string;
-      let subjectTokenId: string;
-
-      beforeEach(async () => {
-        subjectChipId = chip.address;
-        subjectNewOwner = newOwner.address;
-        subjectCommitBlock = await blockchain.getLatestBlockNumber();
-
-        subjectErsNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
-        subjectTokenId = BigNumber.from(subjectErsNode).toString();
-
-        const packedMsg = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [subjectCommitBlock, subjectNewOwner]
-        );
-        subjectSignature = await chip.wallet.signMessage(ethers.utils.arrayify(packedMsg));
-        subjectCaller = owner;
-      });
-
-      async function subject(): Promise<any> {
-        return await PBTSimple.connect(subjectCaller.wallet).setOwner(
-          subjectChipId,
-          subjectNewOwner,
-          subjectCommitBlock,
-          subjectSignature
-        );
-      }
-
-      it("should update the owner of the token", async () => {
-        await subject();
-
-        const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
-        expect(actualOwner).to.eq(subjectNewOwner);
-      });
-
-      it("should update the owner and new owner balances", async () => {
-        const preOwnerBalance = await PBTSimple.balanceOf(owner.address);
-        const preNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
-
-        await subject();
-
-        const postOwnerBalance = await PBTSimple.balanceOf(owner.address);
-        const postNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
-
-        expect(postOwnerBalance).to.eq(preOwnerBalance.sub(1));
-        expect(postNewOwnerBalance).to.eq(preNewOwnerBalance.add(1));
-      });
-
-      it("should emit a Transfer event", async () => {
-        await expect(subject()).to.emit(PBTSimple, "Transfer").withArgs(
-          owner.address,
-          subjectNewOwner,
-          subjectTokenId
-        );
-      });
-
-      describe("when the chip is represented by an account contract", async () => {
-
-        beforeEach(async () => {
-          subjectChipId = chipAccount.address;
-          subjectErsNode = calculateSubnodeHash(`${subjectChipId}.ProjectY.gucci.ers`);
-          subjectTokenId = BigNumber.from(subjectErsNode).toString();
-        });
-
-        it("should update the owner of the token", async () => {
-          await subject();
-
-          const actualOwner = await PBTSimple.ownerOf(subjectTokenId);
-          expect(actualOwner).to.eq(subjectNewOwner);
-        });
-
-        it("should update the owner and new owner balances", async () => {
-          const preOwnerBalance = await PBTSimple.balanceOf(subjectCaller.address);
-          const preNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
-
-          await subject();
-
-          const postOwnerBalance = await PBTSimple.balanceOf(subjectCaller.address);
-          const postNewOwnerBalance = await PBTSimple.balanceOf(subjectNewOwner);
-
-          expect(postOwnerBalance).to.eq(preOwnerBalance.sub(1));
-          expect(postNewOwnerBalance).to.eq(preNewOwnerBalance.add(1));
-        });
-      });
-
-      describe("when the signature isn't valid", async () => {
-        beforeEach(async () => {
-          const packedMsg = ethers.utils.solidityPack(["uint256"], [subjectCommitBlock]);
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Invalid signature");
-        });
-      });
-
-      describe("when the signature isn't valid for an account contract", async () => {
-        beforeEach(async () => {
-          subjectChipId = chipAccount.address;
-          const packedMsg = ethers.utils.solidityPack(["uint256"], [subjectCommitBlock]);
-          subjectSignature = await chipTwo.wallet.signMessage(packedMsg);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Invalid signature");
-        });
-      });
-
-      describe("when the signature has expired", async () => {
-        beforeEach(async () => {
-          await blockchain.waitBlocksAsync(6);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Signature expired");
-        });
-      });
-
-      describe("when the owner isn't the caller", async () => {
-        beforeEach(async () => {
-          subjectCaller = chip;
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Caller must be chip owner");
         });
       });
     });

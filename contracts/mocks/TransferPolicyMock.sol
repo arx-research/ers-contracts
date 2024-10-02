@@ -8,6 +8,7 @@ contract TransferPolicyMock is ITransferPolicy {
 
     struct CallInfo {
         address chipId;
+        address to;
         address sender;
         address chipOwner;
         bytes payload;
@@ -23,6 +24,7 @@ contract TransferPolicyMock is ITransferPolicy {
 
     function authorizeTransfer(
         address _chipId,
+        address _to,
         address _sender,
         address _chipOwner,
         bytes calldata _payload,
@@ -33,6 +35,7 @@ contract TransferPolicyMock is ITransferPolicy {
     {
         callInfo = CallInfo({
             chipId: _chipId,
+            to: _to,
             sender: _sender,
             chipOwner: _chipOwner,
             payload: _payload,
