@@ -197,16 +197,6 @@ describe("ChipRegistry", () => {
       });
     });
 
-    describe("when the max lockin period is greater than 10 years", async () => {
-      beforeEach(async () => {
-        subjectMaxLockinPeriod = BigNumber.from(315569521);
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("maxLockinPeriod cannot exceed 10 years");
-      });
-    });
-
     describe("when the passed migrationSigner address is the zero address", async () => {
       beforeEach(async () => {
         subjectMigrationSigner = ADDRESS_ZERO;

@@ -121,7 +121,6 @@ contract ChipRegistry is Ownable2Step, ERC165, EIP712 {
         EIP712(EIP712_SIGNATURE_DOMAIN, EIP712_SIGNATURE_VERSION) 
     {
         require(address(_manufacturerRegistry) != address(0), "Invalid manufacturer registry address");
-        require(_maxLockinPeriod <= 315569520, "maxLockinPeriod cannot exceed 10 years");
         require(_migrationSigner != address(0), "Invalid migration signer address");
 
         manufacturerRegistry = _manufacturerRegistry;
