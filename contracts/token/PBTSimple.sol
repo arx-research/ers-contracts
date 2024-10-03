@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { IERC165, ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721Metadata } from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -20,7 +21,7 @@ import { ITransferPolicy } from "../interfaces/ITransferPolicy.sol";
  * @notice Implementation of PBT where tokenIds are assigned to chip addresses as the chips are added. The contract has a
  * transfer policy, which can be set by the chip owner and allows the owner to specify how the chip can be transferred to another party. 
  */
-contract PBTSimple is IPBT, ERC721ReadOnly {
+contract PBTSimple is IPBT, ERC165, ERC721ReadOnly {
     using SignatureChecker for address;
     using ChipValidations for address;
     using ECDSA for bytes;
@@ -177,10 +178,12 @@ contract PBTSimple is IPBT, ERC721ReadOnly {
         public
         view
         virtual
-        override(ERC721)
+        override(ERC721, ERC165)
         returns (bool)
     {
-        return _interfaceId == type(IPBT).interfaceId || super.supportsInterface(_interfaceId);
+        return _interfaceId == 
+            type(IPBT).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 
     /* ============ Internal Functions ============ */
