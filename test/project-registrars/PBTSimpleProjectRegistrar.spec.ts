@@ -399,6 +399,7 @@ describe("PBTSimpleProjectRegistrar", () => {
 
       async function subject(): Promise<any> {
         return projectRegistrar.connect(subjectCaller.wallet).transferToken(
+          subjectCaller.address,
           subjectChipId,
           subjectSignatureFromChip,
           subjectBlockNumberUsedInSig,
@@ -419,52 +420,6 @@ describe("PBTSimpleProjectRegistrar", () => {
         const actualNewOwner = await ersRegistry.getOwner(calculateSubnodeHash("chip1.ProjectX.Gucci.ers"));
 
         expect(actualNewOwner).to.be.equal(subjectCaller.address);
-      });
-    });
-
-    describe("#setOwner", async () => {
-      let subjectChipId: Address;
-      let subjectNewOwner: Address;
-      let subjectCommitBlock: BigNumber;
-      let subjectSignature: string;
-      let subjectCaller: Account;
-
-      beforeEach(async () => {
-        subjectChipId = chipOne.address;
-        subjectNewOwner = developerTwo.address;
-        subjectCommitBlock = await blockchain.getLatestBlockNumber();
-        subjectCaller = developerOne;
-        const msgContents = ethers.utils.solidityPack(
-          ["uint256", "address"],
-          [subjectCommitBlock, subjectNewOwner]
-        );
-
-        subjectSignature = await chipOne.wallet.signMessage(ethers.utils.arrayify(msgContents));
-      });
-
-      async function subject(): Promise<any> {
-        return projectRegistrar.connect(subjectCaller.wallet).setOwner(
-          subjectChipId,
-          subjectNewOwner,
-          subjectCommitBlock,
-          subjectSignature
-        );
-      }
-
-      it("should transfer the PBT to the new address", async() => {
-        await subject();
-
-        const actualNewOwner = await projectRegistrar["ownerOf(address)"](chipOne.address);
-
-        expect(actualNewOwner).to.be.equal(subjectNewOwner);
-      });
-
-      it("should set the new address as the owner in the ERSRegistry", async() => {
-        await subject();
-
-        const actualNewOwner = await ersRegistry.getOwner(calculateSubnodeHash("chip1.ProjectX.Gucci.ers"));
-
-        expect(actualNewOwner).to.be.equal(subjectNewOwner);
       });
     });
   });
@@ -590,33 +545,6 @@ describe("PBTSimpleProjectRegistrar", () => {
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
-    });
-  });
-
-
-  describe("#transferTokenWithChip", async () => {
-    let subjectSignatureFromChip: string;
-    let subjectBlockNumberUsedInSig: BigNumber;
-    let subjectUseSafeTranfer: boolean;
-    let subjectCaller:Account;
-
-    beforeEach(async () => {
-      subjectSignatureFromChip = "0x";
-      subjectBlockNumberUsedInSig = BigNumber.from(0);
-      subjectUseSafeTranfer = false;
-      subjectCaller = developerOne;
-    });
-
-    async function subject(): Promise<any> {
-      return projectRegistrar.connect(subjectCaller.wallet).transferTokenWithChip(
-        subjectSignatureFromChip,
-        subjectBlockNumberUsedInSig,
-        subjectUseSafeTranfer
-      );
-    }
-
-    it("should revert",  async() => {
-      await expect(subject()).to.be.revertedWith("Not implemented");
     });
   });
 

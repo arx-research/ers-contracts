@@ -22,17 +22,8 @@ contract AccountMock is IERC1271 {
         chipRegistry = IPBT(_chipRegistry);
     }
 
-    function transferTokenWithChip(
-        bytes calldata signatureFromChip,
-        uint256 blockNumberUsedInSig,
-        bool useSafeTransferFrom
-    )
-        external
-    {
-        chipRegistry.transferTokenWithChip(signatureFromChip, blockNumberUsedInSig, useSafeTransferFrom);
-    }
-
     function transferToken(
+        address to,
         address chipId,
         bytes calldata signatureFromChip,
         uint256 blockNumberUsedInSig,
@@ -41,7 +32,7 @@ contract AccountMock is IERC1271 {
     )
         external
     {
-        chipRegistry.transferToken(chipId, signatureFromChip, blockNumberUsedInSig, useSafeTransferFrom, payload);
+        chipRegistry.transferToken(to, chipId, signatureFromChip, blockNumberUsedInSig, useSafeTransferFrom, payload);
     }
 
     function isValidSignature(bytes32 _hash, bytes memory _signature) external view override returns (bytes4) {
